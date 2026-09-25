@@ -16,6 +16,7 @@ Usage:
     python3 atlas_query.py kin Ezekiel 47
     python3 atlas_query.py kin Ezekiel 47:1-12
     python3 atlas_query.py testament New
+    python3 atlas_query.py compare Exodus x Leviticus    two books, chapter against chapter
     python3 atlas_query.py dossier Ezekiel          everything about one book, one file
     python3 atlas_query.py dossier Ezekiel --brief  the same with chapter pages trimmed
     python3 atlas_query.py ask "'day' + 'night' [Ezekiel]"     (any line of notation)
@@ -24,10 +25,11 @@ Author: Andrew Hopkins (with Claude)
 """
 
 import os
+import re
 import sys
 
 from atlas_ask import AskError, parse
-from atlas_pages import Atlas, book_page, chapter_page, kin_page, testament_page, word_page
+from atlas_pages import Atlas, book_page, chapter_page, compare_page, kin_page, testament_page, word_page
 
 
 def render(report):
@@ -86,11 +88,13 @@ def ask(atlas, line):
     except AskError as e:
         raise SystemExit(str(e))
     kind = a["action"]
-    if kind in ("word", "book", "chapter", "kin", "testament"):
+    if kind in ("word", "book", "chapter", "kin", "testament", "compare"):
         if kind == "word":
             report = word_page(atlas, a["word"], a["book"])
         elif kind == "testament":
             report = testament_page(atlas, a["testament"])
+        elif kind == "compare":
+            report = compare_page(atlas, a["book"], a["other"])
         elif kind == "book":
             report = book_page(atlas, a["book"])
         elif kind == "chapter":
@@ -137,7 +141,7 @@ def dossier(atlas, book_name, brief=False):
     the book page, the testament page's home words for the book, every
     chapter page, and the word pages of the book's top signature
     words.  With brief=True a chapter page keeps only its leading
-    words, signature words, formulas and synopsis, which is what a
+    words, signature words, formulas, synopsis and kin, which is what a
     review usually needs, and the file is about a third the size.
     Returns the path written.
     """
@@ -150,13 +154,15 @@ def dossier(atlas, book_name, brief=False):
     for chapter in range(1, atlas.book_info[book]["chapters"] + 1):
         chapter_report = chapter_page(atlas, book, chapter)
         if brief:
-            keep = ("1.", "2.", "5.")
+            keep = ("1.", "2.", "5.", "6.")
             chapter_report.sections = [sec for sec in chapter_report.sections
                                        if sec.title.startswith(keep)]
         parts.append(render(chapter_report))
     for root in top_words:
         try:
-            parts.append(render(word_page(atlas, root, book)))
+            # exact: the root as the book page counted it, so an untagged
+            # stem opens its own page rather than a Strong's number
+            parts.append(render(word_page(atlas, root, book, exact=True)))
         except ValueError:
             continue
     text = ("\n\n" + "=" * 110 + "\n\n").join(parts)
@@ -194,6 +200,13 @@ def main(argv):
             report = kin_page(atlas, " ".join(argv[2:-1]), argv[-1])
         elif command == "testament":
             report = testament_page(atlas, " ".join(argv[2:]))
+        elif command == "compare":
+            # two books, separated by x or a comma: compare Exodus x Leviticus
+            rest = " ".join(argv[2:])
+            parts = [p.strip() for p in re.split(r"\s+x\s+|,", rest) if p.strip()]
+            if len(parts) != 2:
+                raise SystemExit("compare needs two books: compare Exodus x Leviticus")
+            report = compare_page(atlas, parts[0], parts[1])
         else:
             print(__doc__)
             return

@@ -177,7 +177,9 @@ listed on their own.
 whose deepest chapter in the book is this one), then the same sections
 at chapter scale, ending with
 5 Synopsis: the chapter verse by verse with its closest parallels in
-the two chief partner books.
+the two chief partner books, and 6 Kin: the eight chapters elsewhere
+sharing the most rare words with this one in any order (the head of
+the Kin page).
 
 **Word page.** The original Hebrew or Greek word and its KJV glosses,
 then 0 Roots behind the word (only when an English word was typed and

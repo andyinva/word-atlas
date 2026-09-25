@@ -164,9 +164,13 @@ COLUMN_HELP = {
                "In brackets and marked 'few' when it rests on fewer than twenty echoes: a small "
                "book with a few shared idioms always posts a high ratio.",
     "grade": "'quotation' marks an echo of five or more words found in exactly two verses of "
-             "the whole Bible, one here and one there: the strongest kind of evidence the table has.",
+             "the whole Bible, one here and one there: the strongest kind of evidence the table has.  "
+             "'by English' marks an echo across the testaments that meets the same test by wording "
+             "alone: weaker, since the translators' idiom can make it.",
     "quotation grade": "How many of the partner's echoes are quotation grade: five or more words "
-                       "in exactly two verses of the Bible, one here and one there.",
+                       "in exactly two verses of the Bible, one here and one there.  Echoes that "
+                       "meet the test only by English wording across the testaments are counted "
+                       "apart, as '+N by English'.",
     "rarest echoes (here -> there)": "The partner's three rarest echoes (summed rarity of their "
                                      "words), each with the verse here and the verse there; "
                                      "(q) marks quotation grade.  One echo per verse pair.  "

@@ -60,6 +60,10 @@ screens and this file.
 | Placed, inferred, absorbed | How a word got its number: placed from the tagging, inferred from the number its spelling usually carries in the book or testament (~), or absorbed into the tagged word it always stands beside, as "chief" into priests G749 (=) |
 | Build | One complete set of tables made from the text under one set of rules; kept under a label so two can be compared |
 | Dossier | Everything about one book in one text file: the book page, every chapter page and the top words' pages |
+| Refrain | A phrase of three or more words that recurs in three or more chapters of one book ("weeping and gnashing of teeth" in Matthew); the book's own habit, set aside from the chapter map and listed on its own |
+| Doublet | The same passage told twice in one book: the two feedings in Mark 6 and 8, the tabernacle in Exodus 26 and 36. The atlas does not judge content, so it marks a candidate ("doublet?") by distance alone |
+| Gap | How many chapters lie between a chapter and its partner; a gap of one is the story continuing, a wide gap the author coming back to the same wording |
+| Doublet gap | The distance from which a pair is marked "doublet?": three chapters or more (DOUBLET_GAP) |
 
 ## Notation
 
@@ -549,6 +553,35 @@ the doublet candidates read 3 and 7 (the axe and the tree), 4 and 10,
 beloved son"), 2 and 27 (Jeremiah quoted). The two feedings in 14 and
 15 read "adjacent", a limit of a rule that goes by distance alone: a
 doublet in neighbouring chapters looks like the story continuing.
+
+A read of the Mark dossier (0.9.2) turned up five smaller faults, all
+fixed. The chapter pages' 4a and 4a2 were headed with the book's name
+while holding the chapter's figures; they now read [Mark 13]. The
+dossier's word pages took the commonest Strong's number behind an
+English word, so the untagged stem "sick" that section 1 counted
+opened the page for G770 asthenéo; the dossier now passes the root
+exactly as the book page counted it, and a word page opened from a
+book takes its title spelling from that book ("straightway G2112", not
+the Bible-wide "immediately"). Refrains that differed only by stop
+words ("james and john", "and james and john"; "an unclean spirit",
+"the unclean spirits") fold into the form with the most verses. The
+echo map (4c) printed before the chapter table (4b); the order is now
+4b, 4c. And the quotation grade, the strongest claim the tables make,
+was being earned across the testaments by English wording alone ("and
+went into the country", Mark 16:12 and Genesis 36:6); such echoes are
+now marked "by English" in section 4 and counted apart in 4a2 ("0 (+2
+by English)"), since the translators' idiom can make five shared words
+without either text reading the other. They still count as parallels
+in 4d, which is where Revelation's Daniel column comes from.
+
+The same read found one thing absent: nothing in a dossier said what a
+chapter is kin to. Chapter pages now end with section 6, the eight
+chapters elsewhere most kin to this one (the head of the Kin page), so
+imagery retold in other phrasing is in the file. On a Strong's build
+kin is judged on roots, and a Hebrew root never matches a Greek one,
+so a chapter's kin lie in its own testament; the other testament is
+reached only through the English-worded echoes of section 4. Kin by
+English stem across the testaments is a possible next step.
 
 Two smaller changes from the same page. Absorption now reaches across
 a single stop word, and runs before inference, so "father in law" and

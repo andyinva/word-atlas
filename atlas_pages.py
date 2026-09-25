@@ -47,6 +47,7 @@ TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
 ECHO_N = 60         # echoes shown per page, best first
 KIN_N = 25          # kin chapters shown
+KIN_CHAPTER_N = 8   # kin chapters at the foot of a chapter page
 KIN_MIN_SHARED = 3  # rare words two verses must share to count as kin
 LOCAL_SHARE = 0.2   # a signature word is "local" below this share of chapters
 NEST_COVER = 0.8    # a shorter formula folds into a longer one covering this share of its verses
@@ -1110,12 +1111,20 @@ def echoes_section(atlas, report, title, book, chapter=None):
                 "root never match, echoes are found by English wording instead."
                 if by_roots else "  Spellings of one echo are folded together.")
              + f"  'quotation' marks an echo of {QUOTE_MIN_WORDS} or more words found in exactly two "
-               f"verses of the whole Bible: the strongest kind of evidence the table has.")
+               f"verses of the whole Bible: the strongest kind of evidence the table has; 'by English' "
+               f"an echo across the testaments that meets the same test by wording alone, weaker "
+               f"evidence, since the translators' idiom can make it.")
     for key in order[:ECHO_N]:
         phrase, here, there = kept[key]
         shown = atlas.display_of(phrase, here + there) if by_roots else phrase
         # Quotation grade: five or more words, in exactly two verses of the Bible
-        grade = "quotation" if len(shown.split()) >= QUOTE_MIN_WORDS and len(here) + len(there) == 2 else ""
+        # An echo found by English wording across the testaments passes the
+        # same test on weaker ground (idiom the translators shared), so
+        # it is marked as such rather than graded with the root echoes
+        if len(shown.split()) >= QUOTE_MIN_WORDS and len(here) + len(there) == 2:
+            grade = "by English" if phrase.startswith("en:") else "quotation"
+        else:
+            grade = ""
         sec.add([shown, grade, ", ".join(here), ", ".join(there)], refs=here + there,
                 link={"phrase": shown, "key": phrase})
     if len(found) > ECHO_N:
@@ -1150,7 +1159,13 @@ def echoes_section(atlas, report, title, book, chapter=None):
             # of the whole Bible)
             n_words = len(phrase.split())
             total_verses = len(here) + len(there)
-            grade = n_words >= QUOTE_MIN_WORDS and total_verses == 2
+            # 2 = quotation grade on roots, 1 = the same test met by English
+            # wording across the testaments (weaker: the translators' idiom),
+            # 0 = neither
+            if n_words >= QUOTE_MIN_WORDS and total_verses == 2:
+                grade = 1 if phrase.startswith("en:") else 2
+            else:
+                grade = 0
             partner_echoes.setdefault(pb, []).append(
                 (weight, n_words, grade, phrase, list(here), list(there_by_pb[pb])))
         here_by_ch = {}
@@ -1182,8 +1197,11 @@ def echoes_section(atlas, report, title, book, chapter=None):
     total_echoes = sum(len(keys) for keys in partner_keys.values())
     words_outside = atlas.n_bible - atlas.book_info[book]["words"]
 
+    # The scope as the titles print it: the chapter on a chapter page,
+    # whose tallies are the chapter's own, the book on a book page
+    scope_label = f"{book} {chapter}" if chapter else book
     tally = report.section(
-        title.split(".")[0] + f"a. Echo partners [{book}] -> which books",
+        title.split(".")[0] + f"a. Echo partners [{scope_label}] -> which books",
         ["partner book", "echoes", "weight", "obs/exp", "per 1000 words of partner", "in time"],
         note="Counted over every candidate echo, not only the ones shown above.  'echoes' is "
              "distinct echoes (spellings folded); 'weight' adds up the rarity of their words, so "
@@ -1235,13 +1253,15 @@ def echoes_section(atlas, report, title, book, chapter=None):
     # side, and how many of its echoes are quotation grade.  Sources
     # and readers can be cited from here without combing the chapters.
     who = report.section(
-        title.split(".")[0] + f"a2. Who reads whom [{book}]: the rarest echo with each partner",
+        title.split(".")[0] + f"a2. Who reads whom [{scope_label}]: the rarest echo with each partner",
         ["partner book", "in time", "echoes", "quotation grade", "rarest echoes (here -> there)"],
         note=f"For each partner, its {WHO_READS_N} best echoes: quotation grade first, then the "
              f"rarest (summed rarity of their words, longest first among equals), each with the "
              f"verse here and the verse there.  "
              f"'quotation grade' counts echoes of {QUOTE_MIN_WORDS} or more words found in exactly "
-             f"two verses of the whole Bible: one here, one there, and nowhere else.  Earlier "
+             f"two verses of the whole Bible: one here, one there, and nowhere else; an echo that "
+             f"meets the test only by English wording across the testaments (the translators' "
+             f"idiom, not a shared root) is counted apart as 'by English'.  Earlier "
              f"partners are what {book} could have read, later ones who could have read it; "
              f"the rarest echo is the one to cite, and the ratio in 4a is the one to distrust "
              f"when the count is small.  Click a row for the verses on both sides.")
@@ -1256,8 +1276,10 @@ def echoes_section(atlas, report, title, book, chapter=None):
     for pb, n, w, ratio, rate, rel in sorted(listed, key=lambda r: (order_in_time.get(r[5], 3), -r[2])):
         # Quotation-grade echoes first, then by rarity: summed rarity alone
         # favours long runs of moderately common words
-        echoes_pb = sorted(partner_echoes.get(pb, []), key=lambda e: (not e[2], -e[0], -e[1]))
-        grade_n = sum(1 for e in echoes_pb if e[2])
+        echoes_pb = sorted(partner_echoes.get(pb, []), key=lambda e: (-e[2], -e[0], -e[1]))
+        grade_n = sum(1 for e in echoes_pb if e[2] == 2)
+        english_n = sum(1 for e in echoes_pb if e[2] == 1)
+        grade_cell = f"{grade_n}" + (f" (+{english_n} by English)" if english_n else "")
         cited, refs, taken = [], [], []
         for weight, n_words, grade, key, here, there in echoes_pb:
             if len(cited) == WHO_READS_N:
@@ -1272,9 +1294,10 @@ def echoes_section(atlas, report, title, book, chapter=None):
             taken.append(pair)
             shown = atlas.display_of(key, here + there) if by_roots else key
             h = here[0].split(" ", 1)[1] if here[0].startswith(book + " ") else here[0]
-            cited.append(f'"{shown}" {h} -> {there[0]}' + (" (q)" if grade else ""))
+            mark = {2: " (q)", 1: " (q, by English)"}.get(grade, "")
+            cited.append(f'"{shown}" {h} -> {there[0]}' + mark)
             refs += here[:1] + there[:1]
-        who.add([pb, rel, n, grade_n, "; ".join(cited)], refs=refs, link={"book": pb, "chapter": 1})
+        who.add([pb, rel, n, grade_cell, "; ".join(cited)], refs=refs, link={"book": pb, "chapter": 1})
 
     if chapter is None and len(chapter_keys) > 1:
         # -- the echo map: chapters down the side, partners across ----------
@@ -1386,6 +1409,11 @@ def echoes_section(atlas, report, title, book, chapter=None):
                 by_ch.footer.append(
                     f"Follows the order of {pb} from chapter {first} to {last} "
                     f"({count} chapters whose echoes point to {pb} chapters in non-decreasing order{passed}).")
+
+        # The map is built before the chapter table (the table needs its
+        # cells) but reads after it, so 4b comes before 4c on the page
+        report.sections.remove(echo_map)
+        report.sections.insert(report.sections.index(by_ch) + 1, echo_map)
 
         # -- sharing between the two chief partners, verse by verse -------------
         # For a Gospel this is the classic source map: verses echoing
@@ -1743,11 +1771,24 @@ def within_book_section(atlas, report, title, book):
             ["refrain", "chapters", "verses"],
             note="Phrases of three or more words that recur in three or more chapters of the book, "
                  "rarest first: the book's own refrains, set aside from the map above so they do "
-                 "not inflate many cells at once.  Click for the verses.")
-        rows = []
+                 "not inflate many cells at once.  Forms that differ only by stop words are one "
+                 "refrain, shown in the form with the most verses.  Click for the verses.")
+        # Refrains that differ only by stop words ("james and john", "and
+        # james and john"; "an unclean spirit", "the unclean spirits", one
+        # root each) are one refrain: the form with the most verses is
+        # listed and the rest fold into it.  "Peter and James and John"
+        # keeps its own row, since Peter is a further content root
+        folded = {}                   # content roots -> key with the most verses
         for key, (chapters, display) in refrains.items():
-            weight = sum(atlas.rarity(u) for u in atlas.content_units(key)) if by_roots else \
-                sum(atlas.rarity(atlas.root_of(w)) for w in key.split() if w not in STOPLIST)
+            content = atlas.content_units(key) if by_roots else \
+                tuple(w for w in key.split() if w not in STOPLIST)
+            n_verses = sum(len(refs) for refs in chapters.values())
+            if content not in folded or n_verses > folded[content][0]:
+                folded[content] = (n_verses, key)
+        rows = []
+        for content, (n_verses, key) in folded.items():
+            chapters, display = refrains[key]
+            weight = sum(atlas.rarity(u) for u in content)
             refs = [r for c in sorted(chapters) for r in chapters[c]]
             rows.append((weight, display, ", ".join(str(c) for c in sorted(chapters)), len(refs), refs, key))
         rows.sort(key=lambda r: -r[0])
@@ -1859,7 +1900,35 @@ def chapter_page(atlas, book_name, chapter):
 
     echoes_section(atlas, report, f"4. Echoes [{label}] -> other books", book, chapter)
     synopsis_section(atlas, report, book, chapter, verses)
+    kin_section(atlas, report, book, chapter)
     return report
+
+
+def kin_section(atlas, report, book, chapter):
+    """
+    The chapter's kin at the foot of its page: the KIN_CHAPTER_N chapters
+    elsewhere sharing the most rare words with it in any order, the
+    imagery test that echoes (which want the same run of words) miss.
+    The full list is the Kin page; this is its head, so a dossier
+    carries it.
+    """
+    try:
+        kin = kin_page(atlas, book, chapter)
+    except ValueError:
+        return
+    full = kin.sections[0]
+    sec = report.section(
+        f"6. Kin [{book} {chapter}]: chapters sharing rare words in any order",
+        full.columns,
+        note=f"The {KIN_CHAPTER_N} chapters of other books most kin to this one.  " + full.note
+             + "  Echoes (section 4) need the same run of words; kin needs only the same rare "
+               "words, so it catches imagery retold in other phrasing.  The Kin page has the full list."
+             + ("  Kin is judged on Strong's roots, and a Hebrew root never matches a Greek one, so "
+                "on this build a chapter's kin lie in its own testament; the other testament is "
+                "reached only through the English-worded echoes of section 4."
+                if atlas.roots_mode == "strongs" else ""))
+    for i, row in enumerate(full.rows[:KIN_CHAPTER_N]):
+        sec.add(row, refs=full.refs[i], link=full.links[i])
 
 
 def synopsis_section(atlas, report, book, chapter, verses):
@@ -1898,17 +1967,32 @@ def synopsis_section(atlas, report, book, chapter, verses):
         sec.add(row, refs=refs, link=None)
 
 
-def word_page(atlas, word, book_name=None):
-    """The shadow map of one word across the 66 books, and its neighbors."""
+def word_page(atlas, word, book_name=None, exact=False):
+    """
+    The shadow map of one word across the 66 books, and its neighbors.
+    With exact=True the word is taken as a root already (the dossier
+    passes the roots the book page counted, so an untagged stem such
+    as 'sick' opens its own page rather than the commonest number
+    behind the English word).
+    """
     atlas.use_scope(None)
     # With a book named, an English word is resolved in that book's
     # testament ('day' [Luke] is G2250, not H3117)
     testament = atlas.book_info[atlas.find_book(book_name)]["testament"] if book_name else None
-    root = atlas.root_of(word, testament)
+    root = word if exact and atlas.word_row(word) is not None else atlas.root_of(word, testament)
     w = atlas.word_row(root)
     if w is None:
         raise ValueError(f"'{word}' (root '{root}') is not in the atlas, or is on the stoplist.")
-    report = Report(f"word_{root.lower()}", f"Word page '{atlas.form(root)}'")
+    # The title spells the root as the named book does ('straightway
+    # G2112' from Mark, not the Bible's 'immediately'); the sections
+    # below keep the Bible-wide spelling, since they range over all 66
+    if book_name:
+        atlas.use_scope(atlas.find_book(book_name))
+        title_form = atlas.form(root)
+        atlas.use_scope(None)
+    else:
+        title_form = atlas.form(root)
+    report = Report(f"word_{root.lower()}", f"Word page '{title_form}'")
     if is_strongs(root):
         # Phase 5: the original word and gloss, and how the text spells it
         gloss = atlas.gloss(root)
