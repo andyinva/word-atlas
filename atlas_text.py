@@ -140,6 +140,20 @@ VOICE_TAGS = [
 # Function words that are dropped from the Signature words and Company
 # reports.  They stay in formulas, because "the day of the LORD" needs
 # its "the" and "of".  LORD, God and Lord are never on this list.
+#
+# The last four lines were added after the Strong's build showed which
+# English words the tagger leaves bare: the verb's own machinery (hath,
+# hast, shalt, art, am, been, doth, wilt, didst), and the prepositions,
+# conjunctions and pronouns Hebrew and Greek carry as prefixes or
+# endings (against, because, therefore, thereof, mine, own, himself).
+# Each was untagged in at least 60 percent of its occurrences, 100 or
+# more of them; together they were 23,000 of the 41,000 untagged
+# content tokens, counted as neighbours and kin.  The last line is a
+# second batch that the first rebuild left at the head of the
+# untagged list (whom, among, himself, how, where, both, same, only).  "Pass", "young",
+# "pray" and "fine" met the test too but are content ("came to pass",
+# "young men", "I pray thee", "fine linen") and are handled by the
+# gloss rule in _absorb_by_gloss instead.
 STOPLIST = set("""
 the and of a to in that he shall unto for his they be is him with not it
 them all which i ye thou thy thee was have from but as this their we you
@@ -147,6 +161,12 @@ are my me upon by said one at out so
 your our us her she there then when if on into up an or no who what also
 were may might can will would could should yea o thine those these even
 nor yet than any every
+hath had shalt let against hast behold now therefore thereof because
+neither according am mine like own art until themselves under been none
+toward whose wherefore wilt being between doth therein why concerning
+thyself though moreover lest throughout while wherein lo didst thence
+over whom among himself how more where both same only such through
+yourselves mayest
 """.split())
 
 # Words that keep their capitals as part of their identity.  The KJV
@@ -170,7 +190,7 @@ INFER_MIN = 3
 INFER_SHARE = 0.5
 
 # An untagged word that nearly always stands beside the same tagged
-# word is absorbed into it: the KJV tags "chief priests" on "priests"
+# word (or one stop word away from it: "father in law") is absorbed into it: the KJV tags "chief priests" on "priests"
 # (G749) only, so "chief" is folded into G749 rather than counted as
 # an English stem of its own.  The word must occur ABSORB_MIN times in
 # the testament with the same tagged neighbour beside it at least
@@ -403,6 +423,7 @@ class BibleText:
         self.tags_total = 0
         self.tags_inferred = 0      # untagged words given their usual number
         self.tags_absorbed = 0      # untagged words folded into a tagged neighbour
+        self.tags_absorbed_by_gloss = 0   # ... because the neighbour's gloss names them
         self._load()
         if self.roots == "strongs":
             self._attach_strongs()
@@ -499,9 +520,104 @@ class BibleText:
             self._place_tags(v.tokens, tag_list)
         self._infer_untagged()
 
+    def content_counts(self):
+        """(content tokens, content tokens without a number) after tagging."""
+        n_content = n_untagged = 0
+        for v in self.verses:
+            for t in v.tokens:
+                if t.is_stop:
+                    continue
+                n_content += 1
+                if not t.strongs:
+                    n_untagged += 1
+        return n_content, n_untagged
+
+    def untagged_content(self):
+        """Content tokens without a number, for the settings table."""
+        return self.content_counts()[1]
+
     def testament_of(self, book):
         """'Old' or 'New' by canonical order (the first 39 books are Old)."""
         return "Old" if self.books.index(book) < 39 else "New"
+
+    @staticmethod
+    def neighbours(toks, i):
+        """
+        The tagged neighbours an untagged word may be absorbed into: the
+        word either side, or the word beyond a single stop word ("father
+        in law": "father" reaches "law" across "in").  Inferred tags do
+        not count as neighbours.
+        """
+        out = []
+        for step in (-1, 1):
+            j = i + step
+            if 0 <= j < len(toks) and toks[j].is_stop and not toks[j].strongs:
+                j += step                         # look across one stop word
+            if 0 <= j < len(toks) and toks[j].strongs and not toks[j].strongs.startswith("~"):
+                out.append(j)
+        return out
+
+    def _gloss_words(self):
+        """
+        The words of each Strong's number's KJV gloss, from strongs.csv:
+        G3885 paralytikos, "that had (sick of) the palsy", gives {that,
+        had, sick, of, the, palsy}.  Empty when no copy of the file is
+        found, and the gloss rule then does nothing.
+        """
+        path = next((p for p in LEXICON_CANDIDATES if os.path.exists(p)), None)
+        words = {}
+        if path is None:
+            return words
+        import csv
+        with open(path, encoding="utf-8", newline="") as f:
+            for r in csv.DictReader(f):
+                gloss = (r["kjv_def"] or "").lower()
+                words[r["lemma"]] = set(re.findall(r"[a-z]+", gloss))
+        return words
+
+    def _absorb_by_gloss(self):
+        """
+        Absorb an untagged word into a tagged neighbour whose own gloss
+        names it.  The tagger gives one number to one English word, so
+        where one Hebrew or Greek word became two or three English ones
+        the others are left bare: "sick of the palsy" (G3885 on "palsy"),
+        "came to pass" (H1961 on "came"), "young men" (H970 on "men"),
+        "fine linen" (H8336 on "linen"), "I pray thee" (H4994 on "thee").
+        When the bare word appears in the KJV gloss of a placed tag
+        within two stop words of it, it belongs to that word and is
+        absorbed (marked "=", counted with its partner).  Each case is
+        decided on the dictionary's evidence rather than on a share, so
+        "sick" can go to G3885 in one verse and G4445 in the next.
+        """
+        gloss = self._gloss_words()
+        self.tags_absorbed_by_gloss = 0
+        if not gloss:
+            return
+        for v in self.verses:
+            toks = v.tokens
+            for i, t in enumerate(toks):
+                if t.strongs or t.is_stop:
+                    continue
+                surface = self.fold(t.surface)
+                forms = {surface, surface.rstrip("s")}
+                for step in (-1, 1):
+                    j = i + step
+                    crossed = 0
+                    # look across up to two stop words ("sick OF THE palsy")
+                    while 0 <= j < len(toks) and toks[j].is_stop and not toks[j].strongs and crossed < 2:
+                        j += step
+                        crossed += 1
+                    if not (0 <= j < len(toks)):
+                        continue
+                    n = toks[j]
+                    if not n.strongs or n.strongs[0] in "~=":
+                        continue
+                    if forms & gloss.get(n.root, set()):
+                        t.strongs = "=" + n.root
+                        t.root = n.root
+                        t.is_stop = True
+                        self.tags_absorbed_by_gloss += 1
+                        break
 
     def _infer_untagged(self):
         """
@@ -509,6 +625,41 @@ class BibleText:
         the same testament (see INFER_MIN and INFER_SHARE).  Stop words
         are left alone: their roots are never counted.
         """
+        # Before anything else: the words the dictionary itself assigns
+        self._absorb_by_gloss()
+
+        # First pass: absorb an untagged word into the tagged word it
+        # nearly always travels with ("chief" into "priests" G749, "father"
+        # into "law" H2859).  Before inference, or "father" would be given
+        # H1 by its spelling before absorption could reach it
+        beside = defaultdict(Counter)       # (testament, surface) -> neighbour number -> count
+        seen = Counter()                    # (testament, surface) -> occurrences
+        for v in self.verses:
+            testament = self.testament_of(v.book)
+            toks = v.tokens
+            for i, t in enumerate(toks):
+                if t.strongs or t.is_stop:
+                    continue
+                seen[(testament, t.surface)] += 1
+                for j in self.neighbours(toks, i):
+                    beside[(testament, t.surface)][toks[j].root] += 1
+        self.tags_absorbed = 0
+        for v in self.verses:
+            testament = self.testament_of(v.book)
+            for t in v.tokens:
+                if t.strongs or t.is_stop:
+                    continue
+                key = (testament, t.surface)
+                if seen[key] < ABSORB_MIN or not beside[key]:
+                    continue
+                number, n = beside[key].most_common(1)[0]
+                if n / seen[key] >= ABSORB_SHARE:
+                    t.strongs = "=" + number
+                    t.root = number
+                    t.is_stop = True            # counted with its partner, not on its own
+                    self.tags_absorbed += 1
+
+        # Second pass: infer from the spelling
         # Two scopes: the book first (Ezekiel's "side" is H6285 nearly
         # every time it is tagged, though the Old Testament as a whole
         # splits the word four ways), then the testament
@@ -543,36 +694,6 @@ class BibleText:
                         t.root = number
                         self.tags_inferred += 1
                         break
-
-        # Second pass: absorb an untagged word into the tagged word it
-        # nearly always travels with ("chief" into "priests" G749)
-        beside = defaultdict(Counter)       # (testament, surface) -> neighbour number -> count
-        seen = Counter()                    # (testament, surface) -> occurrences
-        for v in self.verses:
-            testament = self.testament_of(v.book)
-            toks = v.tokens
-            for i, t in enumerate(toks):
-                if t.strongs or t.is_stop:
-                    continue
-                seen[(testament, t.surface)] += 1
-                for j in (i - 1, i + 1):
-                    if 0 <= j < len(toks) and toks[j].strongs and not toks[j].strongs.startswith("~"):
-                        beside[(testament, t.surface)][toks[j].root] += 1
-        self.tags_absorbed = 0
-        for v in self.verses:
-            testament = self.testament_of(v.book)
-            for t in v.tokens:
-                if t.strongs or t.is_stop:
-                    continue
-                key = (testament, t.surface)
-                if seen[key] < ABSORB_MIN or not beside[key]:
-                    continue
-                number, n = beside[key].most_common(1)[0]
-                if n / seen[key] >= ABSORB_SHARE:
-                    t.strongs = "=" + number
-                    t.root = number
-                    t.is_stop = True            # counted with its partner, not on its own
-                    self.tags_absorbed += 1
 
     def _place_tags(self, tokens, tag_list):
         """Attach the tags of one verse to its tokens (see _attach_strongs)."""
@@ -697,8 +818,8 @@ BOOK_DATES = {
 # Books whose date is disputed enough that the earlier/contemporary/later
 # labels on their pages should be read as a hypothesis
 DISPUTED_DATES = {"Job", "Joel", "Jonah", "Daniel", "Ecclesiastes", "Song of Solomon",
-                  "Obadiah", "Ruth", "Psalms", "Proverbs", "Genesis", "Exodus", "Deuteronomy",
-                  "2 Peter", "Jude", "James"}
+                  "Obadiah", "Ruth", "Psalms", "Proverbs", "Genesis", "Exodus", "Leviticus",
+                  "Numbers", "Deuteronomy", "Isaiah", "Zechariah", "2 Peter", "Jude", "James"}
 
 
 def relation_in_time(book, partner):

@@ -57,7 +57,7 @@ screens and this file.
 | Lexicon | Strong's dictionary as loaded into the atlas: for each number its Hebrew or Greek word and its KJV glosses |
 | Gloss | An English meaning the dictionary gives a number, as against a rendering, which is a word the translators used |
 | Unit | What a formula is made of: a Strong's number for a tagged content word, the spelling for a stop word or an untagged word |
-| Placed, inferred, absorbed | How a word got its number: placed from the tagging, inferred from the number its spelling usually carries in the book or testament (~), or absorbed into the tagged word it always stands beside, as "chief" into priests G749 (=) |
+| Placed, inferred, absorbed | How a word got its number: placed from the tagging, inferred from the number its spelling usually carries in the book or testament (~), or absorbed into a tagged neighbour (=), either because the neighbour's KJV gloss names it ("sick of the palsy" into G3885, the gloss rule) or because it nearly always stands beside it ("chief" into priests G749) |
 | Build | One complete set of tables made from the text under one set of rules; kept under a label so two can be compared |
 | Dossier | Everything about one book in one text file: the book page, every chapter page and the top words' pages |
 | Refrain | A phrase of three or more words that recurs in three or more chapters of one book ("weeping and gnashing of teeth" in Matthew); the book's own habit, set aside from the chapter map and listed on its own |
@@ -653,6 +653,46 @@ a single stop word, and runs before inference, so "father in law" and
 inferred as H1 first; and a root whose absorbed companion stands
 beside at least three tenths of its occurrences prints with it: "law
 (father) H2859", "priests (chief) G749", "offering (burnt) H5930".
+
+## Tagging: the stop list and the gloss rule
+
+A count of the untagged words across the Strong's build (0.9.7)
+found 41,000 content tokens without a number, twelve percent, and
+most of them were not the tagger's failures. Twenty-three thousand
+were forty-seven English grammar words the stop list never included,
+each untagged in at least 60 percent of its occurrences: the verb's
+own machinery (hath, hast, shalt, art, am, been, doth, wilt, didst)
+and the prepositions, conjunctions and pronouns Hebrew and Greek
+carry as prefixes or endings (against, because, therefore, thereof,
+mine, own, himself, whom, among). They had been counted as neighbours
+and kin; they are on the stop list now, with a second batch the first
+rebuild left at the head of the list. Four words that met the test
+were content and stayed off it: pass, young, pray and fine.
+
+Those four belong to the second rule. The tagger gives one number to
+one English word, so where one Hebrew or Greek word became two or
+three English ones the others are left bare: "sick of the palsy"
+(G3885 on "palsy"), "came to pass" (H1961), "young men" (H970), "fine
+linen" (H8336), "I pray thee" (H4994). Inference refused them, rightly
+(Mark's "sick" is G770 in under half its tagged cases), and share
+absorption could not reach them ("sick" has three partners; "of the"
+is two stop words). The gloss rule uses the dictionary already loaded
+for the lexicon: when a bare word stands within two stop words of a
+placed tag whose KJV gloss names that word, it is absorbed into it,
+marked "=" and counted with its partner. It runs before the share
+absorption and the inference, and it decides each case on the
+dictionary's evidence, so "sick" goes to G3885 in Mark 2:3 and to
+G4445 in Mark 1:30. It absorbed 14,580 words on the rebuild ("burnt
+offering" H5930, "round about" H5439, "went out" H3318, "cut off"
+H3772, "lifted up" H5375, "meat offering" H4503, "sin offering",
+"right hand", "high place", "began to reign" H4427, "make an
+atonement" H3722, "without blemish" H8549, "utterly destroy" H2763).
+The build now prints the tally and leaves 10,037 of 294,879 content
+words without a number, 3.4 percent, nearly all of them words the
+text splits between two roots ("went" between H3212 and H1980, "came"
+between H935 and four Greek roots), where guessing would be wrong.
+Absorbed words keep their spelling inside formula keys, so "thus saith
+the LORD" is one formula as before.
 
 ## Two books, chapter against chapter
 

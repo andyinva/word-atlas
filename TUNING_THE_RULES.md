@@ -322,6 +322,120 @@ will always have him first. A name, for this purpose, is a word the
 text prints with a capital inside verses more often than not, which is
 a rule read off the text rather than a list.
 
+### The later adjustments
+
+After the formulas moved to roots the work went on book by book, and
+each book added a rule or two. Ezekiel showed that the partner table
+rewarded volume, so a "who reads whom" table now gives each partner's
+best echoes with both references, and an echo of five or more words
+found in exactly two verses of the Bible is marked quotation grade.
+Building that table showed that a Hebrew root and a Greek root never
+match, so every echo between the testaments had silently vanished;
+those are now found by English wording as before. Revelation showed
+that the parallel rule, made for the Synoptics, missed a five-word
+borrowing inside a long verse, so a quotation-grade echo now counts as
+a parallel, and the sharing table steps aside when it fits a book too
+poorly to mean anything. Genesis showed a formula that tidied down to
+one word ("and joseph") and chapters whose leading words were all
+elsewhere, so both are handled. Leviticus showed that the commonest
+spelling of a root across the Bible can be the wrong label for a
+chapter (H1540 is "captive" everywhere but "uncover" in Leviticus 18),
+so a page now uses its own scope's spelling. And Exodus, whose two
+halves mirror each other chapter for chapter, showed that every echo
+section compared a book with other books and none with itself, so a
+book page now ends with a map of the book against itself. The same
+page fixed "father in law", which had been splitting into "father" and
+"law", by letting absorption reach across one stop word and run before
+inference.
+
+The Mark dossier then raised a question the pages could not answer:
+why "sick" stood in Mark's signature words as an untagged English
+stem when the Greek word for sick has a number. Counting the untagged
+words across the whole build answered it, and the answer was two
+rules rather than one. Twelve percent of the content words had no
+number, and more than half of those were forty-odd English grammar
+words the stop list had never included (hath, shalt, hast, against,
+therefore, thereof, because, mine, himself), which Hebrew and Greek
+carry as endings or prefixes and the tagger rightly leaves alone; the
+atlas had been counting them as neighbours and kin for months. They
+went on the stop list. The "sick" cases were the other rule: the
+tagger gives one number to one English word, so where one Greek word
+became three English ones ("sick of the palsy", paralytikos) the
+number sits on "palsy" and "sick" is left bare, and no share rule
+could catch it because "sick" has three different partners in Mark
+alone. The dictionary already loaded for the lexicon settles each
+case on its own: when a bare word stands within two stop words of a
+placed tag whose KJV gloss names that word, it is absorbed into it.
+That one rule took fourteen thousand words ("burnt offering", "round
+about", "went out", "cut off", "young men", "fine linen", "came to
+pass") and left three percent of the content words without a number,
+nearly all of them words the text really does split between two
+roots ("went" between H3212 and H1980).
+
+## How the shaping works
+
+Looking back over the whole run, there is a shape to it that is worth
+stating plainly, because it is the method more than any one rule is.
+
+The atlas was not designed and then tested. It was shaped by reading
+it against books whose structure is already known. Each round took one
+book, produced its pages, and read them the way a commentator would:
+does the signature list name the words a handbook on this book would
+name, does the chapter outline fall where the chapter divisions fall,
+do the partners and pointers reach the passages the cross-references
+reach. Where the page agreed with what is known, the rules behind it
+were confirmed. Where it disagreed, one of two things was true: the
+page had found something real that the reader had not known, and the
+verses settled that in a click; or a rule was wrong for this kind of
+book, and the wrong number could be traced to it. Known results were
+the calibration, and the books were chosen to be different from one
+another so that each would test a different rule. The Gospels tested
+the parallel rule because whole verses are shared; Ezekiel tested it
+because formulas are shared instead; Job tested the same-testament
+baseline because its Hebrew is unusual; Revelation tested the echo
+tables because it borrows phrases, not verses; Genesis tested the
+names; Leviticus tested the spellings; Exodus tested whether a book
+could be compared with itself.
+
+Two people did this, with different jobs. One read the pages against
+the text and against what scholars have said about the book, and wrote
+down what looked right, what looked wrong and what was missing. The
+other traced each wrong number to its rule, changed the rule in one
+place, ran the page again, and reported what moved. The reviewer never
+needed to read the code and the builder never needed to decide what
+Ezekiel ought to say; the page was the meeting point. The reviews grew
+longer as the pages grew richer, and by the later rounds a review was
+itself a piece of writing about the book, with the fixes at the end.
+
+The rhythm was always the same: a page, a review, the fixes, a
+rebuild if the rules that make the tables had changed, a commit with a
+short message saying what changed, and then the next book. Nothing was
+changed without a page to show why, and nothing was kept without a
+page to show it was better. Because the old build was always beside
+the new, a change that broke something was caught by the next review
+rather than by accident months later, and the two builds could be
+compared page for page until the breakage was found.
+
+The pages also suggested their own next features. Depth came from a
+reviewer wanting to know where a word mattered most; the who-reads-whom
+table came from having combed forty-eight chapter pages by hand for
+the partner names; the map of a book against itself came from seeing
+Exodus's two halves and having no section that could show them. In
+each case the need was stated in terms of the page ("this section
+would be writable from the book page if..."), and that is the form a
+request should take: not a rule to change, but a thing the page ought
+to show and does not yet.
+
+So the shaping is a loop with a book at its centre. Choose a book
+whose structure is known, read its pages against that knowledge, trace
+every disagreement to a rule or to a discovery, change the rule or
+keep the discovery, and move to a book that will strain something
+else. The vocabulary grew the same way, one word at a time as a page
+used a term the list had not defined. After thirty rounds the rules
+files are a record of every decision and the pages read as a
+description of each book that a careful reader would recognise, which
+is the test the whole thing was built to pass.
+
 ## What the process taught
 
 A few things became clear across the thirty or so changes.
