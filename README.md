@@ -60,6 +60,7 @@ screens and this file.
 | Placed, inferred, absorbed | How a word got its number: placed from the tagging, inferred from the number its spelling usually carries in the book or testament (~), or absorbed into a tagged neighbour (=), either because the neighbour's KJV gloss names it ("sick of the palsy" into G3885, the gloss rule) or because it nearly always stands beside it ("chief" into priests G749) |
 | Build | One complete set of tables made from the text under one set of rules; kept under a label so two can be compared |
 | Dossier | Everything about one book in one text file: the book page, every chapter page and the top words' pages |
+| Section | A part of a book a reader knows and the chapter numbers do not show (the five books of the Psalter, Ezekiel 1 to 24, 25 to 32, 33 to 48), listed in atlas_sections.py; the echo map, the within-book map and the leading words run at section scale, and refrains are tested against the seams |
 | Refrain | A phrase of three or more words that recurs in three or more chapters of one book ("weeping and gnashing of teeth" in Matthew); the book's own habit, set aside from the chapter map and listed on its own |
 | Doublet | The same passage told twice in one book: the two feedings in Mark 6 and 8, the tabernacle in Exodus 26 and 36. The atlas does not judge content, so it marks a candidate ("doublet?") by distance alone |
 | Gap | How many chapters lie between a chapter and its partner; a gap of one is the story continuing, a wide gap the author coming back to the same wording |
@@ -693,6 +694,58 @@ text splits between two roots ("went" between H3212 and H1980, "came"
 between H935 and four Greek roots), where guessing would be wrong.
 Absorbed words keep their spelling inside formula keys, so "thus saith
 the LORD" is one formula as before.
+
+## The Psalter, and the floor under the Compare lists
+
+The Psalms review (0.9.8) found the Compare page printing a closest
+chapter for all 150 psalms against 2 Samuel and against Isaiah, one
+real relationship (Psalm 18 and 2 Samuel 22, 151 phrases) and the
+rest idiom at one or two shared phrases. The chapter-to-chapter lists
+now have a floor, like 4b's: a partner is printed only from three
+shared phrases, or from a weight of 35 (two rare phrases, or one very
+rare one such as "ten thousand times ten thousand", Revelation 5 and
+Daniel 7), and in either case from a tenth of the page's third
+strongest pair; the third, not the first, because a twin text (2728)
+would otherwise set a floor that drops Psalm 89 and 2 Samuel 7, the
+covenant. Below the floor the row is a dash and a footer counts them:
+2 Samuel keeps chapters 1, 7, 22, 23 and 24 against the Psalms, Isaiah
+keeps six of 66. The same review showed the refrain rule of 0.9.5 was
+too broad between books: in a 52-chapter book a phrase in three
+chapters and three verses ("the flock of my pasture") is a theme, and
+setting it aside had cost Ezekiel 34 its partner Jeremiah 23. Between
+books a refrain must now also fill four verses of its book
+(CROSS_REFRAIN_MIN_VERSES), and a phrase that carries a refrain inside
+it ("a voice from heaven saying" around "voice from heaven") goes with
+it. Daniel 7 heads the Revelation pairs (17, 1, 13), Daniel 4 is gone
+from the list, and Ezekiel 18, 20, 24, 40 and 43 keep their Jeremiah
+partners.
+
+The tagging round took "let", "mine" and "art" off Psalms' section 1
+along with every other book's; the grammar of prayer they carried is
+still visible in section 2, where stop words stay inside formulas ("O
+LORD", "O God", "my soul", "mine enemies").
+
+## Sections: the parts of a book
+
+The "amen and amen" find on the Psalms page (a refrain in 41, 72 and
+89, the doxologies closing Books I, II and III) asked for a layer the
+atlas did not have: the parts of a book a reader knows and the
+chapter numbers do not show. The section layer (0.9.9) is a table in
+atlas_sections.py, one line per section (name, first chapter, last
+chapter), edited like BOOK_DATES, with defaults for Genesis, Exodus,
+Leviticus, Psalms, Isaiah, Ezekiel, Daniel, Matthew and Revelation. A
+book with sections gains section 7 on its page: each part with its
+size and its leading words (keyness against the rest of the book,
+which on the Psalter gives Book II "god H430" at 204, the Elohistic
+Psalter seen by counting, and Book V praise, commandments, precepts),
+7a the echo map summed to sections per 1,000 words (Book I to 2
+Samuel, Book IV to 1 Chronicles at 411, Psalms 96, 105 and 106), and
+7b the book's parts against each other. The refrains table (6b) gains
+an "at the seams" column that counts the refrain's chapters closing
+or opening a section: "amen and amen" reads "3 of 3 close a section",
+which is the doxology test made general, and a refrain that scored
+that way in another book would be evidence for a division the table
+does not yet have.
 
 ## Two books, chapter against chapter
 

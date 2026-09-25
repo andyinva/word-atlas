@@ -28,6 +28,7 @@ import re
 import sqlite3
 from collections import Counter, defaultdict
 
+from atlas_sections import sections_of, section_of, seam_chapters
 from atlas_text import (ATLAS_PATH, ECHO_MAX_TOTAL, FOCUS_MIN_OCCURRENCES,
                         FORMULA_LENGTHS, PARALLEL_METHOD, PARALLEL_MIN_SHARED,
                         PARALLEL_RUN, PARALLEL_RUN_CONTENT, PARALLEL_SHARE, STOPLIST,
@@ -43,7 +44,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.9.7"   # the program version; the window title and every report print it
+VERSION = "0.9.9"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -61,6 +62,10 @@ REACH_DEPTH_N = 40              # words on the reach-and-depth chart, by keyness
 REACH_DEPTH_DEEP_N = 20         # plus this many by depth, so the local piles are on it
 COMPANION_SHARE = 0.3           # an absorbed word shown with its root when beside this share of it
 CROSS_MIN_PHRASES = 5           # a chapter's closest partner counts toward order only from this many phrases
+CROSS_REFRAIN_MIN_VERSES = 4    # between books a refrain must also fill this many verses of its book
+CROSS_LIST_MIN_PHRASES = 3      # a closest partner is printed from this many shared phrases, or ...
+CROSS_LIST_MIN_WEIGHT = 35      # ... from this weight (two rare phrases, or one very rare one) ...
+CROSS_LIST_FLOOR = 0.1          # ... and always from this share of the page's third strongest pair
 CROSS_MAX_VERSES = 12           # a phrase in more verses of the two compared books is idiom, not a link
 REFRAIN_MIN_CHAPTERS = 3        # a phrase in this many chapters of a book is a refrain, not a pair
 DOUBLET_GAP = 3                 # chapters this far apart that share phrasing are doublet candidates
@@ -1366,6 +1371,9 @@ def echoes_section(atlas, report, title, book, chapter=None):
         # Cell = summed weight of the echoes between that chapter and
         # that partner; the verses behind a cell are kept for clicking.
         top_partners = [row[0] for row in partner_rows[:12]]
+        # Kept on the report for the section layer (section 7)
+        report.echo_cells = cell_keys
+        report.echo_partners = top_partners
         echo_map = report.section(
             title.split(".")[0] + f"c. Echo map [{book}] -> partner books",
             ["chapter"] + top_partners,
@@ -1613,7 +1621,104 @@ def book_page(atlas, book_name):
         reach_depth_section(atlas, report, f"5. Reach and depth [{book}]", book, info)
     if info["chapters"] > 2:
         within_book_section(atlas, report, f"6. Echoes within [{book}]: chapter against chapter", book)
+    if sections_of(book):
+        sections_section(atlas, report, f"7. Sections [{book}]", book, info)
     return report
+
+
+def sections_section(atlas, report, title, book, info):
+    """
+    The section layer: the parts of a book listed in atlas_sections.py
+    (the five books of the Psalter, Ezekiel's four parts), each with
+    its size and its leading words (keyness against the rest of the
+    book), then the echo map and the within-book map summed to section
+    scale.  Runs from the cells sections 4 and 6 already computed.
+    """
+    secs = sections_of(book)
+    names = [name for name, first, last in secs]
+    chapters_of = {name: list(range(first, last + 1)) for name, first, last in secs}
+    words_by_ch = {r[0]: r[1] for r in atlas.db.execute(
+        "SELECT chapter, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) + 1) "
+        "FROM verses WHERE book = ? GROUP BY chapter", (book,))}
+    verses_by_ch = {r[0]: r[1] for r in atlas.db.execute(
+        "SELECT chapter, COUNT(*) FROM verses WHERE book = ? GROUP BY chapter", (book,))}
+    # Word weights per chapter, for keyness of a section against the rest of the book
+    weight = {}                      # root -> {chapter: weight}
+    for root, ch, w in atlas.db.execute(
+            "SELECT root, chapter, weight FROM word_chapter WHERE book = ?", (book,)):
+        weight.setdefault(root, {})[ch] = w
+    book_words = sum(words_by_ch.values())
+
+    sec = report.section(
+        title, ["section", "chapters", "verses", "words", "leading words (keyness against the rest of the book)"],
+        note=f"The parts of {book} as atlas_sections.py divides it (edit that file to change them).  "
+             f"Leading words are the words most key to the section against the rest of the book, at "
+             f"least {HOME_MIN_WEIGHT} occurrences.  Double-click a row for its first chapter.")
+    for name, first, last in secs:
+        chs = chapters_of[name]
+        n_words = sum(words_by_ch.get(c, 0) for c in chs)
+        rest = book_words - n_words
+        scored = []
+        for root, by_ch in weight.items():
+            a = sum(w for c, w in by_ch.items() if first <= c <= last)
+            if a < HOME_MIN_WEIGHT:
+                continue
+            b = sum(by_ch.values()) - a
+            k = log_likelihood(a, b, n_words, rest) if rest else 0
+            if k > 0:
+                scored.append((k, root, a))
+        scored.sort(key=lambda t: -t[0])
+        leading = ", ".join(f"{atlas.form(r)} ({a}, {k:.0f})" for k, r, a in scored[:6])
+        sec.add([name, f"{first}-{last}", sum(verses_by_ch.get(c, 0) for c in chs), n_words, leading or "-"],
+                link={"book": book, "chapter": first})
+
+    # 7a. The echo map at section scale
+    cells = getattr(report, "echo_cells", None)
+    partners = getattr(report, "echo_partners", None)
+    if cells and partners:
+        heat = report.section(
+            title.split(".")[0] + f"a. Echo map by section [{book}] -> partner books",
+            ["section"] + partners,
+            note="Section 4c summed to sections: each cell the weight of the echoes between that part "
+                 "of the book and that partner, per 1,000 words of the part, so a long section does "
+                 "not outweigh a short one.  Double-click a row for the section's first chapter.",
+            kind="heatmap")
+        heat.value_label = "echo weight per 1000 words"
+        for i, (name, first, last) in enumerate(secs):
+            n_words = sum(words_by_ch.get(c, 0) for c in chapters_of[name]) or 1
+            row = [name]
+            for j, pb in enumerate(partners):
+                total = 0
+                for c in chapters_of[name]:
+                    total += sum(cells.get((c, pb), {}).values())
+                row.append(round(1000 * total / n_words))
+            heat.add(row, link={"book": book, "chapter": first})
+
+    # 7b. The book against itself at section scale
+    within = getattr(report, "within_cells", None)
+    if within and len(secs) > 1:
+        heat = report.section(
+            title.split(".")[0] + f"b. Section against section [{book}]",
+            ["section"] + names,
+            note="Section 6 summed to sections: each cell the shared rare phrasing between two parts "
+                 "of the book (summed rarity, per 1,000 words of the two parts together).  The "
+                 "diagonal is a part against itself, its own internal repetition.",
+            kind="heatmap")
+        heat.value_label = "shared weight per 1000 words"
+        for name_a, first_a, last_a in secs:
+            row = [name_a]
+            for name_b, first_b, last_b in secs:
+                total = 0
+                for ca in chapters_of[name_a]:
+                    for cb in chapters_of[name_b]:
+                        if ca < cb or (name_a == name_b and ca < cb):
+                            total += within.get((ca, cb), 0)
+                        elif ca > cb:
+                            total += within.get((cb, ca), 0)
+                n_words = (sum(words_by_ch.get(c, 0) for c in chapters_of[name_a])
+                           + (sum(words_by_ch.get(c, 0) for c in chapters_of[name_b]) if name_a != name_b else 0)) or 1
+                row.append(round(1000 * total / n_words))
+            heat.add(row, link={"book": book, "chapter": first_a})
 
 
 def phrase_places(atlas, verses, column):
@@ -1766,6 +1871,7 @@ def within_book_section(atlas, report, title, book):
                     cell_best[(a, b)] = (weight, display)
     if not cell_weight:
         return
+    report.within_cells = cell_weight          # for the section layer (section 7)
     sec = report.section(
         title, ["chapter"] + [str(c) for c in chapters_all],
         note=f"The book against itself: chapters down and across, each cell the summed rarity of the "
@@ -1825,13 +1931,21 @@ def within_book_section(atlas, report, title, book):
 
     # The refrains, on their own
     if refrains:
+        # With a section table for the book, a refrain is tested against
+        # the seams: "amen and amen" at 41:13, 72:19 and 89:52 closes
+        # Books I, II and III of the Psalter
+        closing, opening = seam_chapters(book)
+        has_seams = bool(closing)
         ref_sec = report.section(
             title.split(".")[0] + f"b. Refrains [{book}]: phrases in {REFRAIN_MIN_CHAPTERS} or more chapters",
-            ["refrain", "chapters", "verses"],
+            ["refrain", "chapters", "verses"] + (["at the seams"] if has_seams else []),
             note="Phrases of three or more words that recur in three or more chapters of the book, "
                  "rarest first: the book's own refrains, set aside from the map above so they do "
                  "not inflate many cells at once.  Forms that differ only by stop words are one "
-                 "refrain, shown in the form with the most verses.  Click for the verses.")
+                 "refrain, shown in the form with the most verses.  Click for the verses."
+                 + ("  'at the seams' counts the refrain's chapters that close or open a section of "
+                    "the book (see section 7): a refrain found only there marks the book's divisions."
+                    if has_seams else ""))
         # Refrains that differ only by stop words ("james and john", "and
         # james and john"; "an unclean spirit", "the unclean spirits", one
         # root each) are one refrain: the form with the most verses is
@@ -1852,7 +1966,18 @@ def within_book_section(atlas, report, title, book):
             rows.append((weight, display, ", ".join(str(c) for c in sorted(chapters)), len(refs), refs, key))
         rows.sort(key=lambda r: -r[0])
         for weight, display, chs, n, refs, key in rows[:TOP_N]:
-            ref_sec.add([display, chs, n], refs=refs, link={"phrase": display, "key": key})
+            row = [display, chs, n]
+            if has_seams:
+                chapters_of = [int(c) for c in chs.split(", ")]
+                closes = [c for c in chapters_of if c in closing]
+                opens = [c for c in chapters_of if c in opening]
+                at = []
+                if closes:
+                    at.append(f"{len(closes)} of {len(chapters_of)} close a section")
+                if opens:
+                    at.append(f"{len(opens)} of {len(chapters_of)} open one")
+                row.append("; ".join(at) if at else "")
+            ref_sec.add(row, refs=refs, link={"phrase": display, "key": key})
 
 
 def reach_depth_section(atlas, report, title, book, info):
@@ -2323,12 +2448,31 @@ def compare_page(atlas, a_name, b_name):
     for key, (chapters, display) in kept.items():
         if key in pieces:
             continue
+        # Between books the refrain must also fill CROSS_REFRAIN_MIN_VERSES
+        # verses of its book: in a 52-chapter book a phrase in three
+        # chapters and three verses ("the flock of my pasture") is a
+        # theme, not a refrain, and setting it aside cost Ezekiel 34 its
+        # partner Jeremiah 23
         n_a = sum(1 for (side, c) in chapters if side == "a")
         n_b = sum(1 for (side, c) in chapters if side == "b")
-        if n_a >= REFRAIN_MIN_CHAPTERS:
+        v_a = sum(len(refs) for (side, c), refs in chapters.items() if side == "a")
+        v_b = sum(len(refs) for (side, c), refs in chapters.items() if side == "b")
+        if n_a >= REFRAIN_MIN_CHAPTERS and v_a >= CROSS_REFRAIN_MIN_VERSES:
             refrains[key] = a_book
-        elif n_b >= REFRAIN_MIN_CHAPTERS:
+        elif n_b >= REFRAIN_MIN_CHAPTERS and v_b >= CROSS_REFRAIN_MIN_VERSES:
             refrains[key] = b_book
+    # A phrase that carries a refrain inside it ("a voice from heaven
+    # saying" around "voice from heaven") is the refrain grown by a word,
+    # and goes with it
+    refrain_units = [(k.split(), book) for k, book in refrains.items()]
+    for key in kept:
+        if key in pieces or key in refrains:
+            continue
+        units = key.split()
+        for ru, book in refrain_units:
+            if len(ru) < len(units) and any(units[i:i + len(ru)] == ru for i in range(len(units) - len(ru) + 1)):
+                refrains[key] = book
+                break
 
     cell_weight, cell_count, cell_refs, cell_best = Counter(), Counter(), {}, {}
     for key, (chapters, display) in kept.items():
@@ -2355,7 +2499,8 @@ def compare_page(atlas, a_name, b_name):
         note=f"Chapters of {a_book} down, chapters of {b_book} across, each cell the summed rarity of "
              f"the phrases of three or more words the two chapters share and at most {CROSS_MAX_VERSES} "
              f"verses of the two books hold together.  A phrase found in {REFRAIN_MIN_CHAPTERS} or more "
-             f"chapters of either book is that book's refrain and is set aside first.  A "
+             f"chapters and {CROSS_REFRAIN_MIN_VERSES} or more verses of either book is that book's "
+             f"refrain and is set aside first.  A "
              f"diagonal band is one book following the other's order; a column is a chapter the "
              f"other book keeps returning to.  Click a cell for the verses on both sides; double-click "
              f"for the {a_book} chapter's page; tick 'each column on its own scale' for the fainter pairs.",
@@ -2390,18 +2535,37 @@ def compare_page(atlas, a_name, b_name):
             f"\"{kept[key][1]}\" ({book})" for key, book in shown)
             + (f"; and {len(refrains) - 8} more" if len(refrains) > 8 else "") + ".")
 
+    # The floor under the chapter-to-chapter lists: a closest partner
+    # resting on one or two shared phrases, or on a weight far below the
+    # page's strongest pair, is idiom (2 Samuel 1 to 21 against the
+    # Psalms), and prints as a dash rather than as a relationship
+    # The weight floor is taken from the third strongest pair, not the
+    # first: a twin text (Psalm 18 and 2 Samuel 22, 2728) would otherwise
+    # set a floor that drops Psalm 89 and 2 Samuel 7 (53, the covenant)
+    top_weight = strongest[min(2, len(strongest) - 1)][1] if strongest else 0
+    floor = CROSS_LIST_FLOOR * top_weight
+
     def partner_table(number, this, other, this_chapters, other_chapters, lookup):
         sec = report.section(
             f"{number}. Chapter to chapter [{this}] -> [{other}]",
             ["chapter", f"closest in {other}", "weight", "phrases", "strongest shared phrase", "second"],
             note=f"For each chapter of {this}, the chapter of {other} it shares the most rare phrasing "
                  f"with, the number of shared phrases, the phrase that weighs most, and the next.  "
+                 f"A dash means no partner reaches the floor: {CROSS_LIST_MIN_PHRASES} shared phrases, "
+                 f"or a weight of {CROSS_LIST_MIN_WEIGHT} (two rare phrases, or one very rare one), and "
+                 f"in either case a tenth of the page's third strongest pair ({round(floor)}); what is "
+                 f"left below it is shared idiom, not a chapter relationship.  "
                  f"Click a row for the verses on both sides; double-click for the chapter's page.")
         pointed = []
+        below = 0
         for c in this_chapters:
             partners = sorted(((o, cell_weight[lookup(c, o)]) for o in other_chapters
-                               if cell_weight.get(lookup(c, o))), key=lambda ow: -ow[1])
+                               if cell_weight.get(lookup(c, o))
+                               and (cell_count[lookup(c, o)] >= CROSS_LIST_MIN_PHRASES
+                                    or cell_weight[lookup(c, o)] >= CROSS_LIST_MIN_WEIGHT)
+                               and cell_weight[lookup(c, o)] >= floor), key=lambda ow: -ow[1])
             if not partners:
+                below += 1
                 sec.add([c, "-", "", "", "", ""], link={"book": this, "chapter": c})
                 continue
             o, w = partners[0]
@@ -2430,6 +2594,9 @@ def compare_page(atlas, a_name, b_name):
         for first, last, count in runs:
             sec.footer.append(f"{this} follows the order of {other} from chapter {first} to {last} "
                               f"({count} chapters whose closest partners come in non-decreasing order).")
+        if below:
+            sec.footer.append(f"{below} of {len(this_chapters)} chapters of {this} have no partner in "
+                              f"{other} above the floor.")
         return sec
 
     partner_table(2, a_book, b_book, a_chapters, b_chapters, lambda c, o: (c, o))
