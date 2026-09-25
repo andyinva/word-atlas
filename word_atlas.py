@@ -52,6 +52,7 @@ import atlas_ask
 import atlas_help
 import atlas_pages
 import atlas_query
+import atlas_sections
 import atlas_text
 from atlas_ask import AskError
 
@@ -644,7 +645,7 @@ class PageView(QWidget):
 class WordAtlasWindow(QMainWindow):
     """The main window: top bar, page view, verse pane."""
 
-    PAGE_KINDS = ["Book", "Chapter", "Word", "Kin", "Testament", "Compare"]
+    PAGE_KINDS = ["Book", "Chapter", "Section", "Word", "Kin", "Testament", "Compare"]
 
     def __init__(self, atlas):
         super().__init__()
@@ -731,6 +732,17 @@ class WordAtlasWindow(QMainWindow):
         self.book2_box.addItems(self.atlas.books)
         self.book2_box.setMinimumWidth(150)
         bar.addWidget(self.book2_box)
+
+        # The section, for a Section page: the parts of the chosen book
+        # as atlas_sections.py lists them
+        self.section_label = QLabel("Section:")
+        self.section_label.setProperty("help", "section_box")
+        bar.addWidget(self.section_label)
+        self.section_box = QComboBox()
+        self.section_box.setProperty("help", "section_box")
+        self.section_box.setMinimumWidth(220)
+        bar.addWidget(self.section_box)
+        self.update_section_list(self.book_box.currentText())
 
         self.chapter_label = QLabel("Chapter:")
         self.chapter_label.setProperty("help", "chapter")
@@ -889,6 +901,16 @@ class WordAtlasWindow(QMainWindow):
         """Limit the chapter spinner to the chapters the book has."""
         if book in self.atlas.book_info:
             self.chapter_spin.setMaximum(self.atlas.book_info[book]["chapters"])
+        self.update_section_list(book)
+
+    def update_section_list(self, book):
+        """Fill the Section box with the book's sections, division by division."""
+        self.section_box.clear()
+        for division, secs in atlas_sections.divisions_of(book):
+            for name, first, last in secs:
+                self.section_box.addItem(f"{name}  ({first}-{last}, {division})", name)
+        if self.section_box.count() == 0:
+            self.section_box.addItem("(no sections in atlas_sections.py)", "")
 
     def update_controls(self, kind):
         """Show only the controls the chosen page kind needs."""
@@ -899,6 +921,8 @@ class WordAtlasWindow(QMainWindow):
             w.setVisible(kind == "Testament")
         for w in (self.book2_label, self.book2_box):
             w.setVisible(kind == "Compare")
+        for w in (self.section_label, self.section_box):
+            w.setVisible(kind == "Section")
         for w in (self.book_label, self.book_box):
             w.setVisible(kind != "Testament")
         for w in (self.verses_label, self.verses_edit):
@@ -921,6 +945,11 @@ class WordAtlasWindow(QMainWindow):
             book = self.testament_box.currentText()
         if kind == "Compare":
             word = self.book2_box.currentText()     # the second book rides in the word slot
+        if kind == "Section":
+            word = self.section_box.currentData() or ""   # the section name rides in the word slot
+            if not word:
+                QMessageBox.information(self, "Word Atlas", f"{book} has no sections in atlas_sections.py.")
+                return
         self.open_page(kind, book, chapter, word)
 
     # -- opening pages -------------------------------------------------------------------
@@ -939,6 +968,8 @@ class WordAtlasWindow(QMainWindow):
                 report = atlas_pages.testament_page(self.atlas, book)
             elif kind == "Compare":
                 report = atlas_pages.compare_page(self.atlas, book, word)
+            elif kind == "Section":
+                report = atlas_pages.section_page(self.atlas, book, word)
             else:
                 report = atlas_pages.kin_page(self.atlas, book, chapter)
         except ValueError as e:
@@ -969,6 +1000,10 @@ class WordAtlasWindow(QMainWindow):
             self.verses_edit.setText(str(chapter).split(":")[1] if ":" in str(chapter) else "")
         if kind == "Word":
             self.word_edit.setText(word)
+        if kind == "Section":
+            i = self.section_box.findData(word)
+            if i >= 0:
+                self.section_box.setCurrentIndex(i)
 
         if record:
             # Drop any forward history, then add this page
@@ -1025,6 +1060,8 @@ class WordAtlasWindow(QMainWindow):
             elif kind == "compare":
                 self.open_page("Compare", self.atlas.find_book(a["book"]), None,
                                self.atlas.find_book(a["other"]))
+            elif kind == "section":
+                self.open_page("Section", self.atlas.find_book(a["book"]), None, a["section"])
             elif kind == "chapter":
                 self.open_page("Chapter", self.atlas.find_book(a["book"]), a["chapter"], "")
             elif kind == "kin":

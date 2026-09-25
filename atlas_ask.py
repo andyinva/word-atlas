@@ -87,6 +87,16 @@ def parse(line):
     if not text:
         raise AskError("Type something to ask, for example 'day' [Joel].")
 
+    # A section of a book: [Psalms: Book II], [Ezekiel: The temple vision]
+    sm = re.match(r"^\s*\[([^\]:]+):\s*([^\]]+)\]\s*$", text)
+    if sm:
+        return {"action": "section", "book": sm.group(1).strip(), "section": sm.group(2).strip()}
+
+    # Compare: two scales with x between them, [Exodus] x [Leviticus]
+    cm = re.match(r"^\s*\[([^\]]+)\]\s*x\s*\[([^\]]+)\]\s*$", text)
+    if cm:
+        return {"action": "compare", "book": cm.group(1).strip(), "other": cm.group(2).strip()}
+
     # Kin: a passage followed by -> ?
     if "->" in text:
         left, right = [part.strip() for part in text.split("->", 1)]
@@ -148,6 +158,10 @@ def describe(line):
     """A one-line plain-English reading of an ask line, for the status bar."""
     a = parse(line)
     kind = a["action"]
+    if kind == "section":
+        return f"the section page for {a['book']}: {a['section']}"
+    if kind == "compare":
+        return f"{a['book']} against {a['other']}, chapter by chapter"
     if kind == "testament":
         return f"the {a['testament']} Testament page: where each word is at home"
     if kind == "word":

@@ -22,6 +22,7 @@ There are four kinds of page:
 | Word | One word: a shadow map of where it falls across all 66 books, its neighbors, and the formulas it lives in |
 | Kin | For a chapter or verse range, the other chapters in the Bible most closely related to it: by Strong's roots within the testament, by English stems across it (the "found by" column) |
 | Testament | For the Old or New Testament: the words most at home in each book, a home map of books by words, and a table that says whose word any Strong's number is |
+| Section | One part of a book as atlas_sections.py divides it (Book II of the Psalter, Ezekiel's temple vision): the book page's tables over its chapters alone |
 | Compare | Two books chapter against chapter: a map of shared rare phrasing, each chapter's closest chapter in the other book both ways, and whether one follows the other's order |
 
 ## 2. Starting the program
@@ -56,6 +57,7 @@ the top bar) and point at the thing you are wondering about.
 | Page | Pick the page kind: Book, Chapter, Word, Kin or Testament. The controls to the right change to fit |
 | Testament | Testament pages only: Old or New (takes the Book box's place) |
 | with | Compare pages only: the second book |
+| Section | Section pages only: the part of the chosen book, with its chapters and division |
 | Book | Pick a book of the Bible |
 | Chapter | Appears for Chapter and Kin pages: pick the chapter number |
 | Verses | Kin pages only: leave blank for the whole chapter, or type a range such as `1-12` |
@@ -113,6 +115,7 @@ around the scale (a book, a chapter, or the Bible).
 | `[Joel]` | The book page for Joel |
 | `[New]` or `[Old]` | The testament page |
 | `[Matthew] x [Mark]` | The Compare page for two books |
+| `[Psalms: Book II]` | The Section page for one part of a book |
 | `[Joel 2]` or `Joel 2` | The chapter page for Joel 2 |
 | `Joel 2:1` | That one verse |
 | `Ezekiel 47 -> ?` | The kin page for Ezekiel 47 |
@@ -173,8 +176,14 @@ more chapters apart, a passage told twice). 6b the book's refrains,
 phrases found in three or more chapters, kept out of the map and
 listed on their own. 7 Sections (books with a table in
 atlas_sections.py): each part with its leading words, 7a the echo map
-by section, 7b the parts against each other; 6b then says which
-refrains fall at the seams.
+by section, 7b the parts against each other, 7c reach and depth with
+the section as the unit; a second division of the same book follows
+as 7.2, 7.2a and so on; 6b then says which refrains fall at the seams.
+
+**Section page.** The book page's sections 1 to 4 and 6 run over the
+section's chapters alone: signature words against the rest of the
+testament, formulas, neighbors at book scale, echoes with their map,
+chapter table and sharing table, and the section against itself.
 
 **Chapter page.** Opens with the chapter's leading words (the words
 whose deepest chapter in the book is this one), then the same sections

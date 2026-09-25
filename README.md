@@ -60,7 +60,8 @@ screens and this file.
 | Placed, inferred, absorbed | How a word got its number: placed from the tagging, inferred from the number its spelling usually carries in the book or testament (~), or absorbed into a tagged neighbour (=), either because the neighbour's KJV gloss names it ("sick of the palsy" into G3885, the gloss rule) or because it nearly always stands beside it ("chief" into priests G749) |
 | Build | One complete set of tables made from the text under one set of rules; kept under a label so two can be compared |
 | Dossier | Everything about one book in one text file: the book page, every chapter page and the top words' pages |
-| Section | A part of a book a reader knows and the chapter numbers do not show (the five books of the Psalter, Ezekiel 1 to 24, 25 to 32, 33 to 48), listed in atlas_sections.py; the echo map, the within-book map and the leading words run at section scale, and refrains are tested against the seams |
+| Section | A part of a book a reader knows and the chapter numbers do not show (the five books of the Psalter, Ezekiel 1 to 24, 25 to 32, 33 to 48), listed in atlas_sections.py; the echo map, the within-book map, the leading words and the reach-and-depth chart run at section scale, refrains are tested against the seams, and a section has a page of its own |
+| Division | One way of dividing a book into sections; a book may have several (the Psalter's five books, its collections, its Elohistic block), the first being the main one |
 | Refrain | A phrase of three or more words that recurs in three or more chapters of one book ("weeping and gnashing of teeth" in Matthew); the book's own habit, set aside from the chapter map and listed on its own |
 | Doublet | The same passage told twice in one book: the two feedings in Mark 6 and 8, the tabernacle in Exodus 26 and 36. The atlas does not judge content, so it marks a candidate ("doublet?") by distance alone |
 | Gap | How many chapters lie between a chapter and its partner; a gap of one is the story continuing, a wide gap the author coming back to the same wording |
@@ -746,6 +747,33 @@ or opening a section: "amen and amen" reads "3 of 3 close a section",
 which is the doxology test made general, and a refrain that scored
 that way in another book would be evidence for a division the table
 does not yet have.
+
+The Psalms review of 0.9.9 asked for the rest of the layer, and
+0.10.0 supplies it. atlas_sections.py now holds more than one
+division per book: the Psalter has its five books, its collections
+(Korah, Asaph, the Egyptian Hallel, the Songs of Ascents, the final
+Hallel) and the Elohistic Psalter (42 to 83) as three divisions, and
+Isaiah has two and three parts; the first division is the main one,
+and each further division gets its own 7.2, 7.2a, 7.2b, 7.2c. The
+Elohistic Psalter comes out as god H430 246 times in all 42 of its
+chapters at keyness 213, which is the block seen by counting. The
+leading words of a section now say "in N of M chapters", so Book V's
+commandments, precepts and statutes read as Psalm 119's ("22 in 1/44")
+and not the book's. 7c is the reach-and-depth chart with the section
+as its unit: reach the share of sections a word occurs in, depth its
+highest keyness in one section against the rest of its testament.
+And a section has a page of its own: the Section page kind in the
+window (the Section box lists the chosen book's sections), [Psalms:
+Book II] in the ask box, `section Psalms: Book II` on the command
+line; it runs the book page's tables over the section's chapters
+alone, signature words against the rest of the testament, formulas,
+echoes with the map and chapter table and the sharing table, the
+section against itself, and its refrains. On the Compare page the
+chapter-to-chapter lists now print only the rows above the floor,
+with the count of the rest in the footer, and the second partner must
+pass the floor too; 4c carries the chapters of each chief partner most
+drawn on; and 6b says that the Compare maps use the stricter refrain
+rule (three chapters and four verses).
 
 ## Two books, chapter against chapter
 

@@ -17,6 +17,7 @@ Usage:
     python3 atlas_query.py kin Ezekiel 47:1-12
     python3 atlas_query.py testament New
     python3 atlas_query.py compare Exodus x Leviticus    two books, chapter against chapter
+    python3 atlas_query.py section Psalms: Book II       one section of a book (see atlas_sections.py)
     python3 atlas_query.py dossier Ezekiel          everything about one book, one file
     python3 atlas_query.py dossier Ezekiel --brief  the same with chapter pages trimmed
     python3 atlas_query.py ask "'day' + 'night' [Ezekiel]"     (any line of notation)
@@ -29,7 +30,8 @@ import re
 import sys
 
 from atlas_ask import AskError, parse
-from atlas_pages import Atlas, book_page, chapter_page, chief_partners, compare_page, kin_page, testament_page, word_page
+from atlas_pages import (Atlas, book_page, chapter_page, chief_partners, compare_page, kin_page,
+                         section_page, testament_page, word_page)
 
 
 def render(report, atlas=None):
@@ -94,13 +96,15 @@ def ask(atlas, line):
     except AskError as e:
         raise SystemExit(str(e))
     kind = a["action"]
-    if kind in ("word", "book", "chapter", "kin", "testament", "compare"):
+    if kind in ("word", "book", "chapter", "kin", "testament", "compare", "section"):
         if kind == "word":
             report = word_page(atlas, a["word"], a["book"])
         elif kind == "testament":
             report = testament_page(atlas, a["testament"])
         elif kind == "compare":
             report = compare_page(atlas, a["book"], a["other"])
+        elif kind == "section":
+            report = section_page(atlas, a["book"], a["section"])
         elif kind == "book":
             report = book_page(atlas, a["book"])
         elif kind == "chapter":
@@ -253,6 +257,13 @@ def main(argv):
             report = kin_page(atlas, " ".join(argv[2:-1]), argv[-1])
         elif command == "testament":
             report = testament_page(atlas, " ".join(argv[2:]))
+        elif command == "section":
+            # a book and a section name, separated by a colon: section Psalms: Book II
+            rest = " ".join(argv[2:])
+            if ":" not in rest:
+                raise SystemExit("section needs a book and a section name: section Psalms: Book II")
+            book_part, sec_part = rest.split(":", 1)
+            report = section_page(atlas, book_part.strip(), sec_part.strip())
         elif command == "compare":
             # two books, separated by x or a comma: compare Exodus x Leviticus
             rest = " ".join(argv[2:])

@@ -41,13 +41,18 @@ HELP = {
     "forward": "Turn forward again after turning back.",
     "page": "Which kind of page to open.  Book: one book's signature words, formulas, "
             "neighbors and echoes.  Chapter: the same for one chapter, plus a synopsis "
-            "against its two partner books.  Word: one word across the Bible, its shadow "
+            "against its two partner books.  Section: one part of a book as atlas_sections.py "
+            "divides it (Book II of the Psalter), with the book page's tables run over its "
+            "chapters alone.  Word: one word across the Bible, its shadow "
             "map and neighbors.  Kin: the chapters elsewhere most related to a passage.  "
             "Testament: where each word of the Old or New Testament is at home.  Compare: two "
             "books chapter against chapter, with each chapter's closest chapter in the other book.",
     "testament": "Old or New, for a Testament page: where each word of the testament is "
                  "most at home, book by book, with a home map and a table that answers, for "
                  "any Strong's number, whose word it is.",
+    "section_box": "Section pages only: the part of the chosen book to open, as atlas_sections.py "
+                   "lists it (Book II of the Psalter, Ezekiel's temple vision), with its chapters and "
+                   "the division it belongs to.  Edit that file to add or change sections.",
     "book2": "The second book of a Compare page: the first book's chapters go down the map, "
              "this book's chapters across.",
     "book": "The book of the Bible the page is about.  For a Word page it is where the "
