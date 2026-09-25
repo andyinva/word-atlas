@@ -31,7 +31,7 @@ from collections import Counter, defaultdict
 from atlas_text import (ATLAS_PATH, ECHO_MAX_TOTAL, FOCUS_MIN_OCCURRENCES,
                         FORMULA_LENGTHS, PARALLEL_METHOD, PARALLEL_MIN_SHARED,
                         PARALLEL_RUN, PARALLEL_RUN_CONTENT, PARALLEL_SHARE, STOPLIST,
-                        Stemmer, log_likelihood, relation_in_time, trim_formula, BOOK_DATES,
+                        Stemmer, has_substance, log_likelihood, relation_in_time, trim_formula, BOOK_DATES,
                         DISPUTED_DATES)
 
 # A Strong's number as a root or inside a printed label ("lord H3068")
@@ -56,13 +56,25 @@ HOME_MIN_WEIGHT = 5             # a root needs this many occurrences to be a hom
 HOME_LIST_N = 150               # roots in the "whose word is this" table
 REACH_DEPTH_N = 40              # words on the reach-and-depth chart, by keyness
 REACH_DEPTH_DEEP_N = 20         # plus this many by depth, so the local piles are on it
+COMPANION_SHARE = 0.3           # an absorbed word shown with its root when beside this share of it
+CROSS_MIN_PHRASES = 5           # a chapter's closest partner counts toward order only from this many phrases
+CROSS_MAX_VERSES = 12           # a phrase in more verses of the two compared books is idiom, not a link
+REFRAIN_MIN_CHAPTERS = 3        # a phrase in this many chapters of a book is a refrain, not a pair
+DOUBLET_GAP = 3                 # chapters this far apart that share phrasing are doublet candidates
+WITHIN_PAIRS_N = 12             # strongest chapter pairs named under the within-book map
+WITHIN_MAX_VERSES = 12          # a phrase in more verses of the book than this is the book's idiom, not a self-echo
 LEADING_MIN_DEPTH = 10          # a chapter's leading words need at least this depth
+LEADING_FILL_TO = 4             # fewer leading words than this are filled out with the chapter's key words
+ORDER_RUN_GAPPED_MIN = 6        # a run with any gap needs this many pointers to be reported
 ORDER_RUN_MIN = 4               # chapters in order before 4b reports "follows the order of"
 PARALLEL_TRIALS = (0.4, 0.5)    # shares tried beside PARALLEL_SHARE in the 4d footer
 PARALLEL_COMMON_SHARE = 0.10    # a root in more of a book's verses than this is formulaic there
 GOSPELS = {"Matthew", "Mark", "Luke", "John"}
 INTERJECTIONS = {"oh", "o", "ah", "alas", "behold", "lo", "yea", "nay", "amen", "selah", "woe"}
 RATIO_MIN_ECHOES = 20           # obs/exp on fewer echoes is marked 'few'
+QUOTE_MIN_WORDS = 5             # an echo this long in exactly two verses is quotation grade
+PARALLEL_MIN_APPLIES = 0.05     # 4d is left out when fewer verses than this share have a parallel
+WHO_READS_N = 3                 # rarest echoes cited per partner in the who-reads-whom table
 
 
 # ---------------------------------------------------------------------------
@@ -173,6 +185,7 @@ class Atlas:
             self.lexicon = {r[0]: (r[1], r[2], r[3]) for r in self.db.execute(
                 "SELECT number, word, kjv_def, strongs_def FROM lexicon")}
         self._stem_groups = None      # English stem -> surfaces, built when first needed
+        self._scope_forms = []        # spellings of the page's book and chapter (use_scope)
         # Does this text print the divine name in capitals?  Count the
         # spellings so a page can say which it is looking at.
         self.name_forms = {r[0]: r[1] for r in self.db.execute(
@@ -237,10 +250,70 @@ class Atlas:
         the root is a Strong's number, the number after it ("lord H3068",
         "lord H136") so two roots with one English spelling stay apart.
         """
-        spelling = self.forms.get(root, root)
+        # On a book or chapter page the spelling is the scope's own
+        # commonest: H1540 is "captive" across the Bible but "uncover"
+        # in Leviticus 18, and H2490 "began" everywhere but "profane" in
+        # Leviticus 21.  The chapter's spelling first, then the book's,
+        # then the Bible's.
+        spelling = None
+        for scoped in self._scope_forms:
+            if root in scoped:
+                spelling = scoped[root]
+                break
+        if spelling is None:
+            spelling = self.forms.get(root, root)
         if is_strongs(root):
+            # A word absorbed into this root often enough is shown with
+            # it: "law (father) H2859", "priests (chief) G749",
+            # "offering (burnt) H5930"
+            companion = self.companions().get(root)
+            if companion:
+                return f"{spelling} ({companion}) {root}"
             return f"{spelling} {root}"
         return spelling
+
+    def companions(self):
+        """
+        root -> the word most often absorbed into it, when that word
+        stands beside at least COMPANION_SHARE of the root's occurrences.
+        Built once from the tokens marked "=".
+        """
+        cache = self.__dict__.get("_companions")
+        if cache is not None:
+            return cache
+        best = {}
+        for root, surface, n in self.db.execute(
+                "SELECT root, surface, COUNT(*) FROM tokens WHERE strongs LIKE '=%' GROUP BY root, surface"):
+            if root not in best or n > best[root][1]:
+                best[root] = (surface, n)
+        cache = {}
+        for root, (surface, n) in best.items():
+            row = self.word_row(root)
+            if row and n >= COMPANION_SHARE * row["weight"]:
+                cache[root] = surface
+        self._companions = cache
+        return cache
+
+    def use_scope(self, book=None, chapter=None):
+        """
+        Make form() prefer the spellings of one book, and of one chapter
+        within it, until called again with no arguments.  One query per
+        scope: root -> commonest spelling there.
+        """
+        self._scope_forms = []
+        if book is None:
+            return
+        scopes = [(book, chapter)] if chapter is not None else []
+        scopes.append((book, None))
+        for b, c in scopes:
+            sql = ("SELECT t.root, t.surface, COUNT(*) AS n FROM tokens t JOIN verses v USING (verse_id) "
+                   "WHERE v.book = ? AND t.is_stop = 0" + (" AND v.chapter = ?" if c is not None else "")
+                   + " GROUP BY t.root, t.surface")
+            best = {}
+            for root, surface, n in self.db.execute(sql, (b, c) if c is not None else (b,)):
+                if root not in best or n > best[root][1]:
+                    best[root] = (surface, n)
+            self._scope_forms.append({r: sp for r, (sp, n) in best.items()})
 
     def lexicon_entry(self, root):
         """(original word, KJV glosses, Strong's definition) for a number, or None."""
@@ -455,6 +528,8 @@ class Atlas:
         """
         if self.phrase_column == "word_string":
             return key
+        if key.startswith("en:"):
+            return key[3:]
         parts = key.split()
         n = len(parts)
         wordings = Counter()
@@ -472,7 +547,11 @@ class Atlas:
         return row[0] if row else key
 
     def content_units(self, key):
-        """The content units of a formula key (stop words left out)."""
+        """The content units of a formula key (stop words left out).  An
+        English-keyed echo ("en:full of eyes", found across the
+        testaments by wording) gives the roots of its words."""
+        if key.startswith("en:"):
+            return tuple(self.root_of(w) for w in key[3:].split() if w not in STOPLIST)
         return tuple(u for u in key.split() if u not in STOPLIST)
 
     # -- growing formulas (same idea as phase 1, now against stored strings) --------
@@ -540,6 +619,8 @@ class Atlas:
         book.  With key=True the phrase is a unit key (Strong's numbers)
         and is looked for in phrase_string; otherwise it is English
         wording looked for in word_string."""
+        if key and phrase.startswith("en:"):
+            phrase, key = phrase[3:], False
         column = self.phrase_column if key else "word_string"
         sql = f"SELECT reference FROM verses WHERE {column} LIKE ?"
         params = [f"% {phrase} %"]
@@ -871,6 +952,10 @@ def signature_formulas_section(atlas, report, title, verses, book, n_scope):
         grown = atlas.grow_formula(phrase, [strings[r] for r in refs])
         if grown in kept:
             continue
+        # "and joseph" trims to "joseph": a name after a conjunction is
+        # not a formula, so anything left with one word is passed over
+        if len(grown.split()) < 2:
+            continue
         if grown != phrase:
             b = atlas.count_phrase_outside(grown, book)
             g2 = log_likelihood(a, b, n_scope, n_out)
@@ -988,9 +1073,14 @@ def echoes_section(atlas, report, title, book, chapter=None):
             break
         refs = list(here) + list(there)
         marks = ",".join("?" * len(refs))
+        english = phrase.startswith("en:")
+        column = "word_string" if english else atlas.phrase_column
         strings = [r[0] for r in atlas.db.execute(
-            f"SELECT {atlas.phrase_column} FROM verses WHERE reference IN ({marks})", refs)]
-        grown = atlas.grow_formula(phrase, strings) if strings else phrase
+            f"SELECT {column} FROM verses WHERE reference IN ({marks})", refs)]
+        bare = phrase[3:] if english else phrase
+        grown = atlas.grow_formula(bare, strings) if strings else bare
+        if english:
+            grown = "en:" + grown
         key = root_key(grown)
         # A key nested inside a longer kept key with the same places is a piece
         if any(len(k) > len(key) and any(k[i:i + len(key)] == key for i in range(len(k)))
@@ -1007,19 +1097,26 @@ def echoes_section(atlas, report, title, book, chapter=None):
         order.append(key)
 
     sec = report.section(
-        title, ["echo", "here", "elsewhere"],
+        title, ["echo", "grade", "here", "elsewhere"],
         note=f"Shared runs of words, found as formulas of 3 to 5 words and then grown to the whole "
              f"run the two places share (so an echo may be a whole sentence), that occur here and in "
              f"another book, and in no more "
              f"than {ECHO_MAX_TOTAL} verses of the whole Bible.  Ranked by the rarity of their "
-             f"words; spellings of one echo are folded together.  Each is a possible quotation, "
+             f"words.  Each is a possible quotation, "
              f"allusion or shared idiom; only reading the two passages can say which."
-             + ("  Echoes are runs of Strong's roots, found however their words are spelled; the "
-                "wording shown is the commonest among the verses listed." if by_roots else ""))
+             + ("  Echoes are runs of Strong's roots, found however their words are spelled, so "
+                "'the heathen' and 'the nations' are one echo; the wording shown is the commonest "
+                "among the verses listed.  Between the testaments, where a Hebrew root and a Greek "
+                "root never match, echoes are found by English wording instead."
+                if by_roots else "  Spellings of one echo are folded together.")
+             + f"  'quotation' marks an echo of {QUOTE_MIN_WORDS} or more words found in exactly two "
+               f"verses of the whole Bible: the strongest kind of evidence the table has.")
     for key in order[:ECHO_N]:
         phrase, here, there = kept[key]
         shown = atlas.display_of(phrase, here + there) if by_roots else phrase
-        sec.add([shown, ", ".join(here), ", ".join(there)], refs=here + there,
+        # Quotation grade: five or more words, in exactly two verses of the Bible
+        grade = "quotation" if len(shown.split()) >= QUOTE_MIN_WORDS and len(here) + len(there) == 2 else ""
+        sec.add([shown, grade, ", ".join(here), ", ".join(there)], refs=here + there,
                 link={"phrase": shown, "key": phrase})
     if len(found) > ECHO_N:
         sec.footer.append(f"{len(found) - ECHO_N} more candidate echoes not shown; the tallies "
@@ -1038,6 +1135,7 @@ def echoes_section(atlas, report, title, book, chapter=None):
     cell_refs = {}             # (source chapter, partner) -> verse refs on both sides
     verse_partners = {}        # source verse ref -> set of partner books it echoes
     points_to = {}             # source chapter -> {(partner, partner chapter): {key: weight}}
+    partner_echoes = {}        # partner book -> [(weight, words, quotation grade, key, here, there)]
     for phrase, here, there in found:
         key = root_key(phrase)
         weight = sum(atlas.rarity(r) for r in key)
@@ -1046,6 +1144,15 @@ def echoes_section(atlas, report, title, book, chapter=None):
             there_by_pb.setdefault(r.rsplit(" ", 1)[0], []).append(r)
         for pb in there_by_pb:
             partner_keys.setdefault(pb, {})[key] = weight
+            # Kept for the who-reads-whom table: every echo with this
+            # partner, its weight, its length and whether it is
+            # quotation grade (five or more words in exactly two verses
+            # of the whole Bible)
+            n_words = len(phrase.split())
+            total_verses = len(here) + len(there)
+            grade = n_words >= QUOTE_MIN_WORDS and total_verses == 2
+            partner_echoes.setdefault(pb, []).append(
+                (weight, n_words, grade, phrase, list(here), list(there_by_pb[pb])))
         here_by_ch = {}
         for r in here:
             ch = int(r.rsplit(" ", 1)[1].split(":")[0])
@@ -1120,6 +1227,54 @@ def echoes_section(atlas, report, title, book, chapter=None):
             f"The date of {book} itself is among the most disputed in the Bible, so the earlier, "
             f"contemporary and later labels on this page are a hypothesis resting on the one "
             f"conventional date in BOOK_DATES ({BOOK_DATES.get(book)}); move it and they move.")
+
+    # -- who reads whom: each partner's rarest echoes, with both references ------
+    # The partner table rewards volume; this one shows the evidence.
+    # For each partner in time order, its three rarest echoes (highest
+    # summed rarity, longest first among equals) with the verse on each
+    # side, and how many of its echoes are quotation grade.  Sources
+    # and readers can be cited from here without combing the chapters.
+    who = report.section(
+        title.split(".")[0] + f"a2. Who reads whom [{book}]: the rarest echo with each partner",
+        ["partner book", "in time", "echoes", "quotation grade", "rarest echoes (here -> there)"],
+        note=f"For each partner, its {WHO_READS_N} best echoes: quotation grade first, then the "
+             f"rarest (summed rarity of their words, longest first among equals), each with the "
+             f"verse here and the verse there.  "
+             f"'quotation grade' counts echoes of {QUOTE_MIN_WORDS} or more words found in exactly "
+             f"two verses of the whole Bible: one here, one there, and nowhere else.  Earlier "
+             f"partners are what {book} could have read, later ones who could have read it; "
+             f"the rarest echo is the one to cite, and the ratio in 4a is the one to distrust "
+             f"when the count is small.  Click a row for the verses on both sides.")
+    order_in_time = {"earlier": 0, "contemporary": 1, "later": 2, "?": 3}
+    # The partners shown in 4a, plus any partner beyond them with two or
+    # more quotation-grade echoes: Revelation's few exact borrowings from
+    # Ezekiel would otherwise be outvoted by its low volume
+    listed = list(partner_rows[:TOP_N])
+    for row in partner_rows[TOP_N:]:
+        if sum(1 for e in partner_echoes.get(row[0], []) if e[2]) >= 2:
+            listed.append(row)
+    for pb, n, w, ratio, rate, rel in sorted(listed, key=lambda r: (order_in_time.get(r[5], 3), -r[2])):
+        # Quotation-grade echoes first, then by rarity: summed rarity alone
+        # favours long runs of moderately common words
+        echoes_pb = sorted(partner_echoes.get(pb, []), key=lambda e: (not e[2], -e[0], -e[1]))
+        grade_n = sum(1 for e in echoes_pb if e[2])
+        cited, refs, taken = [], [], []
+        for weight, n_words, grade, key, here, there in echoes_pb:
+            if len(cited) == WHO_READS_N:
+                break
+            # A piece of an echo already cited ("young bullock without
+            # blemish" inside "a young bullock without blemish") is passed over
+            # A second echo between the same two verses is nearly always
+            # an overlapping piece of the first, so one per verse pair
+            pair = (here[0], there[0])
+            if pair in taken:
+                continue
+            taken.append(pair)
+            shown = atlas.display_of(key, here + there) if by_roots else key
+            h = here[0].split(" ", 1)[1] if here[0].startswith(book + " ") else here[0]
+            cited.append(f'"{shown}" {h} -> {there[0]}' + (" (q)" if grade else ""))
+            refs += here[:1] + there[:1]
+        who.add([pb, rel, n, grade_n, "; ".join(cited)], refs=refs, link={"book": pb, "chapter": 1})
 
     if chapter is None and len(chapter_keys) > 1:
         # -- the echo map: chapters down the side, partners across ----------
@@ -1212,7 +1367,8 @@ def echoes_section(atlas, report, title, book, chapter=None):
                         # six-chapter hole (Ezekiel on Jeremiah) say nothing.
                         skipped = (last - first + 1) - count
                         gaps = [pointed[k + 1][0] - pointed[k][0] - 1 for k in range(start, i - 1)]
-                        if count > skipped or (count >= 5 and max(gaps, default=0) <= 2):
+                        dense = count > skipped or (count >= 5 and max(gaps, default=0) <= 2)
+                        if dense and (skipped == 0 or count >= ORDER_RUN_GAPPED_MIN):
                             runs.append((first, last, count))
                     start = i
             for first, last, count in runs:
@@ -1257,13 +1413,37 @@ def echoes_section(atlas, report, title, book, chapter=None):
                      f"{PARALLEL_COMMON_SHARE:.0%} of {book}'s verses are set aside first, so its own "
                      f"formulas do not count as parallels"
                      + (f" (here: {', '.join(atlas.form(r) for r in common)})" if common else "")
-                     + f".  'both' = a parallel in {a_book} and one in {b_book}; 'neither' = no "
+                     + f".  A verse carrying a quotation-grade echo with a partner (see 4a2) counts as "
+                     f"a parallel too.  'both' = a parallel in {a_book} and one in {b_book}; 'neither' = no "
                      f"parallel with either.  " + reading
                      + "An empty stretch in one column is a passage the partner does not have.")
             chapter_verses = {r[0]: r[1] for r in atlas.db.execute(
                 "SELECT chapter, COUNT(*) FROM verses WHERE book = ? GROUP BY chapter", (book,))}
-            with_a = parallels(atlas, book, a_book)
-            with_b = parallels(atlas, book, b_book)
+            with_a = dict(parallels(atlas, book, a_book))
+            with_b = dict(parallels(atlas, book, b_book))
+            # A verse carrying a quotation-grade echo with the partner is a
+            # parallel too: the share rule was made for the Synoptics,
+            # where whole verses are shared, and misses a five-word
+            # borrowing inside a long verse (Revelation 5:11 from Daniel 7:10)
+            quoted = Counter()
+            for partner, table in ((a_book, with_a), (b_book, with_b)):
+                for weight, n_words, grade, key, here, there in partner_echoes.get(partner, []):
+                    if grade:
+                        for h in here:
+                            if h not in table:
+                                table[h] = Counter({there[0]: 1})
+                                quoted[partner] += 1
+            tagged = len(set(with_a) | set(with_b))
+            all_verses = sum(chapter_verses.values())
+            if tagged < PARALLEL_MIN_APPLIES * all_verses:
+                # A table that is nearly all "neither" says only that the
+                # section does not fit the book: say so in one line instead
+                share.note = (f"Not shown: fewer than {PARALLEL_MIN_APPLIES:.0%} of {book}'s verses "
+                              f"({tagged} of {all_verses}) have a parallel in {a_book} or {b_book} by "
+                              f"the share rule or a quotation-grade echo.  {book} borrows phrases "
+                              f"rather than verses; section 4a2 is the table to read.")
+                share.columns = []
+                return
             tags_by_ch = {}
             share_refs = {}
             for ref in set(with_a) | set(with_b):
@@ -1282,12 +1462,13 @@ def echoes_section(atlas, report, title, book, chapter=None):
             totals = Counter()
             for t in tags_by_ch.values():
                 totals.update(t)
-            all_verses = sum(chapter_verses.values())
             share.footer.append(
                 f"Whole book: {totals['both']} verses with both, {totals['a']} with {a_book} only, "
                 f"{totals['b']} with {b_book} only, "
                 f"{all_verses - totals['both'] - totals['a'] - totals['b']} with neither, "
-                f"of {all_verses} (share {PARALLEL_SHARE:.0%}).")
+                f"of {all_verses} (share {PARALLEL_SHARE:.0%}"
+                + (f"; {quoted[a_book]} verses added by quotation-grade echoes with {a_book}, "
+                   f"{quoted[b_book]} with {b_book}" if quoted else "") + ").")
             # The same tallies at the trial shares, so the reader can see
             # how far the columns move with the threshold
             for trial in PARALLEL_TRIALS:
@@ -1307,6 +1488,7 @@ def echoes_section(atlas, report, title, book, chapter=None):
 def book_page(atlas, book_name):
     """The four reports for one book."""
     book = atlas.find_book(book_name)
+    atlas.use_scope(book)
     info = atlas.book_info[book]
     report = Report(f"book_{book.lower().replace(' ', '_')}",
                     f"Book page [{book}] ({atlas.settings['translation']})")
@@ -1342,7 +1524,235 @@ def book_page(atlas, book_name):
     echoes_section(atlas, report, f"4. Echoes [{book}] -> other books", book)
     if atlas.has_depth:
         reach_depth_section(atlas, report, f"5. Reach and depth [{book}]", book, info)
+    if info["chapters"] > 2:
+        within_book_section(atlas, report, f"6. Echoes within [{book}]: chapter against chapter", book)
     return report
+
+
+def phrase_places(atlas, verses, column):
+    """
+    Every phrase of three to five units in a set of verses, ending on a
+    content word: key -> {chapter: [references]}, and key -> Counter of
+    its English wordings.  column is phrase_string (root units) or
+    word_string (English wording, used between the testaments).
+    """
+    places, wordings = {}, {}
+    for v in verses:
+        words = v["word_string"].split()
+        units = v[column].split() if column != "word_string" else words
+        stops = [w in STOPLIST for w in words]
+        seen = set()
+        for n in FORMULA_LENGTHS:
+            if n < 3:
+                continue
+            for i in range(len(words) - n + 1):
+                if stops[i + n - 1]:
+                    continue
+                key = " ".join(units[i:i + n])
+                wordings.setdefault(key, Counter())[" ".join(words[i:i + n])] += 1
+                if key in seen:
+                    continue
+                seen.add(key)
+                places.setdefault(key, {}).setdefault(v["chapter"], []).append(v["reference"])
+    return places, wordings
+
+
+def drop_pieces(kept):
+    """
+    Of phrases keyed to (chapters, display), the shorter ones that sit
+    inside a longer one with exactly the same verses: pieces of it, not
+    phrases of their own.  Returns the set of keys to leave out.
+    """
+    groups = {}
+    for key, (chapters, display) in kept.items():
+        vs = frozenset(r for refs in chapters.values() for r in refs)
+        groups.setdefault(vs, []).append(key)
+    pieces = set()
+    for keys in groups.values():
+        if len(keys) < 2:
+            continue
+        by_len = sorted(keys, key=lambda k: -len(k.split()))
+        for i, longer in enumerate(by_len):
+            lu = longer.split()
+            for shorter in by_len[i + 1:]:
+                su = shorter.split()
+                if len(su) < len(lu) and any(lu[j:j + len(su)] == su for j in range(len(lu) - len(su) + 1)):
+                    pieces.add(shorter)
+    return pieces
+
+
+def phrase_weight(atlas, key, column):
+    """Summed rarity of a phrase's content words."""
+    if column != "word_string":
+        return sum(atlas.rarity(u) for u in atlas.content_units(key))
+    return sum(atlas.rarity(atlas.root_of(w)) for w in key.split() if w not in STOPLIST)
+
+
+def ref_order(r):
+    """Sort key for a reference: chapter, then verse."""
+    return (int(r.rsplit(" ", 1)[1].split(":")[0]), int(r.rsplit(":", 1)[1]))
+
+
+def within_book_section(atlas, report, title, book):
+    """
+    The book against itself: a map of chapters by chapters, each cell
+    the weight of the phrases the two chapters share and few other
+    verses of the book have (at most WITHIN_MAX_VERSES).  Exodus 25 to 31
+    against 35 to 40, the tabernacle prescribed and then built, shows
+    as a band off the diagonal; Ezekiel 1 against 10; the Synoptic
+    doublets.  Section 4 compares a book with other books; this one
+    compares it with itself.
+    """
+    verses = atlas.verses_of(book)
+    by_roots = atlas.phrase_column != "word_string"
+    places = {}                       # key -> {chapter: [refs]}
+    wordings = {}                     # key -> English wording -> count
+    for v in verses:
+        words = v["word_string"].split()
+        units = v[atlas.phrase_column].split() if by_roots else words
+        stops = [w in STOPLIST for w in words]
+        seen = set()
+        for n in FORMULA_LENGTHS:
+            if n < 3:
+                continue
+            for i in range(len(words) - n + 1):
+                if stops[i + n - 1]:
+                    continue
+                key = " ".join(units[i:i + n])
+                wordings.setdefault(key, Counter())[" ".join(words[i:i + n])] += 1
+                if key in seen:
+                    continue
+                seen.add(key)
+                places.setdefault(key, {}).setdefault(v["chapter"], []).append(v["reference"])
+    # Keep phrases in two or more chapters and few verses, with substance
+    kept = {}
+    for key, chapters in places.items():
+        total = sum(len(r) for r in chapters.values())
+        if len(chapters) < 2 or total > WITHIN_MAX_VERSES:
+            continue
+        display = wordings[key].most_common(1)[0][0]
+        if not has_substance(display):
+            continue
+        kept[key] = (chapters, display)
+    # A shorter phrase inside a longer one with the same verses is a
+    # piece of it.  Only phrases with the same verse set can nest, so
+    # they are grouped by verse set first.
+    groups = {}
+    for key, (chapters, display) in kept.items():
+        vs = frozenset(r for refs in chapters.values() for r in refs)
+        groups.setdefault(vs, []).append(key)
+    pieces = set()
+    for keys in groups.values():
+        if len(keys) < 2:
+            continue
+        by_len = sorted(keys, key=lambda k: -len(k.split()))
+        for i, longer in enumerate(by_len):
+            lu = longer.split()
+            for shorter in by_len[i + 1:]:
+                su = shorter.split()
+                if len(su) < len(lu) and any(lu[j:j + len(su)] == su for j in range(len(lu) - len(su) + 1)):
+                    pieces.add(shorter)
+    chapters_all = sorted({v["chapter"] for v in verses})
+    # Refrains: a phrase in REFRAIN_MIN_CHAPTERS or more chapters is the
+    # book's own refrain ("weeping and gnashing of teeth", "Peter and
+    # James and John"), not a pair; it would inflate many cells at once,
+    # so it is listed on its own and kept out of the map
+    refrains = {key: (chapters, display) for key, (chapters, display) in kept.items()
+                if key not in pieces and len(chapters) >= REFRAIN_MIN_CHAPTERS}
+    cell_weight = Counter()
+    cell_refs = {}
+    cell_best = {}                    # (a, b) -> (weight, display)
+    cell_count = Counter()            # (a, b) -> shared phrases
+    for key, (chapters, display) in kept.items():
+        if key in pieces or key in refrains:
+            continue
+        weight = sum(atlas.rarity(u) for u in atlas.content_units(key)) if by_roots else \
+            sum(atlas.rarity(atlas.root_of(w)) for w in key.split() if w not in STOPLIST)
+        chs = sorted(chapters)
+        for x in range(len(chs)):
+            for y in range(x + 1, len(chs)):
+                a, b = chs[x], chs[y]
+                cell_weight[(a, b)] += weight
+                cell_count[(a, b)] += 1
+                cell_refs.setdefault((a, b), []).extend(chapters[a] + chapters[b])
+                if weight > cell_best.get((a, b), (0, ""))[0]:
+                    cell_best[(a, b)] = (weight, display)
+    if not cell_weight:
+        return
+    sec = report.section(
+        title, ["chapter"] + [str(c) for c in chapters_all],
+        note=f"The book against itself: chapters down and across, each cell the summed rarity of the "
+             f"phrases (three or more words) the two chapters share and at most {WITHIN_MAX_VERSES} "
+             f"verses of the book hold, so the book's own refrains do not fill the map.  A band off the "
+             f"diagonal is a passage retold: the tabernacle prescribed in Exodus 25 to 31 and built in "
+             f"35 to 40, Ezekiel's chariot in 1 and 10, a Gospel's doublets.  Click a cell for the verses "
+             f"in both chapters; tick 'each column on its own scale' for the fainter pairs.",
+        kind="heatmap")
+    sec.value_label = "shared weight"
+    index = {c: i for i, c in enumerate(chapters_all)}
+    for i, a in enumerate(chapters_all):
+        row = [a]
+        for j, b in enumerate(chapters_all):
+            if a == b:
+                row.append(0)
+                continue
+            pair = (min(a, b), max(a, b))
+            row.append(round(cell_weight.get(pair, 0)))
+            refs = cell_refs.get(pair)
+            if refs:
+                sec.cell_refs[(i, j + 1)] = sorted(set(refs), key=lambda r: (int(r.rsplit(" ", 1)[1].split(":")[0]), int(r.rsplit(":", 1)[1])))
+        sec.add(row, link={"book": book, "chapter": a})
+    strongest = sorted(cell_weight.items(), key=lambda kv: -kv[1])[:WITHIN_PAIRS_N]
+    sec.footer.append("Strongest pairs: " + "; ".join(
+        f"{a} and {b} ({round(w)}, {cell_count[(a, b)]} phrases: \"{cell_best[(a, b)][1]}\")"
+        for (a, b), w in strongest) + ".")
+
+    # Chapter to chapter: each chapter's strongest partner in the book,
+    # so the mirror (Exodus 25 to 37, 26 to 36 ...) and the plague block
+    # can be read down a list rather than off a forty-by-forty grid
+    pairs = report.section(
+        title.split(".")[0] + f"a. Chapter to chapter [{book}]: each chapter's closest partner in the book",
+        ["chapter", "partner", "gap", "kind", "weight", "phrases", "strongest shared phrase", "second partner"],
+        note="For each chapter, the chapter of the same book it shares the most rare phrasing with "
+             "(weight = summed rarity of the shared phrases, phrases = how many they share), the "
+             "phrase that weighs most, and the next partner.  'gap' is the distance between the two; "
+             f"neighbours share phrasing because the story continues ('adjacent'), chapters "
+             f"{DOUBLET_GAP} or more apart because the author repeated himself ('doublet?').  "
+             "Refrains (phrases in three or more chapters) are set aside and listed below.  Click "
+             "a row for the verses on both sides; double-click for the chapter's page.")
+    for a in chapters_all:
+        partners = sorted(((b, cell_weight[(min(a, b), max(a, b))]) for b in chapters_all
+                           if b != a and cell_weight.get((min(a, b), max(a, b)))),
+                          key=lambda bw: -bw[1])
+        if not partners:
+            pairs.add([a, "-", "", "", "", "", "", ""], link={"book": book, "chapter": a})
+            continue
+        b, w = partners[0]
+        key = (min(a, b), max(a, b))
+        gap = abs(a - b)
+        kind = "doublet?" if gap >= DOUBLET_GAP else ("adjacent" if gap == 1 else "")
+        second = f"{partners[1][0]} ({round(partners[1][1])})" if len(partners) > 1 else "-"
+        pairs.add([a, b, gap, kind, round(w), cell_count[key], cell_best[key][1], second],
+                  refs=sorted(set(cell_refs[key]), key=ref_order),
+                  link={"book": book, "chapter": a})
+
+    # The refrains, on their own
+    if refrains:
+        ref_sec = report.section(
+            title.split(".")[0] + f"b. Refrains [{book}]: phrases in {REFRAIN_MIN_CHAPTERS} or more chapters",
+            ["refrain", "chapters", "verses"],
+            note="Phrases of three or more words that recur in three or more chapters of the book, "
+                 "rarest first: the book's own refrains, set aside from the map above so they do "
+                 "not inflate many cells at once.  Click for the verses.")
+        rows = []
+        for key, (chapters, display) in refrains.items():
+            weight = sum(atlas.rarity(u) for u in atlas.content_units(key)) if by_roots else \
+                sum(atlas.rarity(atlas.root_of(w)) for w in key.split() if w not in STOPLIST)
+            refs = [r for c in sorted(chapters) for r in chapters[c]]
+            rows.append((weight, display, ", ".join(str(c) for c in sorted(chapters)), len(refs), refs, key))
+        rows.sort(key=lambda r: -r[0])
+        for weight, display, chs, n, refs, key in rows[:TOP_N]:
+            ref_sec.add([display, chs, n], refs=refs, link={"phrase": display, "key": key})
 
 
 def reach_depth_section(atlas, report, title, book, info):
@@ -1391,6 +1801,7 @@ def chapter_page(atlas, book_name, chapter):
     verses = atlas.verses_of(book, chapter)
     if not verses:
         raise ValueError(f"No such chapter: {book} {chapter}")
+    atlas.use_scope(book, chapter)
     n_scope = sum(len(v["word_string"].split()) for v in verses)
     label = f"{book} {chapter}"
     report = Report(f"chapter_{book.lower().replace(' ', '_')}_{chapter}",
@@ -1406,9 +1817,25 @@ def chapter_page(atlas, book_name, chapter):
             "SELECT root, depth FROM word_book WHERE book = ? AND depth_chapter = ? AND weight >= 3 "
             "AND depth >= ? ORDER BY depth DESC LIMIT 12", (book, chapter, LEADING_MIN_DEPTH))
             if is_strongs(r[0]) or atlas.roots_mode != "strongs"][:6]
-        if leading:
-            report.notes.append("Leading words (words whose deepest chapter in the book is this one): "
-                                + ", ".join(f"{atlas.form(r[0])} ({r[1]:.0f})" for r in leading) + ".")
+        shown = [f"{atlas.form(r[0])} ({r[1]:.0f})" for r in leading]
+        # A chapter whose words peak elsewhere (Genesis 12, the call of
+        # Abram, has only "haran, well") is filled out with its own top
+        # signature words, marked *, so the outline stays readable
+        if len(shown) < LEADING_FILL_TO:
+            have = {r[0] for r in leading}
+            for r in atlas.db.execute(
+                    "SELECT root, keyness FROM word_chapter WHERE book = ? AND chapter = ? AND weight >= 3 "
+                    "ORDER BY keyness DESC LIMIT 20", (book, chapter)):
+                if r[0] in have or not (is_strongs(r[0]) or atlas.roots_mode != "strongs"):
+                    continue
+                shown.append(f"{atlas.form(r[0])} ({r[1]:.0f})*")
+                have.add(r[0])
+                if len(shown) == LEADING_FILL_TO:
+                    break
+        if shown:
+            report.notes.append("Leading words (words whose deepest chapter in the book is this one; "
+                                "* = a signature word of this chapter that is deeper elsewhere): "
+                                + ", ".join(shown) + ".")
 
     rows = [(r["root"], r["weight"], None, r["keyness"]) for r in atlas.db.execute(
         "SELECT root, weight, keyness FROM word_chapter "
@@ -1473,6 +1900,7 @@ def synopsis_section(atlas, report, book, chapter, verses):
 
 def word_page(atlas, word, book_name=None):
     """The shadow map of one word across the 66 books, and its neighbors."""
+    atlas.use_scope(None)
     # With a book named, an English word is resolved in that book's
     # testament ('day' [Luke] is G2250, not H3117)
     testament = atlas.book_info[atlas.find_book(book_name)]["testament"] if book_name else None
@@ -1582,6 +2010,7 @@ def word_page(atlas, word, book_name=None):
 
 
 def testament_page(atlas, testament_name):
+    atlas.use_scope(None)
     """
     The testament page (phase 5): the word-level view turned round.
     For each book of a testament, the words most at home in it; a home
@@ -1691,7 +2120,142 @@ def testament_page(atlas, testament_name):
     return report
 
 
+def compare_page(atlas, a_name, b_name):
+    """
+    Two books, chapter against chapter: the map the within-book map was
+    a prototype of.  Chapters of the first book down, chapters of the
+    second across, each cell the summed rarity of the phrases (three or
+    more words) the two chapters share and few verses of the two books
+    hold (at most CROSS_MAX_VERSES).  Then each chapter's closest
+    chapter in the other book, both ways, and whether the first follows
+    the second's order.  Within a testament the phrases are runs of
+    Strong's roots; between the testaments, English wording.
+    """
+    a_book, b_book = atlas.find_book(a_name), atlas.find_book(b_name)
+    if a_book == b_book:
+        raise ValueError("Compare needs two different books; a book against itself is section 6 of its page.")
+    atlas.use_scope(None)
+    same_testament = atlas.book_info[a_book]["testament"] == atlas.book_info[b_book]["testament"]
+    column = atlas.phrase_column if same_testament else "word_string"
+    report = Report(f"compare_{a_book.lower().replace(' ', '_')}_{b_book.lower().replace(' ', '_')}",
+                    f"Compare [{a_book}] x [{b_book}] ({atlas.settings['translation']})")
+    a_info, b_info = atlas.book_info[a_book], atlas.book_info[b_book]
+    report.notes.append(f"{a_book}: {a_info['chapters']} chapters, {a_info['words']} words.  "
+                        f"{b_book}: {b_info['chapters']} chapters, {b_info['words']} words.  "
+                        + ("Phrases are matched as runs of Strong's roots."
+                           if column != "word_string" else
+                           "The books are in different testaments, so phrases are matched by English "
+                           "wording (a Hebrew root and a Greek root never match)."))
+
+    places_a, wordings_a = phrase_places(atlas, atlas.verses_of(a_book), column)
+    places_b, wordings_b = phrase_places(atlas, atlas.verses_of(b_book), column)
+    kept = {}
+    for key in set(places_a) & set(places_b):
+        total = sum(len(r) for r in places_a[key].values()) + sum(len(r) for r in places_b[key].values())
+        if total > CROSS_MAX_VERSES:
+            continue
+        wording = wordings_a[key] + wordings_b[key]
+        display = wording.most_common(1)[0][0]
+        if not has_substance(display):
+            continue
+        # chapters of A and of B kept apart under negative/positive keys
+        chapters = {("a", c): refs for c, refs in places_a[key].items()}
+        chapters.update({("b", c): refs for c, refs in places_b[key].items()})
+        kept[key] = (chapters, display)
+    pieces = drop_pieces(kept)
+
+    cell_weight, cell_count, cell_refs, cell_best = Counter(), Counter(), {}, {}
+    for key, (chapters, display) in kept.items():
+        if key in pieces:
+            continue
+        weight = phrase_weight(atlas, key, column)
+        a_chs = [c for (side, c) in chapters if side == "a"]
+        b_chs = [c for (side, c) in chapters if side == "b"]
+        for ca in a_chs:
+            for cb in b_chs:
+                cell_weight[(ca, cb)] += weight
+                cell_count[(ca, cb)] += 1
+                cell_refs.setdefault((ca, cb), []).extend(chapters[("a", ca)] + chapters[("b", cb)])
+                if weight > cell_best.get((ca, cb), (0, ""))[0]:
+                    cell_best[(ca, cb)] = (weight, display)
+    a_chapters = list(range(1, a_info["chapters"] + 1))
+    b_chapters = list(range(1, b_info["chapters"] + 1))
+    if not cell_weight:
+        report.notes.append(f"No rare phrases are shared between {a_book} and {b_book}.")
+        return report
+
+    heat = report.section(
+        f"1. Chapter map [{a_book}] x [{b_book}]", [f"{a_book} \\ {b_book}"] + [str(c) for c in b_chapters],
+        note=f"Chapters of {a_book} down, chapters of {b_book} across, each cell the summed rarity of "
+             f"the phrases of three or more words the two chapters share and at most {CROSS_MAX_VERSES} "
+             f"verses of the two books hold together, so neither book's refrains fill the map.  A "
+             f"diagonal band is one book following the other's order; a column is a chapter the "
+             f"other book keeps returning to.  Click a cell for the verses on both sides; double-click "
+             f"for the {a_book} chapter's page; tick 'each column on its own scale' for the fainter pairs.",
+        kind="heatmap")
+    heat.value_label = "shared weight"
+    for i, ca in enumerate(a_chapters):
+        row = [ca]
+        for j, cb in enumerate(b_chapters):
+            row.append(round(cell_weight.get((ca, cb), 0)))
+            refs = cell_refs.get((ca, cb))
+            if refs:
+                heat.cell_refs[(i, j + 1)] = sorted(set(refs), key=ref_order)
+        heat.add(row, link={"book": a_book, "chapter": ca})
+    strongest = sorted(cell_weight.items(), key=lambda kv: -kv[1])[:WITHIN_PAIRS_N]
+    heat.footer.append("Strongest pairs: " + "; ".join(
+        f"{a_book} {ca} and {b_book} {cb} ({round(w)}, {cell_count[(ca, cb)]} phrases: "
+        f"\"{cell_best[(ca, cb)][1]}\")" for (ca, cb), w in strongest) + ".")
+
+    def partner_table(number, this, other, this_chapters, other_chapters, lookup):
+        sec = report.section(
+            f"{number}. Chapter to chapter [{this}] -> [{other}]",
+            ["chapter", f"closest in {other}", "weight", "phrases", "strongest shared phrase", "second"],
+            note=f"For each chapter of {this}, the chapter of {other} it shares the most rare phrasing "
+                 f"with, the number of shared phrases, the phrase that weighs most, and the next.  "
+                 f"Click a row for the verses on both sides; double-click for the chapter's page.")
+        pointed = []
+        for c in this_chapters:
+            partners = sorted(((o, cell_weight[lookup(c, o)]) for o in other_chapters
+                               if cell_weight.get(lookup(c, o))), key=lambda ow: -ow[1])
+            if not partners:
+                sec.add([c, "-", "", "", "", ""], link={"book": this, "chapter": c})
+                continue
+            o, w = partners[0]
+            key = lookup(c, o)
+            second = f"{partners[1][0]} ({round(partners[1][1])})" if len(partners) > 1 else "-"
+            sec.add([c, o, round(w), cell_count[key], cell_best[key][1], second],
+                    refs=sorted(set(cell_refs[key]), key=ref_order), link={"book": this, "chapter": c})
+            # A pointer resting on a couple of phrases says nothing about order
+            if cell_count[key] >= CROSS_MIN_PHRASES:
+                pointed.append((c, o))
+        # Does this book follow the other's order?  The 4b rule: runs of
+        # chapters whose closest partners never go backwards, dense
+        # enough to mean something
+        runs, start = [], 0
+        for i in range(1, len(pointed) + 1):
+            if i == len(pointed) or pointed[i][1] < pointed[i - 1][1]:
+                count = i - start
+                if count >= ORDER_RUN_MIN:
+                    first, last = pointed[start][0], pointed[i - 1][0]
+                    skipped = (last - first + 1) - count
+                    gaps = [pointed[k + 1][0] - pointed[k][0] - 1 for k in range(start, i - 1)]
+                    dense = count > skipped or (count >= 5 and max(gaps, default=0) <= 2)
+                    if dense and (skipped == 0 or count >= ORDER_RUN_GAPPED_MIN):
+                        runs.append((first, last, count))
+                start = i
+        for first, last, count in runs:
+            sec.footer.append(f"{this} follows the order of {other} from chapter {first} to {last} "
+                              f"({count} chapters whose closest partners come in non-decreasing order).")
+        return sec
+
+    partner_table(2, a_book, b_book, a_chapters, b_chapters, lambda c, o: (c, o))
+    partner_table(3, b_book, a_book, b_chapters, a_chapters, lambda c, o: (o, c))
+    return report
+
+
 def kin_page(atlas, book_name, chapter):
+    atlas.use_scope(None)
     """
     Chapters elsewhere whose verses share clusters of rare words with
     the verses of one chapter or passage.

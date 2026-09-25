@@ -20,7 +20,7 @@ screens and this file.
 | Word | Meaning |
 | --- | --- |
 | Scale | The size of the map: Bible, Testament, Book, Chapter or Passage |
-| Weight | How many times a word occurs at the current scale |
+| Weight | How many times a word occurs at the current scale. Of an echo: the summed rarity of its words, so a rare phrase weighs more than a common one |
 | Reach | How widely a word is spread across the current scale (horizontal) |
 | Depth | How thickly a word is piled up in one small place (vertical): the highest keyness a word reaches in any one chapter, and the chapter where it does. The leading words of a passage are the words whose deepest chapter it is |
 | Neighbors | The words that fall within the window of a given word more often than chance predicts |
@@ -34,6 +34,32 @@ screens and this file.
 | Kin | Two verses sharing three or more rare words in any order; dependence through imagery rather than wording |
 | Window | How many words either side count as "near" (5, inside the verse) |
 | Root | The base form that several spellings are gathered under: a Strong's number (H3068, G3056) where the text is tagged, otherwise an English stem |
+| Keyness | How much more often a word (or formula) occurs here than the rest of its testament or the Bible would predict; log-likelihood, so 10.8 is one chance in a thousand |
+| Rarity | How rare a word is, as the negative logarithm of its share of all words in its testament; one in a thousand scores about 7, one in a hundred thousand about 11.5 |
+| Single-word formula | A formula that has lost all but one word to tidying, as "and joseph" loses its conjunction; a name after "and" is not a set phrase, so such rows are passed over rather than printed |
+| Run | Words standing one after another: a formula is a run of two to five, an echo a shared run grown to its full length. Also chapters in a row whose pointers never go backwards, the evidence that a book follows another's order |
+| Rendering | An English word the translators used for one root: leave, forgive, let and suffer are four renderings of G863 |
+| Spelling | One English form of a root as the text prints it: day, days and day's |
+| Parallel | Two verses that share at least three content roots in the same order making up at least 30 percent of the shorter verse, or that share a quotation-grade echo; the unit of the sharing table (4d) and the synopsis |
+| Quotation grade | An echo of five or more words found in exactly two verses of the whole Bible, one here and one there: the strongest evidence of one text reading another |
+| Chief partners | The two books a text shares the most distinct echoes with; the partners the sharing table and synopsis are drawn against |
+| Points to | The partner chapters a chapter's echoes lead to, each carrying at least a tenth of the chapter's echo weight |
+| In time | Whether a partner is conventionally dated earlier, contemporary or later than the text; earlier is what it could have read, later who could have read it |
+| Obs/exp | Echoes shared with a partner against how many its length alone would predict; above one is more than chance, marked "few" under twenty echoes |
+| Local | A word found in under a fifth of a book's chapters; a book within the book |
+| Leading words | Of a chapter: the words whose deepest chapter in the whole book is this one. Of a book, on the reach-and-depth chart: the words that are both wide and deep |
+| Home | The book that prefers a word most, by keyness against the rest of its testament; a home word of a book is one whose home it is |
+| Synopsis | A chapter verse by verse with its closest parallels in the two chief partners |
+| Token | One word in one place: the third word of Genesis 1:1 is a token, "beginning" is its spelling, H7225 its root. The atlas holds 789,814 of them |
+| Tag | A Strong's number attached to a token by the tagged text; a tagged word has one, an untagged word does not |
+| Stop word | A function word (the, of, and, he, shall) left out of the counts of words, neighbors and kin, though kept inside formulas; the stop list is the set of them |
+| Stem | The English base of a word with its endings taken off (day for days, say for saith); the root of a word that has no tag |
+| Lexicon | Strong's dictionary as loaded into the atlas: for each number its Hebrew or Greek word and its KJV glosses |
+| Gloss | An English meaning the dictionary gives a number, as against a rendering, which is a word the translators used |
+| Unit | What a formula is made of: a Strong's number for a tagged content word, the spelling for a stop word or an untagged word |
+| Placed, inferred, absorbed | How a word got its number: placed from the tagging, inferred from the number its spelling usually carries in the book or testament (~), or absorbed into the tagged word it always stands beside, as "chief" into priests G749 (=) |
+| Build | One complete set of tables made from the text under one set of rules; kept under a label so two can be compared |
+| Dossier | Everything about one book in one text file: the book page, every chapter page and the top words' pages |
 
 ## Notation
 
@@ -51,6 +77,7 @@ findings.
 | { } | a set of words, order not mattering, as kin shares them | {river, tree, fruit, leaves, month} |
 | < > | words in a fixed order, as an in-order run | <river, tree, fruit, month> |
 | + | two words meeting inside the window, a neighbor pair | 'day' + 'night' [Ezekiel] (5 meetings) |
+| x | two books set against each other, chapter by chapter | [Exodus] x [Leviticus] |
 | -> | an echo or kin link from one place to another | "the days of your fathers" Joel 1:2 -> Malachi 3:7 |
 | = | two spellings folded to one root | saith = said = 'say' |
 
@@ -69,6 +96,7 @@ The same lines can be typed into the ask box of the window (or given to
     "the day of the LORD" [Joel] the verses holding a formula
     [Joel]  or  [Joel 2]         the book page, the chapter page
     Ezekiel 47:1-12 -> ?         the kin page for a passage
+    [Matthew] x [Mark]           two books chapter against chapter (the Compare page)
     Joel 2:1                     one verse
 
 ## Phase 1: the experiment
@@ -430,6 +458,135 @@ key. The English build still stores formulas on spellings, so the two
 can be compared in the Build box. Formula counts moved little in the
 Gospels and sharpened in the prophets, where the divine titles are the
 formulas.
+
+Two things came with it. A Hebrew root and a Greek root never match,
+so on a Strong's build the echoes between the testaments vanished
+(Ezekiel and Revelation fell to none); they are now found by English
+wording as before, stored with an "en:" key, so a book keeps its
+readers in the other testament ("saying what city is like", Ezekiel
+27:32 and Revelation 18:18). And the evidence for who reads whom now
+sits on the book page: section 4a2 lists, for each echo partner in
+time order, its three rarest echoes with the verse on each side, one
+per verse pair, and how many of its echoes are quotation grade, five
+or more words found in exactly two verses of the whole Bible (marked
+"quotation" in the echo list too). A partner beyond the 4a table is
+added when it has two or more such echoes, so Revelation's few exact
+borrowings are not outvoted by its volume. Ezekiel's page reads
+Leviticus 4:3 behind 43:23, Hosea 14:7 behind 31:17, Zephaniah 1:4
+behind 25:13, Jeremiah 1:6 behind 4:14, Daniel 11:40 behind 26:7 and
+Revelation 18:18 behind 27:32 in a dozen lines.
+
+The Revelation page then showed 4d failing for a book that borrows
+phrases rather than verses: its Daniel column was empty in every
+chapter while 4a2 held seven quotation-grade Daniel echoes, because a
+five-word borrowing inside a long verse falls under the share. A verse
+carrying a quotation-grade echo with a partner now counts as a
+parallel, the footer says how many verses that added, and when fewer
+than a twentieth of a book's verses have any parallel the table is
+replaced by a line saying the section does not fit the book and 4a2 is
+the one to read. In 4a2 the cited echoes are quotation grade first,
+then rarest, so Matthew's row leads with "names of the twelve
+apostles" rather than a long run of ordinary words.
+
+Two small things from the Genesis page: a formula that trims to a
+single word ("and joseph" losing its conjunction) is passed over, and a
+chapter with fewer than four leading words is filled out with its own
+top signature words marked *, so the call of Abram reads "haran, well,
+abram*, wife*" rather than two words.
+
+From the Leviticus page: a root's printed spelling is now the scope's
+own commonest rendering, the chapter's on a chapter page, then the
+book's, then the Bible's, so H1540 prints as "uncover" in Leviticus 18
+rather than "captive" and H2490 as "profane" in Leviticus 21 rather
+than "began"; the Bible-wide spelling remains on word and testament
+pages. Leviticus, Numbers, Isaiah and Zechariah join the disputed-date
+list, so their pages carry the caveat with the date assumed. And an
+order run with any gap in it now needs six pointers before it is
+reported, so a five-pointer run with two holes (Leviticus on Numbers)
+says nothing, while the Gospel runs stand.
+
+## The book against itself
+
+The Exodus page asked for one section no other page had: the book
+compared with itself. Every echo section sets a book against other
+books, so the tabernacle prescribed in chapters 25 to 31 and built in
+35 to 40, which mirror each other chapter for chapter, was invisible.
+Section 6 of a book page (0.8.0) is a map of chapters by chapters, each
+cell the summed rarity of the phrases of three or more words the two
+chapters share and at most twelve verses of the book hold, so the
+book's own refrains do not fill it. On Exodus the strongest pairs are
+26 and 36 ("two sockets under another board"), 28 and 39, 25 and 37,
+27 and 38, 31 and 35, a band off the diagonal; then 8 and 9 (the
+plagues) and 23 and 34 ("a kid in his mother's milk"). Ezekiel gives 1
+and 10 (the chariot, "full of eyes round about"), 18 and 33 (the
+watchman, "he shall surely live"), 45 and 46, 40 to 42; Mark gives 6
+and 8 (the two feedings, "his disciples to set before"), 9 and 14
+("Peter and James and John"). A click on a cell shows the verses in
+both chapters; the footer names the twelve strongest pairs with their
+shared-phrase counts and strongest phrase, and section 6a lists each
+chapter's closest partner in the book with the weight, the number of
+shared phrases, the strongest phrase and the second partner, so the
+mirror reads down a list: 25 to 37, 26 to 36, 27 to 38, 28 to 39, 29
+to 40, 30 to 37, 31 to 35. The cell values are summed rarity over
+phrases held by at most WITHIN_MAX_VERSES verses of the book, so rare
+technical vocabulary weighs most and a pair repeating ordinary words
+reads faint; the phrase count beside the weight is the plainer
+measure.
+
+The Matthew and Mark pages (0.9.1) separated two things the list had
+mixed. A phrase in three or more chapters of the book ("weeping and
+gnashing of teeth" in Matthew 8, 13, 22, 24 and 25; "Peter and James
+and John" in Mark) is a refrain, not a pair, and inflates many cells at
+once; refrains are now set aside from the map and listed on their own
+in section 6b with their chapters and verses, rarest first
+(REFRAIN_MIN_CHAPTERS). Section 6a also gained a "gap" column, the
+distance between a chapter and its partner, and a "kind" column:
+"adjacent" when the partner is the next chapter along and the story
+simply continues, "doublet?" when the two are DOUBLET_GAP (three) or
+more chapters apart, the pairs worth reading side by side. On Matthew
+the doublet candidates read 3 and 7 (the axe and the tree), 4 and 10,
+5 and 19 (divorce), 12 and 16 (the sign of Jonah), 3 and 17 ("my
+beloved son"), 2 and 27 (Jeremiah quoted). The two feedings in 14 and
+15 read "adjacent", a limit of a rule that goes by distance alone: a
+doublet in neighbouring chapters looks like the story continuing.
+
+Two smaller changes from the same page. Absorption now reaches across
+a single stop word, and runs before inference, so "father in law" and
+"mother in law" fold into H2859 and H2545 instead of "father" being
+inferred as H1 first; and a root whose absorbed companion stands
+beside at least three tenths of its occurrences prints with it: "law
+(father) H2859", "priests (chief) G749", "offering (burnt) H5930".
+
+## Two books, chapter against chapter
+
+The Compare page (0.9.0) is the within-book map run between two
+books, which is what the double-click on the echo map had been
+promising. Chapters of the first book go down, chapters of the second
+across, and each cell is the summed rarity of the phrases of three or
+more words the two chapters share and at most twelve verses of the
+two books hold together. Within a testament the phrases are runs of
+Strong's roots; between the testaments, where a Hebrew root and a
+Greek root never match, they are English wording, and the page says
+which. Under the map two tables give each chapter's closest chapter in
+the other book, both ways, with the weight, the number of shared
+phrases, the strongest phrase and the second partner, and a footer
+says where one book follows the other's order, by the 4b rule with
+one more guard: a chapter's closest partner counts toward order only
+when they share at least five phrases.
+
+Matthew against Mark draws the Synoptic diagonal: Matthew 26 and Mark
+14 lead (2496, 142 phrases, "sung an hymn they went"), then 24 and 13,
+19 and 10, 27 and 15, and Matthew follows Mark's order from chapter 11
+to 28 while Mark follows Matthew from 5 to 16, with Matthew 8 and 9,
+the gathered miracles, pointing back to Mark 1 to 5. Exodus against
+Leviticus finds Exodus 29 and Leviticus 8 first (1420, 79 phrases,
+the ordination prescribed and performed), then Exodus 29 against
+Leviticus 7, 4 and 9. Ezekiel against Revelation, across the
+testaments, gives Ezekiel 27 and Revelation 18 ("saying what city is
+like") and no order line at all, which is right. The page is reached
+from the Page box (Compare, a book and "with:" a second), from the Ask
+line as [Exodus] x [Leviticus], or on the command line as
+`atlas_query.py compare Exodus x Leviticus`.
 
 ## Phase 4 completed: depth and the reach-and-depth chart
 

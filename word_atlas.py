@@ -55,7 +55,7 @@ import atlas_query
 import atlas_text
 from atlas_ask import AskError
 
-VERSION = "0.7.0"
+VERSION = "0.9.1"
 
 # ---------------------------------------------------------------------------
 # Style: flat, 1 px frames, quiet grey headers, matching Bible Search Lite
@@ -644,7 +644,7 @@ class PageView(QWidget):
 class WordAtlasWindow(QMainWindow):
     """The main window: top bar, page view, verse pane."""
 
-    PAGE_KINDS = ["Book", "Chapter", "Word", "Kin", "Testament"]
+    PAGE_KINDS = ["Book", "Chapter", "Word", "Kin", "Testament", "Compare"]
 
     def __init__(self, atlas):
         super().__init__()
@@ -721,6 +721,16 @@ class WordAtlasWindow(QMainWindow):
         self.book_box.setMinimumWidth(150)
         self.book_box.currentTextChanged.connect(self.update_chapter_range)
         bar.addWidget(self.book_box)
+
+        # The second book, for a Compare page
+        self.book2_label = QLabel("with:")
+        self.book2_label.setProperty("help", "book2")
+        bar.addWidget(self.book2_label)
+        self.book2_box = QComboBox()
+        self.book2_box.setProperty("help", "book2")
+        self.book2_box.addItems(self.atlas.books)
+        self.book2_box.setMinimumWidth(150)
+        bar.addWidget(self.book2_box)
 
         self.chapter_label = QLabel("Chapter:")
         self.chapter_label.setProperty("help", "chapter")
@@ -805,7 +815,7 @@ class WordAtlasWindow(QMainWindow):
         self.ask_edit = QLineEdit()
         self.ask_edit.setProperty("help", "ask")
         self.ask_edit.setPlaceholderText(
-            "'day' [Joel]     'H3068'     'day' + 'night' [Ezekiel]     \"the day of the LORD\"     [Joel 2]     Ezekiel 47:1-12 -> ?")
+            "'day' [Joel]     'H3068'     'day' + 'night' [Ezekiel]     \"the day of the LORD\"     [Joel 2]     [Exodus] x [Leviticus]     Ezekiel 47:1-12 -> ?")
         self.ask_edit.returnPressed.connect(self.ask)
         ask_bar.addWidget(self.ask_edit, 1)
         ask_btn = QPushButton("Ask")
@@ -887,6 +897,8 @@ class WordAtlasWindow(QMainWindow):
             w.setVisible(chapter)
         for w in (self.testament_label, self.testament_box):
             w.setVisible(kind == "Testament")
+        for w in (self.book2_label, self.book2_box):
+            w.setVisible(kind == "Compare")
         for w in (self.book_label, self.book_box):
             w.setVisible(kind != "Testament")
         for w in (self.verses_label, self.verses_edit):
@@ -907,6 +919,8 @@ class WordAtlasWindow(QMainWindow):
             return
         if kind == "Testament":
             book = self.testament_box.currentText()
+        if kind == "Compare":
+            word = self.book2_box.currentText()     # the second book rides in the word slot
         self.open_page(kind, book, chapter, word)
 
     # -- opening pages -------------------------------------------------------------------
@@ -923,6 +937,8 @@ class WordAtlasWindow(QMainWindow):
                 report = atlas_pages.word_page(self.atlas, word, book)
             elif kind == "Testament":
                 report = atlas_pages.testament_page(self.atlas, book)
+            elif kind == "Compare":
+                report = atlas_pages.compare_page(self.atlas, book, word)
             else:
                 report = atlas_pages.kin_page(self.atlas, book, chapter)
         except ValueError as e:
@@ -1006,6 +1022,9 @@ class WordAtlasWindow(QMainWindow):
                 self.open_page("Book", self.atlas.find_book(a["book"]), None, "")
             elif kind == "testament":
                 self.open_page("Testament", a["testament"], None, "")
+            elif kind == "compare":
+                self.open_page("Compare", self.atlas.find_book(a["book"]), None,
+                               self.atlas.find_book(a["other"]))
             elif kind == "chapter":
                 self.open_page("Chapter", self.atlas.find_book(a["book"]), a["chapter"], "")
             elif kind == "kin":

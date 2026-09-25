@@ -43,10 +43,13 @@ HELP = {
             "neighbors and echoes.  Chapter: the same for one chapter, plus a synopsis "
             "against its two partner books.  Word: one word across the Bible, its shadow "
             "map and neighbors.  Kin: the chapters elsewhere most related to a passage.  "
-            "Testament: where each word of the Old or New Testament is at home.",
+            "Testament: where each word of the Old or New Testament is at home.  Compare: two "
+            "books chapter against chapter, with each chapter's closest chapter in the other book.",
     "testament": "Old or New, for a Testament page: where each word of the testament is "
                  "most at home, book by book, with a home map and a table that answers, for "
                  "any Strong's number, whose word it is.",
+    "book2": "The second book of a Compare page: the first book's chapters go down the map, "
+             "this book's chapters across.",
     "book": "The book of the Bible the page is about.  For a Word page it is where the "
             "word's neighbors are counted; press Any book to look across the whole Bible.",
     "chapter": "The chapter number, for Chapter and Kin pages.  The range follows the book.",
@@ -68,7 +71,7 @@ HELP = {
                "atlas_text.py.  Takes about a minute and replaces the working atlas.db; "
                "a label keeps a copy under builds/.  Use it after changing a rule.",
     "status": "A short note on what the atlas just did, or what it could not read.",
-    "ask": "One line of notation, then Enter.  'day' opens a word page; 'day' [Joel] "
+    "ask": "One line of notation, then Enter.  [Exodus] x [Leviticus] compares two books.  'day' opens a word page; 'day' [Joel] "
            "the same with neighbors in Joel; 'day' + 'night' [Ezekiel] lists the verses "
            "where the two words meet; \"the day of the LORD\" lists the verses holding "
            "that formula; [Joel 2] opens a chapter page; Ezekiel 47 -> ? opens the kin "
@@ -160,6 +163,14 @@ COLUMN_HELP = {
                "expected from the partner's size alone.  Well above 1 is the interesting case.  "
                "In brackets and marked 'few' when it rests on fewer than twenty echoes: a small "
                "book with a few shared idioms always posts a high ratio.",
+    "grade": "'quotation' marks an echo of five or more words found in exactly two verses of "
+             "the whole Bible, one here and one there: the strongest kind of evidence the table has.",
+    "quotation grade": "How many of the partner's echoes are quotation grade: five or more words "
+                       "in exactly two verses of the Bible, one here and one there.",
+    "rarest echoes (here -> there)": "The partner's three rarest echoes (summed rarity of their "
+                                     "words), each with the verse here and the verse there; "
+                                     "(q) marks quotation grade.  One echo per verse pair.  "
+                                     "Click the row for the verses on both sides.",
     "in time": "Whether the partner is conventionally dated earlier, later or about the "
                "same time as this book (dates in atlas_text.py, disputed for many books).",
     "chapter": "The chapter.  Double-click to open the chapter's page.",
@@ -187,6 +198,21 @@ COLUMN_HELP = {
     "home words (count of testament)": "The six words most at home in the book, best first, "
                                        "each with the book's count of the word and the "
                                        "testament's total.",
+    "partner": "The chapter of the same book this chapter shares the most rare phrasing with.",
+    "phrases": "How many rare phrases (three or more words, in at most twelve verses of the book) "
+               "the two chapters share; the weight beside it is their summed rarity.",
+    "strongest shared phrase": "The shared phrase that weighs most, in its commonest wording.",
+    "second partner": "The next chapter of the book by shared weight, with the weight.",
+    "gap": "How many chapters apart the chapter and its partner are.  Neighbours share phrasing "
+           "because the story continues; a wide gap means the author came back to the same "
+           "wording later.",
+    "kind": "'adjacent' when the partner is the next chapter along (the story continuing), "
+            "'doublet?' when the two are three or more chapters apart (a passage told twice, "
+            "a candidate to read side by side), blank in between.",
+    "refrain": "A phrase of three or more words that recurs in three or more chapters of the book: "
+               "the book's own refrain, set aside from the chapter map so it does not fill many "
+               "cells at once.",
+    "chapters": "The chapters of the book the refrain appears in.",
     "home book": "The book that prefers this word most, by keyness against the rest of the testament.",
     "depth": "Depth: the highest keyness the word reaches in any one chapter, how thickly it "
              "piles up in its one deepest place.  Reach is horizontal, depth vertical.",
@@ -217,8 +243,9 @@ COLUMN_PATTERNS = [
 PICTURE_HELP = {
     "heatmap": "A map: rows down the side, columns across, each cell shaded by its number "
                "(square-root scale, so the middle shows).  On a book page it is the echo map, "
-               "chapters by partner books, shaded by echo weight; on a testament page it is "
-               "the home map, books by words, shaded by the share of the word the book holds.  "
+               "chapters by partner books, shaded by echo weight, or the within-book map, "
+               "chapters by chapters, shaded by the rare phrases each pair shares; on a testament "
+               "page it is the home map, books by words, shaded by the share of the word the book holds.  "
                "Hover for the number, click a cell for the verses behind it, double-click for "
                "the row's page.",
     "scatter": "The reach-and-depth chart: one point per signature word, placed by reach (how "

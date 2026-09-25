@@ -22,6 +22,7 @@ There are four kinds of page:
 | Word | One word: a shadow map of where it falls across all 66 books, its neighbors, and the formulas it lives in |
 | Kin | For a chapter or verse range, the other chapters in the Bible most closely related to it |
 | Testament | For the Old or New Testament: the words most at home in each book, a home map of books by words, and a table that says whose word any Strong's number is |
+| Compare | Two books chapter against chapter: a map of shared rare phrasing, each chapter's closest chapter in the other book both ways, and whether one follows the other's order |
 
 ## 2. Starting the program
 
@@ -54,6 +55,7 @@ the top bar) and point at the thing you are wondering about.
 | ◀ ▶ | Turn back or forward through pages you have already visited |
 | Page | Pick the page kind: Book, Chapter, Word, Kin or Testament. The controls to the right change to fit |
 | Testament | Testament pages only: Old or New (takes the Book box's place) |
+| with | Compare pages only: the second book |
 | Book | Pick a book of the Bible |
 | Chapter | Appears for Chapter and Kin pages: pick the chapter number |
 | Verses | Kin pages only: leave blank for the whole chapter, or type a range such as `1-12` |
@@ -110,6 +112,7 @@ around the scale (a book, a chapter, or the Bible).
 | `"the day of the LORD" [Joel]` | The same, limited to Joel |
 | `[Joel]` | The book page for Joel |
 | `[New]` or `[Old]` | The testament page |
+| `[Matthew] x [Mark]` | The Compare page for two books |
 | `[Joel 2]` or `Joel 2` | The chapter page for Joel 2 |
 | `Joel 2:1` | That one verse |
 | `Ezekiel 47 -> ?` | The kin page for Ezekiel 47 |
@@ -128,6 +131,9 @@ meet most:
 | Term | Meaning |
 |------|---------|
 | scale | How much text you are looking at: the Bible, a book, or a chapter |
+| token | One word in one place; its spelling is what the text prints, its root is what it is counted as |
+| tag | The Strong's number the tagged text attaches to a word; untagged words keep their English stem |
+| stop word | A function word (the, of, and, shall) left out of the word counts but kept inside formulas |
 | root | What a word is counted as. With Strong's roots (the default build) it is the number behind the KJV word, printed after it: 'lord H3068' is the divine name, 'lord H136' the title Adonai. A word the tagger left alone keeps its English stem |
 | keyness | How much more often a word appears here than the rest of the Bible would predict. The higher, the more the word belongs to this book |
 | reach | How many books (or chapters) a word appears in: horizontal |
@@ -138,19 +144,34 @@ meet most:
 | echo partner | A book that shares echoes with this one |
 | kin | Another chapter that shares several rare words with this passage, in the same order if possible |
 | weight | The sum of the rarity of the words involved; rarer words weigh more |
-| obs / exp | Observed count against expected count; obs well above exp is the interesting case |
+| obs / exp | Observed count against expected count; obs well above exp is the interesting case; marked "few" when it rests on under twenty echoes |
+| run | Words one after another (a formula is a run); or chapters in a row whose pointers to a partner never go backwards |
+| parallel | Two verses sharing three content roots in order making up 30 percent of the shorter, or a quotation-grade echo |
+| quotation grade | An echo of five or more words found in exactly two verses of the whole Bible: the strongest evidence that one text read another |
+| chief partners | The two books a text shares the most echoes with |
+| rendering | An English word the translators used for a root; G863 has fourteen |
+| home | The book that prefers a word most; a book's home words are the ones it prefers most |
+| leading words | Of a chapter, the words whose deepest chapter it is |
 
 **Book page sections.** 1 Signature words, then 1a the Hebrew or
 Greek behind them (original word, KJV glosses, spellings here). 2 Signature formulas.
 3.x Neighbors of the book's key words (day and LORD are always shown,
 then the top signature words). 4 Echoes to other books, with 4a the
-echo partner books, 4b echoes by chapter (which partner chapter each
+echo partner books, 4a2 who reads whom (each partner's rarest echoes
+with both references and its quotation-grade count), 4b echoes by chapter (which partner chapter each
 chapter points to, and a footer saying where the book follows a
 partner's order), 4c the echo map picture, and 4d every verse tagged by
 which of the two chief partners it has a parallel in (both, one only,
 neither). 5 Reach and depth, a chart of the signature words with reach
 across and depth up: leading words top right, spread words bottom
-right, local piles top left.
+right, local piles top left. 6 Echoes within the book, a map of
+chapters by chapters shaded by the rare phrases each pair shares
+(Exodus 25 to 31 against 35 to 40); click a cell for the verses. 6a
+each chapter's closest partner in the book, with the gap between them
+and a kind: "adjacent" (the story continuing) or "doublet?" (three or
+more chapters apart, a passage told twice). 6b the book's refrains,
+phrases found in three or more chapters, kept out of the map and
+listed on their own.
 
 **Chapter page.** Opens with the chapter's leading words (the words
 whose deepest chapter in the book is this one), then the same sections
@@ -171,6 +192,11 @@ down, words across, cells the share of the word the book holds; click a
 cell for the verses, double-click for the book), 3 Whose word is this
 (the 150 words with the strongest home, with home book, share, keyness
 and second home; double-click a word for its page).
+
+**Compare page.** 1 Chapter map (first book down, second across,
+cells the shared rare phrasing; click for the verses), 2 and 3 each
+chapter's closest chapter in the other book, both ways, with a footer
+saying where one book follows the other's order.
 
 **Kin page.** One table, closest chapters first, with the score, the
 number of shared words, how many are in the same order, the strongest
@@ -228,6 +254,7 @@ python atlas_query.py word day
 python atlas_query.py word day Joel
 python atlas_query.py kin Ezekiel 47
 python atlas_query.py testament New
+python atlas_query.py compare Exodus x Leviticus
 python atlas_query.py dossier Ezekiel --brief
 python atlas_query.py ask "'day' + 'night' [Ezekiel]"
 ```
