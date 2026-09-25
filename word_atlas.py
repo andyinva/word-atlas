@@ -55,7 +55,7 @@ import atlas_query
 import atlas_text
 from atlas_ask import AskError
 
-VERSION = "0.5.1"
+VERSION = "0.6.0"
 
 # ---------------------------------------------------------------------------
 # Style: flat, 1 px frames, quiet grey headers, matching Bible Search Lite
@@ -387,6 +387,173 @@ class BarChartWidget(QWidget):
         p.end()
 
 
+class ScatterWidget(QWidget):
+    """
+    The reach-and-depth chart: one point per word, placed by two of the
+    section's columns (x_column across, y_column up), labelled with the
+    word.  Click a point for its verses; double-click for its page.
+    """
+
+    WIDTH, HEIGHT = 760, 440
+    LEFT, RIGHT, TOP, BOTTOM = 56, 24, 16, 40
+    OLD = QColor(64, 102, 168)
+    NEW = QColor(214, 122, 40)
+
+    def __init__(self, section, on_row, on_row_open=None, parent=None):
+        super().__init__(parent)
+        self.section = section
+        self.on_row = on_row
+        self.on_row_open = on_row_open
+        self.hover = None
+        xi = section.columns.index(section.x_column)
+        yi = section.columns.index(section.y_column)
+        self.points = [(float(row[xi] or 0), float(row[yi] or 0)) for row in section.rows]
+        self.labels = [str(row[0]) for row in section.rows]
+        self.x_max = max((p[0] for p in self.points), default=1) or 1
+        self.y_max = max((p[1] for p in self.points), default=1) or 1
+        self.setMouseTracking(True)
+        self.setFixedSize(self.WIDTH, self.HEIGHT)
+
+    # -- geometry ---------------------------------------------------------------------
+
+    def place(self, x, y):
+        """Pixel position of a data point.  Depth is drawn on a square-root
+        scale so one very deep word does not flatten the rest."""
+        w = self.WIDTH - self.LEFT - self.RIGHT
+        h = self.HEIGHT - self.TOP - self.BOTTOM
+        px = self.LEFT + w * x / self.x_max
+        py = self.TOP + h - h * (y / self.y_max) ** 0.5
+        return px, py
+
+    def point_at(self, pos):
+        """Index of the point nearest the pointer, within 9 px, or None."""
+        best, best_d = None, 9.0
+        for i, (x, y) in enumerate(self.points):
+            px, py = self.place(x, y)
+            d = ((pos.x() - px) ** 2 + (pos.y() - py) ** 2) ** 0.5
+            if d < best_d:
+                best, best_d = i, d
+        return best
+
+    def help_at(self, pos):
+        """Help note for the chart, naming the point under the pointer."""
+        text = atlas_help.PICTURE_HELP["scatter"]
+        i = self.point_at(pos)
+        if i is not None:
+            x, y = self.points[i]
+            text += f"\n\nThis point: {self.labels[i]}, reach {x:.0f}%, depth {y:.0f}."
+        return text
+
+    # -- mouse ------------------------------------------------------------------------------
+
+    def mouseMoveEvent(self, event):
+        i = self.point_at(event.position())
+        if i != self.hover:
+            self.hover = i
+            if i is not None:
+                x, y = self.points[i]
+                row = self.section.rows[i]
+                self.setToolTip(f"{self.labels[i]}: reach {x:.0f}%, depth {y:.0f}, "
+                                f"deepest at {row[3]}, count {row[4]}")
+            self.update()
+
+    def leaveEvent(self, event):
+        self.hover = None
+        self.update()
+
+    def mousePressEvent(self, event):
+        i = self.point_at(event.position())
+        if i is not None:
+            self.on_row(self.section, i)
+
+    def mouseDoubleClickEvent(self, event):
+        i = self.point_at(event.position())
+        if i is not None and self.on_row_open:
+            self.on_row_open(self.section, i)
+
+    # -- painting ---------------------------------------------------------------------
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.fillRect(self.rect(), QColor("#ffffff"))
+        font = p.font()
+        font.setPointSize(8)
+        p.setFont(font)
+        w = self.WIDTH - self.LEFT - self.RIGHT
+        h = self.HEIGHT - self.TOP - self.BOTTOM
+
+        # Axes and a light grid, with the quadrant names in grey
+        p.setPen(QPen(QColor("#c8c8c8"), 1))
+        for frac in (0.25, 0.5, 0.75, 1.0):
+            gx = self.LEFT + w * frac
+            p.drawLine(int(gx), self.TOP, int(gx), self.TOP + h)
+            gy = self.TOP + h - h * frac
+            p.drawLine(self.LEFT, int(gy), self.LEFT + w, int(gy))
+        p.setPen(QPen(QColor("#333333"), 1))
+        p.drawLine(self.LEFT, self.TOP + h, self.LEFT + w, self.TOP + h)
+        p.drawLine(self.LEFT, self.TOP, self.LEFT, self.TOP + h)
+        p.setPen(QColor("#333333"))
+        for frac in (0, 0.25, 0.5, 0.75, 1.0):
+            gx = self.LEFT + w * frac
+            p.drawText(QRectF(gx - 30, self.TOP + h + 4, 60, 14), Qt.AlignmentFlag.AlignCenter,
+                       f"{self.x_max * frac:.0f}%")
+            gy = self.TOP + h - h * frac
+            p.drawText(QRectF(0, gy - 7, self.LEFT - 6, 14),
+                       Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                       f"{self.y_max * frac * frac:.0f}")
+        p.drawText(QRectF(self.LEFT, self.HEIGHT - 18, w, 14), Qt.AlignmentFlag.AlignCenter,
+                   f"reach: share of chapters the word occurs in  (depth up the side, square-root scale)")
+        p.setPen(QColor("#9a9a9a"))
+        p.drawText(QRectF(self.LEFT + 6, self.TOP + 2, 200, 14), Qt.AlignmentFlag.AlignLeft, "local piles")
+        p.drawText(QRectF(self.LEFT + w - 206, self.TOP + 2, 200, 14), Qt.AlignmentFlag.AlignRight, "leading words")
+        p.drawText(QRectF(self.LEFT + w - 206, self.TOP + h - 16, 200, 14), Qt.AlignmentFlag.AlignRight, "spread words")
+
+        # Points first, then labels placed so they do not overlap: each
+        # label tries right, left, above and below its point and takes
+        # the first free place; a label with no free place is left off
+        # (hovering still names the point).  Most key words are labelled
+        # first, so a crowded corner keeps its important names.
+        metrics = p.fontMetrics()
+        for i, (x, y) in enumerate(self.points):
+            px, py = self.place(x, y)
+            colour = self.OLD if " H" in self.labels[i] else self.NEW \
+                if " G" in self.labels[i] else QColor("#555555")
+            r = 5 if i == self.hover else 3.5
+            p.setBrush(colour)
+            p.setPen(QPen(QColor("#d04000") if i == self.hover else colour, 1))
+            p.drawEllipse(QRectF(px - r, py - r, 2 * r, 2 * r))
+        # The axis numbers are already on the page: keep labels off them
+        taken = [QRectF(0, self.TOP, self.LEFT - 4, h), QRectF(self.LEFT, self.TOP + h, w, self.BOTTOM)]
+        for i, (x, y) in enumerate(self.points):
+            px, py = self.place(x, y)
+            label = self.labels[i]
+            tw = metrics.horizontalAdvance(label) + 4
+            th = 13
+            candidates = [QRectF(px + 6, py - th / 2, tw, th),          # right
+                          QRectF(px - 6 - tw, py - th / 2, tw, th),     # left
+                          QRectF(px - tw / 2, py - 7 - th, tw, th),     # above
+                          QRectF(px - tw / 2, py + 7, tw, th)]          # below
+            chosen = None
+            for rect in candidates:
+                if rect.left() < 2 or rect.right() > self.WIDTH - 2:
+                    continue
+                if rect.top() < self.TOP - 2 or rect.bottom() > self.TOP + h + 2:
+                    continue
+                if any(rect.intersects(t) for t in taken):
+                    continue
+                chosen = rect
+                break
+            if chosen is None and i != self.hover:
+                continue
+            if chosen is None:
+                chosen = candidates[0]
+            taken.append(chosen)
+            p.setPen(QColor("#202020") if i == self.hover else QColor("#444444"))
+            p.drawText(chosen, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, label)
+        p.end()
+
+
 class PageView(QWidget):
     """The scrolling middle area: title, notes and the section tables."""
 
@@ -451,6 +618,9 @@ class PageView(QWidget):
                 elif section.kind == "bars" and section.rows:
                     picture = BarChartWidget(section, self.atlas, self.on_row_clicked)
                     layout.addWidget(picture)
+                elif section.kind == "scatter" and section.rows:
+                    picture = ScatterWidget(section, self.on_row_clicked, self.on_row_opened)
+                    layout.addWidget(picture, 0, Qt.AlignmentFlag.AlignLeft)
                 if section.columns and section.rows:
                     table = SectionTable(section)
                     # Single click shows the verses; double click follows the link

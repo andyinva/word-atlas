@@ -20,10 +20,13 @@ books         book, order_index, testament, chapters, verses, words
 verses        verse_id, book, chapter, verse, reference, text, word_string
 tokens        verse_id, position, surface, root, is_stop, strongs, morph
               (strongs and morph are filled when ROOTS is "strongs")
-words         root, form, weight, verses_reached, chapters_reached, books_reached, shadow
-              (form = the commonest spelling of the root, for display)
+words         root, form, weight, verses_reached, chapters_reached, books_reached, shadow,
+              depth, depth_book, depth_chapter
+              (form = the commonest spelling of the root, for display; depth = the
+              highest keyness the word reaches in any one chapter, and where)
 lexicon       number, word, kjv_def, strongs_def, derivation   (Strong's dictionary)
-word_book     root, book, weight, verses_reached, chapters_reached, keyness, shadow
+word_book     root, book, weight, verses_reached, chapters_reached, keyness, shadow,
+              depth, depth_chapter
 word_chapter  root, book, chapter, weight, keyness
 pairs         scope, focus, companion, count, pull     (scope = 'Bible' or a book name)
 focus_windows scope, focus, occurrences, window_tokens
@@ -75,9 +78,11 @@ CREATE TABLE tokens        (verse_id INTEGER, position INTEGER, surface TEXT, ro
 CREATE TABLE lexicon       (number TEXT PRIMARY KEY, word TEXT, kjv_def TEXT, strongs_def TEXT,
                             derivation TEXT);
 CREATE TABLE words         (root TEXT PRIMARY KEY, form TEXT, weight INTEGER, verses_reached INTEGER,
-                            chapters_reached INTEGER, books_reached INTEGER, shadow REAL);
+                            chapters_reached INTEGER, books_reached INTEGER, shadow REAL,
+                            depth REAL, depth_book TEXT, depth_chapter INTEGER);
 CREATE TABLE word_book     (root TEXT, book TEXT, weight INTEGER, verses_reached INTEGER,
                             chapters_reached INTEGER, keyness REAL, shadow REAL,
+                            depth REAL, depth_chapter INTEGER,
                             PRIMARY KEY (root, book));
 CREATE TABLE word_chapter  (root TEXT, book TEXT, chapter INTEGER, weight INTEGER, keyness REAL,
                             PRIMARY KEY (root, book, chapter));
@@ -311,7 +316,7 @@ class AtlasBuilder:
         # The display form of a root is its commonest spelling in the
         # text ("hundred" for the stem "hundr", "counsel" for "counsell")
         self.db.executemany(
-            "INSERT INTO words VALUES (?,?,?,?,?,?,0)",
+            "INSERT INTO words VALUES (?,?,?,?,?,?,0,0,NULL,NULL)",
             [(root, forms[root].most_common(1)[0][0], w, verses_reached[root],
               len(chapters_reached[root]), len(books_reached[root]))
              for root, w in bible_weight.items()])
@@ -329,7 +334,7 @@ class AtlasBuilder:
                 n_out = comparison_size(root, book) - n_in
                 rows.append((root, book, a, book_verses_reached[book][root],
                              len(book_chapters[root]), log_likelihood(a, b, n_in, n_out)))
-        self.db.executemany("INSERT INTO word_book VALUES (?,?,?,?,?,?,0)", rows)
+        self.db.executemany("INSERT INTO word_book VALUES (?,?,?,?,?,?,0,0,NULL)", rows)
         self.log(f"  {len(rows)} word_book rows")
 
         rows = []
@@ -342,6 +347,33 @@ class AtlasBuilder:
         self.db.executemany("INSERT INTO word_chapter VALUES (?,?,?,?,?)", rows)
         self.db.commit()
         self.log(f"  {len(rows)} word_chapter rows")
+        self.write_depth(rows)
+
+    def write_depth(self, chapter_rows):
+        """
+        Depth: how thickly a word is piled up in one small place.  It is
+        the highest keyness the word reaches in any single chapter, with
+        the chapter it reaches it in.  Reach is horizontal (how many
+        chapters and books a word touches); depth is vertical (how far
+        above expectation it climbs in its one deepest chapter).  Stored
+        per book (word_book) and for the Bible (words), from the
+        word_chapter rows just written.
+        """
+        self.log("computing depth")
+        best_book = {}                      # (root, book) -> (keyness, chapter)
+        best_bible = {}                     # root -> (keyness, book, chapter)
+        for root, book, chapter, a, keyness in chapter_rows:
+            if keyness > best_book.get((root, book), (0, None))[0]:
+                best_book[(root, book)] = (keyness, chapter)
+            if keyness > best_bible.get(root, (0, None, None))[0]:
+                best_bible[root] = (keyness, book, chapter)
+        self.db.executemany(
+            "UPDATE word_book SET depth = ?, depth_chapter = ? WHERE root = ? AND book = ?",
+            [(k, ch, root, book) for (root, book), (k, ch) in best_book.items()])
+        self.db.executemany(
+            "UPDATE words SET depth = ?, depth_book = ?, depth_chapter = ? WHERE root = ?",
+            [(k, b, ch, root) for root, (k, b, ch) in best_bible.items()])
+        self.db.commit()
 
     # -- pairs (neighbors and pull) -------------------------------------------------
 

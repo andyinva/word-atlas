@@ -88,6 +88,7 @@ pane lets you resize them.
 | Double-click a word in a table | Opens that word's page |
 | Double-click a chapter (kin table, echo map) | Opens that chapter's page |
 | Click a bar on the shadow map | The word's verses in that book |
+| Click a point on the reach-and-depth chart | The word's verses in its deepest chapter; double-click for its page |
 | Click a cell of the echo map | The verses on both sides of that echo |
 | Hover over a cell or bar | A tooltip with the exact number |
 | ◀ ▶ | Return to pages you have visited |
@@ -128,7 +129,8 @@ meet most:
 | scale | How much text you are looking at: the Bible, a book, or a chapter |
 | root | What a word is counted as. With Strong's roots (the default build) it is the number behind the KJV word, printed after it: 'lord H3068' is the divine name, 'lord H136' the title Adonai. A word the tagger left alone keeps its English stem |
 | keyness | How much more often a word appears here than the rest of the Bible would predict. The higher, the more the word belongs to this book |
-| reach | How many books (or chapters) a word appears in |
+| reach | How many books (or chapters) a word appears in: horizontal |
+| depth | How thickly a word piles up in its one deepest chapter (its highest chapter keyness), and where: vertical |
 | neighbors | Words that stand within five words of the head word in the same verse, more often than chance would put them there |
 | formula | A set phrase of two to five words that recurs |
 | echo | A formula of three or more words found in this book and in another, rare enough to mean something (at most six verses in the whole Bible) |
@@ -144,9 +146,13 @@ echo partner books, 4b echoes by chapter (which partner chapter each
 chapter points to, and a footer saying where the book follows a
 partner's order), 4c the echo map picture, and 4d every verse tagged by
 which of the two chief partners it has a parallel in (both, one only,
-neither).
+neither). 5 Reach and depth, a chart of the signature words with reach
+across and depth up: leading words top right, spread words bottom
+right, local piles top left.
 
-**Chapter page.** The same sections at chapter scale, ending with
+**Chapter page.** Opens with the chapter's leading words (the words
+whose deepest chapter in the book is this one), then the same sections
+at chapter scale, ending with
 5 Synopsis: the chapter verse by verse with its closest parallels in
 the two chief partner books.
 

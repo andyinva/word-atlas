@@ -129,7 +129,6 @@ COLUMN_HELP = {
     "per 1000": "Occurrences per 1,000 words of the book, so long and short books compare.",
     "per 100 words": "Echo weight per 100 words of the chapter, so long and short chapters compare.",
     "per 1000 words of partner": "Echo weight per 1,000 words of the partner book.",
-    "reach": "Chapters of the book the word occurs in, out of the book's chapters.",
     "shadow": "Shadow: the summed pull of all the word's neighbors at this scale, its "
               "total influence over the words around it.",
     "bar": "A bar for the per-1000 figure, so the row can be read at a glance.",
@@ -181,6 +180,12 @@ COLUMN_HELP = {
                                        "each with the book's count of the word and the "
                                        "testament's total.",
     "home book": "The book that prefers this word most, by keyness against the rest of the testament.",
+    "depth": "Depth: the highest keyness the word reaches in any one chapter, how thickly it "
+             "piles up in its one deepest place.  Reach is horizontal, depth vertical.",
+    "deepest": "The chapter where the word reaches its depth.",
+    "deepest at": "The chapter where the word reaches its depth.  Click for the word's verses there.",
+    "reach": "Reach: how widely the word is spread, here as the percent of the book's chapters "
+             "it occurs in.",
     "in home": "How many times the word occurs in its home book.",
     "of testament": "How many times the word occurs in the whole testament.",
     "share": "The home book's count as a share of the testament's: 100% means the word occurs "
@@ -207,6 +212,12 @@ PICTURE_HELP = {
                "the home map, books by words, shaded by the share of the word the book holds.  "
                "Hover for the number, click a cell for the verses behind it, double-click for "
                "the row's page.",
+    "scatter": "The reach-and-depth chart: one point per signature word, placed by reach (how "
+               "many of the book's chapters it occurs in, across) against depth (the highest "
+               "keyness it reaches in one chapter, up the side, on a square-root scale).  Top "
+               "right, wide and deep, are the book's leading words; bottom right its spread "
+               "words; top left its local piles.  Hover for the numbers; click a point for the "
+               "word's verses in its deepest chapter; double-click for the word's page.",
     "echo_map": "The echo map: chapters down the side, the chief partner books across, each "
                "cell shaded by the weight of the echoes between that chapter and that book "
                "(square-root scale, so the middle shows).  Hover for the number, click a "

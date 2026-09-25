@@ -22,7 +22,7 @@ screens and this file.
 | Scale | The size of the map: Bible, Testament, Book, Chapter or Passage |
 | Weight | How many times a word occurs at the current scale |
 | Reach | How widely a word is spread across the current scale (horizontal) |
-| Depth | How thickly a word is piled up in one small place (vertical); the leading word of a passage. Planned, not yet built |
+| Depth | How thickly a word is piled up in one small place (vertical): the highest keyness a word reaches in any one chapter, and the chapter where it does. The leading words of a passage are the words whose deepest chapter it is |
 | Neighbors | The words that fall within the window of a given word more often than chance predicts |
 | Pull | How strongly one word draws a neighbor, the strength of one tie |
 | Shadow | A word's total influence at a scale: weight, reach and pull together |
@@ -194,7 +194,7 @@ Requires PyQt6 for the window only.
 
 ## Phase 4: the pictures
 
-Two pictures so far, drawn with Qt's own painter (no charting library):
+Three pictures, drawn with Qt's own painter (no charting library); the third, the reach-and-depth chart, is described under phase 4 completed below:
 
 The echo map, section 4c of a book page: chapters down the side, the
 twelve chief partner books across, each cell shaded by the weight of
@@ -393,6 +393,38 @@ in the Build box. `inspect_strongs.py`, `inspect_strongs_2.py` and
 Greek synonyms (G528 and G5221, both "meet") are still separate roots;
 folding cognates through the lexicon's derivations is a later step, as
 is the Septuagint text itself.
+
+## Phase 4 completed: depth and the reach-and-depth chart
+
+Depth, the last word in the vocabulary without a formula, is now built
+(0.6.0). Reach is horizontal: how many chapters and books a word
+touches. Depth is vertical: how far above expectation a word climbs in
+its one deepest chapter, measured as the highest keyness it reaches in
+any single chapter, with that chapter recorded. The builder computes
+it from the chapter table and stores it per book (`word_book.depth`,
+`depth_chapter`) and for the Bible (`words.depth`, `depth_book`,
+`depth_chapter`). The two measures pull apart exactly as the plan
+hoped: in Ezekiel, god H3069 has keyness 834 and reach 42 of 48
+chapters but depth only 69, a word spread through the book, while side
+H6285 has keyness 359, reach 5 chapters and depth 314 at chapter 48, a
+word piled up in one place. Bible-wide the deepest words are families
+H4940 in Numbers 26, suburbs H4054 in Joshua 21, the dukes of Edom in
+Genesis 36, plague and skin in Leviticus 13, son G5207 in Luke 3 and
+begat G1080 in Matthew 1: each a chapter that is a list.
+
+Depth appears in three places. The signature words table of a book
+page has depth and deepest columns beside spread, and the shadow map
+table of a word page has them for every book, with a "Deepest at" line
+in the notes. A chapter page opens with its leading words, the words
+whose deepest chapter in the whole book is this one (Ezekiel 40:
+cubits, gate, arches, measured, breadth; Matthew 25: talents, five,
+lamps). And section 5 of a book page is the reach-and-depth chart, the
+third picture: one point per signature word, reach across and depth up
+(square-root scale), with the quadrants named. Top right, wide and
+deep, are the book's leading words; bottom right its spread words; top
+left its local piles. Labels are placed so they do not overlap, hover
+names any point, a click shows the word's verses in its deepest
+chapter, and a double-click opens the word's page.
 
 ## Builds: keeping and going back
 

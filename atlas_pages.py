@@ -54,6 +54,7 @@ FOCUS_WORDS = ["day", "LORD"]   # always shown on a book page, plus top signatur
 HOME_PER_BOOK = 2               # roots per book on the testament home map
 HOME_MIN_WEIGHT = 5             # a root needs this many occurrences to be a home word
 HOME_LIST_N = 150               # roots in the "whose word is this" table
+REACH_DEPTH_N = 40              # words on the reach-and-depth chart
 ORDER_RUN_MIN = 4               # chapters in order before 4b reports "follows the order of"
 PARALLEL_TRIALS = (0.4, 0.5)    # shares tried beside PARALLEL_SHARE in the 4d footer
 PARALLEL_COMMON_SHARE = 0.10    # a root in more of a book's verses than this is formulaic there
@@ -87,6 +88,8 @@ class Section:
         self.cell_refs = {}         # heatmap: (row index, column index) -> verse refs
         self.cell_links = {}        # heatmap: (row, column) -> link dict, looked up on click
         self.value_label = "weight" # heatmap: what a cell's number is (tooltips, help)
+        self.x_column = None        # scatter: which columns give the point's place
+        self.y_column = None
 
     def add(self, row, refs=None, link=None):
         """Add a row with its verse references and link."""
@@ -131,6 +134,9 @@ class Atlas:
                              f"Run build_atlas.py again (about a minute) and retry.")
         self.settings = dict(self.db.execute("SELECT key, value FROM settings"))
         self.path = path
+        # Depth (0.6.0) needs columns an older build lacks; the pages
+        # leave the depth sections out rather than fail
+        self.has_depth = "depth" in {r[1] for r in self.db.execute("PRAGMA table_info(word_book)")}
         self.books = [r["book"] for r in self.db.execute(
             "SELECT book FROM books ORDER BY order_index")]
         self.book_info = {r["book"]: dict(r) for r in self.db.execute("SELECT * FROM books")}
@@ -657,10 +663,20 @@ def signature_words_section(atlas, report, title, rows, n_scope, scope_label,
     is on a book page.  Returns the roots in table order.
     """
     has_spread = chapters_total is not None
+    has_depth = has_spread and atlas.has_depth and chapter is None
     columns = ["word", "count", f"{scope_label}/1000", "rest/1000", "chapters", "books", "keyness", "note"]
     if has_spread:
         columns.insert(7, "spread")
-    note = ("rest/1000, books and keyness compare the word with the rest of its own testament "
+    if has_depth:
+        columns[8:8] = ["depth", "deepest"]
+    depths = {}
+    if has_depth:
+        depths = {r[0]: (r[1], r[2]) for r in atlas.db.execute(
+            "SELECT root, depth, depth_chapter FROM word_book WHERE book = ?", (book,))}
+    note = ("depth is the highest keyness the word reaches in any one chapter, and 'deepest' that "
+            "chapter: reach is horizontal, depth vertical.  "
+            if has_depth else "") + (
+            "rest/1000, books and keyness compare the word with the rest of its own testament "
             "when it is a Strong's number (H with the Old Testament, G with the New), and with "
             "the rest of the Bible when it is an English stem; a Greek word cannot occur in the "
             "Old Testament, so the Bible as a whole would make every Greek word look key.  "
@@ -685,6 +701,9 @@ def signature_words_section(atlas, report, title, rows, n_scope, scope_label,
             if share < LOCAL_SHARE:
                 notes.append("local")
             spread_rows.append((root, spread, share))
+        if has_depth:
+            d = depths.get(root, (0, None))
+            row += [round(d[0] or 0, 1), f"ch {d[1]}" if d[1] else "-"]
         renderings = atlas.renderings(root)
         if renderings > 1:
             notes.append(f"{renderings} renderings")
@@ -1199,7 +1218,37 @@ def book_page(atlas, book_name):
                         book, root, atlas.forms.get(root, root), book)
 
     echoes_section(atlas, report, f"4. Echoes [{book}] -> other books", book)
+    if atlas.has_depth:
+        reach_depth_section(atlas, report, f"5. Reach and depth [{book}]", book, info)
     return report
+
+
+def reach_depth_section(atlas, report, title, book, info):
+    """
+    The reach-and-depth chart: the book's signature words placed by how
+    widely they spread (reach: share of chapters reached) against how
+    thickly they pile up in their one deepest chapter (depth: highest
+    chapter keyness).  Top right are the leading words of the book,
+    wide and deep; bottom right the spread words; top left the local
+    piles (cubits in Ezekiel 40, talents in Matthew 25).
+    """
+    sec = report.section(
+        title, ["word", "reach", "depth", "deepest at", "count", "keyness"],
+        note=f"The {REACH_DEPTH_N} most key words of {book} placed by reach (percent of the book's "
+             f"{info['chapters']} chapters the word occurs in) against depth (the highest keyness it "
+             f"reaches in one chapter, with that chapter).  Wide and deep, top right, are the book's "
+             f"leading words; wide and shallow, bottom right, its spread words; narrow and deep, top "
+             f"left, its local piles.  Click a point for the word's verses in its deepest chapter; "
+             f"double-click for the word's page.",
+        kind="scatter")
+    sec.x_column, sec.y_column = "reach", "depth"
+    for r in atlas.db.execute(
+            "SELECT root, weight, chapters_reached, keyness, depth, depth_chapter FROM word_book "
+            "WHERE book = ? AND weight >= 3 ORDER BY keyness DESC LIMIT ?", (book, REACH_DEPTH_N)):
+        reach = round(100 * r["chapters_reached"] / info["chapters"])
+        sec.add([atlas.form(r["root"]), reach, round(r["depth"] or 0, 1),
+                 f"{book} {r['depth_chapter']}", r["weight"], round(r["keyness"], 1)],
+                link={"word": r["root"], "book": book, "chapter": r["depth_chapter"]})
 
 
 def chapter_page(atlas, book_name, chapter):
@@ -1214,6 +1263,15 @@ def chapter_page(atlas, book_name, chapter):
     report = Report(f"chapter_{book.lower().replace(' ', '_')}_{chapter}",
                     f"Chapter page [{label}] ({atlas.settings['translation']})")
     report.notes.append(f"{label}: {len(verses)} verses, {n_scope} words.")
+    if atlas.has_depth:
+        # The leading words of the passage: the words whose deepest place
+        # in the whole book is this chapter
+        leading = atlas.db.execute(
+            "SELECT root, depth FROM word_book WHERE book = ? AND depth_chapter = ? AND weight >= 3 "
+            "ORDER BY depth DESC LIMIT 6", (book, chapter)).fetchall()
+        if leading:
+            report.notes.append("Leading words (words whose deepest chapter in the book is this one): "
+                                + ", ".join(f"{atlas.form(r[0])} ({r[1]:.0f})" for r in leading) + ".")
 
     rows = [(r["root"], r["weight"], None, r["keyness"]) for r in atlas.db.execute(
         "SELECT root, weight, keyness FROM word_chapter "
@@ -1302,6 +1360,9 @@ def word_page(atlas, word, book_name=None):
         f"per 1,000 words of its {'testament' if is_strongs(root) else 'Bible'}), reach "
         f"{w['verses_reached']} verses, {w['chapters_reached']} chapters, "
         f"{w['books_reached']} of {atlas.comparison_books(root)} books, shadow {w['shadow']:.0f}.")
+    if atlas.has_depth and w["depth_book"]:
+        report.notes.append(f"Deepest at: {w['depth_book']} {w['depth_chapter']} (depth {w['depth']:.0f}, "
+                            f"the highest keyness the word reaches in any one chapter).")
     # Where the word is most at home: the books that prefer it most, by
     # keyness against the rest of its testament (or the Bible)
     home = atlas.db.execute(
@@ -1330,10 +1391,12 @@ def word_page(atlas, word, book_name=None):
 
     sec = report.section(
         f"1. Shadow map '{atlas.form(root)}' [each book]",
-        ["book", "count", "per 1000", "keyness", "reach", "shadow", "bar"],
+        ["book", "count", "per 1000", "keyness", "reach", "depth", "deepest", "shadow", "bar"]
+        if atlas.has_depth else ["book", "count", "per 1000", "keyness", "reach", "shadow", "bar"],
         note="One row per book in canonical order.  Keyness compares the book with the rest of "
-             "the Bible (negative = rarer than expected); reach is chapters of the book the word "
-             "occurs in; shadow is the summed pull of its neighbors inside that book.",
+             "its testament (negative = rarer than expected); reach is chapters of the book the "
+             "word occurs in; depth is the highest keyness it reaches in one chapter of the book, "
+             "and deepest that chapter; shadow is the summed pull of its neighbors inside that book.",
         kind="bars")
     sec.value_column = "per 1000"
     rows = {r["book"]: r for r in atlas.db.execute("SELECT * FROM word_book WHERE root = ?", (root,))}
@@ -1341,13 +1404,14 @@ def word_page(atlas, word, book_name=None):
     for book in atlas.books:
         info = atlas.book_info[book]
         r = rows.get(book)
+        depth_cells = [round(r["depth"] or 0, 1), f"ch {r['depth_chapter']}"] if (r is not None and atlas.has_depth) else (["", ""] if atlas.has_depth else [])
         if r is None:
-            sec.add([book, 0, "", "", f"0/{info['chapters']}", "", ""], link=None)
+            sec.add([book, 0, "", "", f"0/{info['chapters']}"] + depth_cells + ["", ""], link=None)
             continue
         rate = 1000 * r["weight"] / info["words"]
         bar = "#" * int(round(30 * rate / max_rate)) if max_rate else ""
         sec.add([book, r["weight"], round(rate, 2), round(r["keyness"], 1),
-                 f"{r['chapters_reached']}/{info['chapters']}", round(r["shadow"]), bar],
+                 f"{r['chapters_reached']}/{info['chapters']}"] + depth_cells + [round(r["shadow"]), bar],
                 refs=None, link={"word": root, "book": book})
 
     if book_name:
