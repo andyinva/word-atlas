@@ -497,6 +497,32 @@ class Atlas:
         rows.sort(key=lambda r: -r["pull"])
         return rows[:limit]
 
+    def english_stems(self):
+        """
+        A Bible-wide index of English stems, built once and kept: stem ->
+        list of the verse_ids holding it (a verse repeated once per
+        occurrence, so the length is the stem's count), and a cache of
+        surface -> stem.  On a Strong's build a Hebrew root never
+        matches a Greek one, so kin across the testaments has to be
+        found by the English words instead; this is what it is found by.
+        """
+        if getattr(self, "_english_stems", None) is None:
+            stems, surfaces = {}, {}
+            for verse_id, surface in self.db.execute("SELECT verse_id, surface FROM tokens WHERE is_stop = 0"):
+                key = surface.lower()
+                stem = surfaces.get(key)
+                if stem is None:
+                    stem = surfaces[key] = self.stemmer.root(key)
+                stems.setdefault(stem, []).append(verse_id)
+            self._english_stems = (stems, surfaces)
+        return self._english_stems
+
+    def english_rarity(self, stem):
+        """Rarity of an English stem across the whole Bible, as rarity() scores it."""
+        stems, _ = self.english_stems()
+        n = len(stems.get(stem, ()))
+        return -math.log(n / self.n_bible) if n else 0.0
+
     def rarity(self, root):
         """
         How rare a root is across the Bible, as -log(share of all words).
@@ -1922,11 +1948,7 @@ def kin_section(atlas, report, book, chapter):
         full.columns,
         note=f"The {KIN_CHAPTER_N} chapters of other books most kin to this one.  " + full.note
              + "  Echoes (section 4) need the same run of words; kin needs only the same rare "
-               "words, so it catches imagery retold in other phrasing.  The Kin page has the full list."
-             + ("  Kin is judged on Strong's roots, and a Hebrew root never matches a Greek one, so "
-                "on this build a chapter's kin lie in its own testament; the other testament is "
-                "reached only through the English-worded echoes of section 4."
-                if atlas.roots_mode == "strongs" else ""))
+               "words, so it catches imagery retold in other phrasing.  The Kin page has the full list.")
     for i, row in enumerate(full.rows[:KIN_CHAPTER_N]):
         sec.add(row, refs=full.refs[i], link=full.links[i])
 
@@ -2414,6 +2436,7 @@ def kin_page(atlas, book_name, chapter):
                 pairs.setdefault((s_id, t_id), set()).add(root)
 
     chapter_score, chapter_best, chapter_refs = Counter(), {}, {}
+    found_by = {}                     # (book, chapter) -> "roots" or "English"
     for (s_id, t_id), shared in pairs.items():
         if len(shared) < KIN_MIN_SHARED:
             continue
@@ -2424,25 +2447,88 @@ def kin_page(atlas, book_name, chapter):
         score = sum(atlas.rarity(r) for r in shared) * (1 + 0.5 * order / len(shared))
         b, c, ref = meta[t_id]
         chapter_score[(b, c)] += score
+        found_by[(b, c)] = "roots"
         chapter_refs.setdefault((b, c), []).extend([source_ref[s_id], ref])
         if score > chapter_best.get((b, c), (0,))[0]:
-            chapter_best[(b, c)] = (score, s_id, ref, shared, order)
+            chapter_best[(b, c)] = (score, s_id, ref, shared, order, source_order[s_id])
+
+    # -- the other testament, by English stem ---------------------------------
+    # On a Strong's build the pass above never crosses the testaments
+    # (H5104 river is not G4215 river), so Ezekiel 47 would never find
+    # Revelation 22.  The same test is run again with the English stems
+    # of the words, against the verses of the other testament only: the
+    # source verse's rare stems (1 in 2,000 across the Bible, on the
+    # English count) against every verse there holding one of them.
+    if atlas.roots_mode == "strongs":
+        stems, surfaces = atlas.english_stems()
+        testament = atlas.book_info[book]["testament"]
+        other_books = {b for b, info in atlas.book_info.items() if info["testament"] != testament}
+        sql = ("SELECT t.verse_id, v.reference, t.surface FROM tokens t JOIN verses v USING (verse_id) "
+               "WHERE v.book = ? AND v.chapter = ? AND t.is_stop = 0")
+        params = [book, chapter]
+        if v_from:
+            sql += " AND v.verse BETWEEN ? AND ?"
+            params += [v_from, v_to]
+        sql += " ORDER BY t.verse_id, t.position"
+        en_source, en_order = {}, {}
+        for verse_id, reference, surface in atlas.db.execute(sql, params):
+            stem = surfaces.get(surface.lower()) or atlas.stemmer.root(surface.lower())
+            if atlas.english_rarity(stem) >= threshold:
+                en_source.setdefault(verse_id, set()).add(stem)
+                en_order.setdefault(verse_id, []).append(stem)
+                source_ref[verse_id] = reference
+        en_pairs = {}
+        en_meta = {}
+        for s_id, s_stems in en_source.items():
+            for stem in s_stems:
+                for t_id in stems.get(stem, ()):
+                    if t_id not in en_meta:
+                        row = atlas.db.execute(
+                            "SELECT book, chapter, reference FROM verses WHERE verse_id = ?", (t_id,)).fetchone()
+                        en_meta[t_id] = (row[0], row[1], row[2]) if row[0] in other_books else None
+                    if en_meta[t_id] is None:
+                        continue
+                    en_pairs.setdefault((s_id, t_id), set()).add(stem)
+        for (s_id, t_id), shared in en_pairs.items():
+            if len(shared) < KIN_MIN_SHARED:
+                continue
+            target_order = [surfaces.get(r[0].lower()) or atlas.stemmer.root(r[0].lower())
+                            for r in atlas.db.execute(
+                                "SELECT surface FROM tokens WHERE verse_id = ? AND is_stop = 0 ORDER BY position",
+                                (t_id,))]
+            target_order = [st for st in target_order if st in shared]
+            order = in_order(en_order[s_id], target_order, shared)
+            score = sum(atlas.english_rarity(st) for st in shared) * (1 + 0.5 * order / len(shared))
+            b, c, ref = en_meta[t_id]
+            chapter_score[(b, c)] += score
+            found_by[(b, c)] = "English"
+            chapter_refs.setdefault((b, c), []).extend([source_ref[s_id], ref])
+            if score > chapter_best.get((b, c), (0,))[0]:
+                chapter_best[(b, c)] = (score, s_id, ref, shared, order, en_order[s_id])
 
     name = f"kin_{book.lower().replace(' ', '_')}_{chapter}" + (f"_{v_from}-{v_to}" if v_from else "")
     report = Report(name, f"Kin page [{label}] -> verses elsewhere sharing rare words")
     report.notes.append(f"{label}: {len(source)} verses holding {len(roots)} rare content words "
                         f"(1 in 2,000 or rarer across the Bible).")
+    strongs = atlas.roots_mode == "strongs"
     sec = report.section(
-        "1. Kin chapters", ["chapter", "score", "shared", "in order", "strongest pair", "{words shared}"],
+        "1. Kin chapters",
+        ["chapter", "score", "shared", "in order", "strongest pair", "{words shared}"] + (["found by"] if strongs else []),
         note=f"A verse elsewhere is kin when it shares {KIN_MIN_SHARED} or more rare words with one "
              f"verse here.  The pair scores the summed rarity of the shared words, raised by up to "
              f"half when they come in the same order in both verses; a chapter scores the sum of "
-             f"its kin pairs.  The strongest pair is shown, its words in the order of the verse here.")
+             f"its kin pairs.  The strongest pair is shown, its words in the order of the verse here."
+             + ("  Within the testament kin is found by Strong's roots; across it, where a Hebrew "
+                "root never matches a Greek one, by the English stems of the words instead ('found "
+                "by' says which), so a cross-testament row rests on the translators' wording."
+                if strongs else ""))
     for (b, c), total in chapter_score.most_common(KIN_N):
-        score, s_id, ref, shared, order = chapter_best[(b, c)]
-        seq = source_order[s_id]
-        words = ", ".join(atlas.form(r) for i, r in enumerate(seq) if r in shared and r not in seq[:i])
+        score, s_id, ref, shared, order, seq = chapter_best[(b, c)]
+        by = found_by[(b, c)]
+        words = ", ".join((r if by == "English" else atlas.form(r))
+                          for i, r in enumerate(seq) if r in shared and r not in seq[:i])
         refs = list(dict.fromkeys(chapter_refs[(b, c)]))
-        sec.add([f"{b} {c}", round(total, 1), len(shared), order, f"{source_ref[s_id]} / {ref}", words],
+        sec.add([f"{b} {c}", round(total, 1), len(shared), order, f"{source_ref[s_id]} / {ref}", words]
+                + ([by] if strongs else []),
                 refs=refs, link={"book": b, "chapter": c})
     return report

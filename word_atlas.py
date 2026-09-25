@@ -55,7 +55,7 @@ import atlas_query
 import atlas_text
 from atlas_ask import AskError
 
-VERSION = "0.9.2"
+VERSION = "0.9.3"
 
 # ---------------------------------------------------------------------------
 # Style: flat, 1 px frames, quiet grey headers, matching Bible Search Lite

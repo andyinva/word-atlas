@@ -31,7 +31,7 @@ screens and this file.
 | Formula | A fixed run of two or more words used as a set phrase; on a Strong's build a run of roots, found however its words are spelled, shown in its commonest English wording |
 | Echo | A formula that occurs in two or more separate books |
 | Echo partners | The books a text shares echoes with, counted over every echo |
-| Kin | Two verses sharing three or more rare words in any order; dependence through imagery rather than wording |
+| Kin | Two verses sharing three or more rare words in any order; dependence through imagery rather than wording. Found by Strong's roots within a testament and by English stems across the testaments |
 | Window | How many words either side count as "near" (5, inside the verse) |
 | Root | The base form that several spellings are gathered under: a Strong's number (H3068, G3056) where the text is tagged, otherwise an English stem |
 | Keyness | How much more often a word (or formula) occurs here than the rest of its testament or the Bible would predict; log-likelihood, so 10.8 is one chance in a thousand |
@@ -579,9 +579,18 @@ chapter is kin to. Chapter pages now end with section 6, the eight
 chapters elsewhere most kin to this one (the head of the Kin page), so
 imagery retold in other phrasing is in the file. On a Strong's build
 kin is judged on roots, and a Hebrew root never matches a Greek one,
-so a chapter's kin lie in its own testament; the other testament is
-reached only through the English-worded echoes of section 4. Kin by
-English stem across the testaments is a possible next step.
+so the first pass keeps to the chapter's own testament. A second pass
+(0.9.3) runs the same test across the testaments by the English stems
+of the words: a Bible-wide stem index is built once per session (half
+a second), the chapter's rare stems (one in 2,000 on the English
+count) are matched against the verses of the other testament, and a
+"found by" column says which pass a row came from. Ezekiel 47 now
+finds Revelation 22 (river, tree, leaf, fruit, month; 47:12 and
+22:2), Mark 13 finds Isaiah 13 and 60 and Ecclesiastes 12 (sun,
+darkened, moon, light), and Daniel 7 finds Revelation 17, 13, 5 and 4
+(beast, ten, horn; throne, sit, white). An English row rests on the
+translators' wording, as the cross-testament echoes do, and the
+column keeps that visible.
 
 Two smaller changes from the same page. Absorption now reaches across
 a single stop word, and runs before inference, so "father in law" and

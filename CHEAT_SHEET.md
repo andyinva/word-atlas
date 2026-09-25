@@ -20,7 +20,7 @@ There are four kinds of page:
 | Book | One book of the Bible: its signature words, its formulas (set phrases), the neighbors of its key words, and its echoes of other books |
 | Chapter | The same for a single chapter, plus a synopsis of that chapter against its two closest partner books |
 | Word | One word: a shadow map of where it falls across all 66 books, its neighbors, and the formulas it lives in |
-| Kin | For a chapter or verse range, the other chapters in the Bible most closely related to it |
+| Kin | For a chapter or verse range, the other chapters in the Bible most closely related to it: by Strong's roots within the testament, by English stems across it (the "found by" column) |
 | Testament | For the Old or New Testament: the words most at home in each book, a home map of books by words, and a table that says whose word any Strong's number is |
 | Compare | Two books chapter against chapter: a map of shared rare phrasing, each chapter's closest chapter in the other book both ways, and whether one follows the other's order |
 
