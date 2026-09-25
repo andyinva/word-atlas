@@ -28,7 +28,8 @@ import re
 import sqlite3
 from collections import Counter, defaultdict
 
-from atlas_sections import divisions_of, find_section, sections_of, section_of, seam_chapters
+from atlas_sections import (FEW_WORDS, divisions_of, find_section, sections_of, section_of,
+                            seam_chapters, span_text)
 from atlas_text import (ATLAS_PATH, ECHO_MAX_TOTAL, FOCUS_MIN_OCCURRENCES,
                         FORMULA_LENGTHS, PARALLEL_METHOD, PARALLEL_MIN_SHARED,
                         PARALLEL_RUN, PARALLEL_RUN_CONTENT, PARALLEL_SHARE, STOPLIST,
@@ -44,7 +45,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.0"   # the program version; the window title and every report print it
+VERSION = "0.10.1"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -1103,12 +1104,15 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None):
     """
     Echoes between a book (or chapter, or chapter range) and other
     books, rarest first.  chapter is None for the whole book, an int for
-    one chapter, or a (first, last) tuple for a section; scope_name is
-    how a section is called in the titles.
+    one chapter, or a list of chapters for a section (not always a run:
+    Asaph is Psalm 50 and 73 to 83); scope_name is how a section is
+    called in the titles.
     """
-    is_range = isinstance(chapter, tuple)
+    is_range = isinstance(chapter, (tuple, list, set, frozenset))
     if is_range:
-        where, params = " AND verses.chapter BETWEEN ? AND ?", (book, chapter[0], chapter[1])
+        chapter = sorted(chapter)
+        where = " AND verses.chapter IN (" + ",".join("?" * len(chapter)) + ")"
+        params = (book, *chapter)
     elif chapter:
         where, params = " AND verses.chapter = ?", (book, chapter)
     else:
@@ -1541,7 +1545,7 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None):
             chapter_verses = {r[0]: r[1] for r in atlas.db.execute(
                 "SELECT chapter, COUNT(*) FROM verses WHERE book = ? GROUP BY chapter", (book,))}
             if is_range:
-                chapter_verses = {c: n for c, n in chapter_verses.items() if chapter[0] <= c <= chapter[1]}
+                chapter_verses = {c: n for c, n in chapter_verses.items() if c in chapter}
             with_a = dict(parallels(atlas, book, a_book))
             with_b = dict(parallels(atlas, book, b_book))
             # A verse carrying a quotation-grade echo with the partner is a
@@ -1648,7 +1652,7 @@ def book_page(atlas, book_name):
         reach_depth_section(atlas, report, f"5. Reach and depth [{book}]", book, info)
     if info["chapters"] > 2:
         within_book_section(atlas, report, f"6. Echoes within [{book}]: chapter against chapter", book)
-    if sections_of(book):
+    if sections_of(book, None, info["chapters"]):
         sections_section(atlas, report, f"7. Sections [{book}]", book, info)
     return report
 
@@ -1677,11 +1681,16 @@ def sections_section(atlas, report, title, book, info):
     book_words = sum(words_by_ch.values())
     number = title.split(".")[0]
 
-    for d_index, (division, secs) in enumerate(divisions_of(book)):
+    for d_index, (division, secs) in enumerate(divisions_of(book, info["chapters"])):
         prefix = number if d_index == 0 else f"{number}.{d_index + 1}"
-        names = [name for name, first, last in secs]
-        chapters_of = {name: list(range(first, last + 1)) for name, first, last in secs}
+        names = [name for name, chs, rest in secs]
+        chapters_of = {name: list(chs) for name, chs, rest in secs}
         sec_words = {name: sum(words_by_ch.get(c, 0) for c in chapters_of[name]) for name in names}
+        firsts = {name: chs[0] for name, chs, rest in secs}
+        # A section under FEW_WORDS words prints 'few' beside its name:
+        # per-1,000 scaling amplifies a 446-word psalm into a partner of
+        # everything, as 4a's 'few' warns for small partner books
+        shown_name = {name: (f"{name} (few)" if sec_words[name] < FEW_WORDS else name) for name in names}
 
         sec = report.section(
             f"{prefix}. Sections [{book}]: {division}",
@@ -1690,15 +1699,17 @@ def sections_section(atlas, report, title, book, info):
                  f"change them).  Leading words are the words most key to the section against the rest "
                  f"of the book, at least {HOME_MIN_WEIGHT} occurrences; 'in N of M chapters' says whether "
                  f"the word is the section's voice or one chapter's (Psalm 119 gives Book V its "
-                 f"commandments, precepts and statutes).  Double-click a row for its first chapter; "
-                 f"the section's own page is [{book}: section name] in the ask box.")
-        for name, first, last in secs:
-            chs = chapters_of[name]
+                 f"commandments, precepts and statutes).  A division that leaves chapters out gets a "
+                 f"'Rest of {book}' row holding them.  A section under {FEW_WORDS} words is marked 'few': "
+                 f"read its rows lightly.  Double-click a row for its first chapter; the section's own "
+                 f"page is [{book}: section name] in the ask box.")
+        for name, chs, is_rest in secs:
             n_words = sec_words[name]
             rest = book_words - n_words
+            in_chs = set(chs)
             scored = []
             for root, by_ch in weight.items():
-                in_sec = {c: w for c, w in by_ch.items() if first <= c <= last}
+                in_sec = {c: w for c, w in by_ch.items() if c in in_chs}
                 a = sum(in_sec.values())
                 if a < HOME_MIN_WEIGHT:
                     continue
@@ -1708,8 +1719,9 @@ def sections_section(atlas, report, title, book, info):
                     scored.append((k, root, a, len(in_sec)))
             scored.sort(key=lambda t: -t[0])
             leading = ", ".join(f"{atlas.form(r)} ({a} in {n}/{len(chs)}, {k:.0f})" for k, r, a, n in scored[:6])
-            sec.add([name, f"{first}-{last}", sum(verses_by_ch.get(c, 0) for c in chs), n_words, leading or "-"],
-                    link={"book": book, "chapter": first, "section": name})
+            sec.add([shown_name[name], span_text(chs), sum(verses_by_ch.get(c, 0) for c in chs), n_words,
+                     leading or "-"],
+                    link={"book": book, "chapter": firsts[name], "section": name})
 
         # a. The echo map at section scale
         cells = getattr(report, "echo_cells", None)
@@ -1723,28 +1735,28 @@ def sections_section(atlas, report, title, book, info):
                      "not outweigh a short one.  Double-click a row for the section's first chapter.",
                 kind="heatmap")
             heat.value_label = "echo weight per 1000 words"
-            for name, first, last in secs:
+            for name, chs, is_rest in secs:
                 n_words = sec_words[name] or 1
-                row = [name]
+                row = [shown_name[name]]
                 for pb in partners:
                     total = sum(sum(cells.get((c, pb), {}).values()) for c in chapters_of[name])
                     row.append(round(1000 * total / n_words))
-                heat.add(row, link={"book": book, "chapter": first, "section": name})
+                heat.add(row, link={"book": book, "chapter": firsts[name], "section": name})
 
         # b. The book against itself at section scale
         within = getattr(report, "within_cells", None)
         if within and len(secs) > 1:
             heat = report.section(
                 f"{prefix}b. Section against section [{book}]",
-                ["section"] + names,
+                ["section"] + [shown_name[n] for n in names],
                 note="Section 6 summed to sections: each cell the shared rare phrasing between two parts "
                      "of the book (summed rarity, per 1,000 words of the two parts together).  The "
                      "diagonal is a part against itself, its own internal repetition.",
                 kind="heatmap")
             heat.value_label = "shared weight per 1000 words"
-            for name_a, first_a, last_a in secs:
-                row = [name_a]
-                for name_b, first_b, last_b in secs:
+            for name_a, chs_a, rest_a in secs:
+                row = [shown_name[name_a]]
+                for name_b, chs_b, rest_b in secs:
                     total = 0
                     for ca in chapters_of[name_a]:
                         for cb in chapters_of[name_b]:
@@ -1754,7 +1766,7 @@ def sections_section(atlas, report, title, book, info):
                                 total += within.get((cb, ca), 0)
                     n_words = (sec_words[name_a] + (sec_words[name_b] if name_a != name_b else 0)) or 1
                     row.append(round(1000 * total / n_words))
-                heat.add(row, link={"book": book, "chapter": first_a, "section": name_a})
+                heat.add(row, link={"book": book, "chapter": firsts[name_a], "section": name_a})
 
         # c. Reach and depth with the section as the unit
         if len(secs) > 1:
@@ -1791,8 +1803,9 @@ def reach_depth_by_section(atlas, report, title, book, secs, sec_words):
         total_weight = total["weight"] if total else sum(by_ch.values())
         n_compare = atlas.comparison_words(root)
         best, best_name, reached = 0.0, "-", 0
-        for name, first, last in secs:
-            a = sum(w for c, w in by_ch.items() if first <= c <= last)
+        for name, chs, is_rest in secs:
+            in_chs = set(chs)
+            a = sum(w for c, w in by_ch.items() if c in in_chs)
             if a == 0:
                 continue
             reached += 1
@@ -1815,19 +1828,22 @@ def section_page(atlas, book_name, section_name):
     atlas_sections.py names it.
     """
     book = atlas.find_book(book_name)
-    hit = find_section(book, section_name)
+    n_chapters = atlas.book_info[book]["chapters"]
+    hit = find_section(book, section_name, n_chapters)
     if hit is None:
-        names = ", ".join(sec[0] for d, secs in divisions_of(book) for sec in secs)
+        names = ", ".join(sec[0] for d, secs in divisions_of(book, n_chapters) for sec in secs)
         raise ValueError(f"{book} has no section '{section_name}'"
                          + (f"; its sections are: {names}." if names else "; it has no sections in atlas_sections.py."))
-    division, (name, first, last) = hit
-    verses = [v for v in atlas.verses_of(book) if first <= v["chapter"] <= last]
+    division, (name, chapters, is_rest) = hit
+    in_chs = set(chapters)
+    first, last = chapters[0], chapters[-1]
+    verses = [v for v in atlas.verses_of(book) if v["chapter"] in in_chs]
     atlas.use_scope(book)
     n_scope = sum(len(v["word_string"].split()) for v in verses)
     label = f"{book}: {name}"
     report = Report(f"section_{book.lower().replace(' ', '_')}_{first}_{last}",
                     f"Section page [{label}] ({atlas.settings['translation']})")
-    report.notes.append(f"{label} ({division}), chapters {first} to {last}: {len(verses)} verses, "
+    report.notes.append(f"{label} ({division}), chapters {span_text(chapters)}: {len(verses)} verses, "
                         f"{n_scope} words; the rest of {book}: "
                         f"{atlas.book_info[book]['words'] - n_scope} words.")
 
@@ -1835,8 +1851,8 @@ def section_page(atlas, book_name, section_name):
     # keyness against the rest of the testament (as a book's is)
     counts, chapters_hit = Counter(), {}
     for root, ch, w in atlas.db.execute(
-            "SELECT root, chapter, weight FROM word_chapter WHERE book = ? AND chapter BETWEEN ? AND ?",
-            (book, first, last)):
+            "SELECT root, chapter, weight FROM word_chapter WHERE book = ? AND chapter IN ("
+            + ",".join("?" * len(chapters)) + ")", (book, *chapters)):
         counts[root] += w
         chapters_hit.setdefault(root, set()).add(ch)
     scored = []
@@ -1851,7 +1867,7 @@ def section_page(atlas, book_name, section_name):
     scored.sort(key=lambda t: -t[3])
     rows = scored[:TOP_N]
     top = signature_words_section(atlas, report, f"1. Signature words [{label}]", rows,
-                                  n_scope, "section", book, None, last - first + 1)
+                                  n_scope, "section", book, None, len(chapters))
 
     signature_formulas_section(atlas, report, f"2. Signature formulas [{label}]", verses, book, n_scope)
 
@@ -1864,10 +1880,10 @@ def section_page(atlas, book_name, section_name):
     report.sections[-len(focus)].note = ("Neighbors is stored at book and Bible scale, so the left "
                                          "column is the whole book.  " + report.sections[-len(focus)].note)
 
-    echoes_section(atlas, report, f"4. Echoes [{label}] -> other books", book, (first, last), scope_name=label)
-    if last > first:
+    echoes_section(atlas, report, f"4. Echoes [{label}] -> other books", book, chapters, scope_name=label)
+    if len(chapters) > 1:
         within_book_section(atlas, report, f"6. Echoes within [{label}]: chapter against chapter",
-                            book, chapter_range=(first, last))
+                            book, chapter_range=chapters)
     return report
 
 
@@ -1947,7 +1963,8 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
     """
     verses = atlas.verses_of(book)
     if chapter_range is not None:     # a section: only its chapters
-        verses = [v for v in verses if chapter_range[0] <= v["chapter"] <= chapter_range[1]]
+        wanted = set(chapter_range)
+        verses = [v for v in verses if v["chapter"] in wanted]
     by_roots = atlas.phrase_column != "word_string"
     places = {}                       # key -> {chapter: [refs]}
     wordings = {}                     # key -> English wording -> count

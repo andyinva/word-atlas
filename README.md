@@ -775,6 +775,21 @@ pass the floor too; 4c carries the chapters of each chief partner most
 drawn on; and 6b says that the Compare maps use the stricter refrain
 rule (three chapters and four verses).
 
+The second Psalms read of the layer (0.10.1) found three limits in
+the Collections division, all fixed. A division that leaves chapters
+out now gets a "Rest of Psalms" section holding them, so the
+Elohistic Psalter is set against 1 to 41 and 84 to 150 on every table
+and Psalm 119's precepts are no longer "reach 0, deepest at -" in the
+collections' chart. A section may be a list of chapters rather than a
+run: ("Asaph", [50, (73, 83)]) and ("Korah", [(42, 49), (84, 88)]),
+so Asaph's covenant lawsuit in Psalm 50 sits with the history psalms
+where it belongs instead of being a single 446-word section whose
+per-1,000 echo row was amplified into a partner of everything. And a
+section under 1,000 words (FEW_WORDS) is marked "few" beside its name,
+as 4a marks a small partner, so its rows are read lightly. The section
+page and the echo and within-book sections take a chapter list, not a
+range, so a split section's page runs over its own chapters.
+
 ## Two books, chapter against chapter
 
 The Compare page (0.9.0) is the within-book map run between two

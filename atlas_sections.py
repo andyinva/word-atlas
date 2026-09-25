@@ -13,12 +13,17 @@ that scale, and lets the refrains that mark the seams be seen as such.
 This file is the table.  Edit it as you would BOOK_DATES.  A book may
 have more than one DIVISION, since the Psalter is five books and also
 a set of collections and also an Elohistic block that cuts across the
-books: each division is a name and a list of sections, (name, first
-chapter, last chapter), in order.  Sections of a division need not
-cover the book (the collections leave gaps) and need not be many (the
-Elohistic Psalter is one).  The first division is the book's main one
-and is what a page means by "sections"; the others follow it.  A book
-not listed here has no sections and its pages are unchanged.
+books: each division is a name and a list of sections.  A section is
+(name, first chapter, last chapter) for a run of chapters, or (name,
+[chapters]) for a list, where each item is a chapter or a (first,
+last) run: ("Asaph", [50, (73, 83)]).  Sections of a division need not
+cover the book (the collections leave gaps): the chapters left out
+become a "Rest of the book" section on the pages, so the Elohistic
+Psalter is set against the rest of the Psalter and Psalm 119 is not
+lost from the collections' reach.  The first division is the book's
+main one and is what a page means by "sections"; the others follow
+it.  A book not listed here has no sections and its pages are
+unchanged.
 """
 
 SECTIONS = {
@@ -52,10 +57,8 @@ SECTIONS = {
             ("Book V", 107, 150),
         ],
         "Collections": [
-            ("Korah 42-49", 42, 49),
-            ("Asaph 50", 50, 50),
-            ("Asaph 73-83", 73, 83),
-            ("Korah 84-88", 84, 88),
+            ("Korah", [(42, 49), (84, 88)]),
+            ("Asaph", [50, (73, 83)]),
             ("Egyptian Hallel", 113, 118),
             ("Songs of Ascents", 120, 134),
             ("Final Hallel", 146, 150),
@@ -108,17 +111,65 @@ SECTIONS = {
 }
 
 
-def divisions_of(book):
-    """The divisions of a book: [(division name, [(name, first, last), ...])], main first."""
+REST_PREFIX = "Rest of"      # the name given to the chapters a division leaves out
+FEW_WORDS = 1000             # a section under this many words is marked 'few'
+
+
+def _chapters(spec):
+    """The chapter list of a section spec: (name, first, last) or (name, [items])."""
+    if len(spec) == 3:
+        return list(range(spec[1], spec[2] + 1))
+    out = []
+    for item in spec[1]:
+        if isinstance(item, tuple):
+            out.extend(range(item[0], item[1] + 1))
+        else:
+            out.append(item)
+    return sorted(set(out))
+
+
+def span_text(chapters):
+    """Chapters as a reader writes them: '42-49, 84-88' or '50, 73-83'."""
+    runs, start, prev = [], None, None
+    for c in chapters:
+        if start is None:
+            start = prev = c
+        elif c == prev + 1:
+            prev = c
+        else:
+            runs.append((start, prev))
+            start = prev = c
+    if start is not None:
+        runs.append((start, prev))
+    return ", ".join(f"{a}-{b}" if a != b else f"{a}" for a, b in runs)
+
+
+def divisions_of(book, n_chapters=None):
+    """
+    The divisions of a book, main first: [(division name, [section, ...])].
+    A section is (name, [chapters], is_rest).  With n_chapters given, a
+    division that leaves chapters out gets a final "Rest of <book>"
+    section holding them, marked is_rest, so every chapter of the book
+    is in exactly one section of every division.
+    """
     table = SECTIONS.get(book, {})
     if isinstance(table, list):            # a bare list is one unnamed division
-        return [("Sections", list(table))]
-    return [(name, list(secs)) for name, secs in table.items()]
+        table = {"Sections": table}
+    out = []
+    for division, specs in table.items():
+        secs = [(spec[0], _chapters(spec), False) for spec in specs]
+        if n_chapters:
+            covered = {c for name, chs, rest in secs for c in chs}
+            left = [c for c in range(1, n_chapters + 1) if c not in covered]
+            if left:
+                secs.append((f"{REST_PREFIX} {book}", left, True))
+        out.append((division, secs))
+    return out
 
 
-def sections_of(book, division=None):
+def sections_of(book, division=None, n_chapters=None):
     """The sections of a book's main division (or the named one), or an empty list."""
-    divs = divisions_of(book)
+    divs = divisions_of(book, n_chapters)
     if not divs:
         return []
     if division is None:
@@ -129,9 +180,9 @@ def sections_of(book, division=None):
     return []
 
 
-def find_section(book, name):
-    """A section by its name in any division: (division, (name, first, last)), or None."""
-    for division, secs in divisions_of(book):
+def find_section(book, name, n_chapters=None):
+    """A section by its name in any division: (division, section), or None."""
+    for division, secs in divisions_of(book, n_chapters):
         for sec in secs:
             if sec[0].lower() == name.lower():
                 return division, sec
@@ -139,28 +190,36 @@ def find_section(book, name):
 
 
 def section_of(book, chapter, division=None):
-    """The (name, first, last) a chapter falls in within a division, or None."""
-    for name, first, last in sections_of(book, division):
-        if first <= chapter <= last:
-            return (name, first, last)
+    """The section a chapter falls in within a division, or None."""
+    for sec in sections_of(book, division):
+        if chapter in sec[1]:
+            return sec
     return None
 
 
 def seam_chapters(book, division=None):
     """
-    The chapters at the seams of a division: the last chapter of each
-    section but the final one, and the first chapter of each but the
-    first (for a division with gaps, every first and last chapter).  A
-    refrain whose verses fall in these is a boundary marker.
+    The chapters at the seams of a division, the listed sections only
+    (never the rest-of-book section): the last chapter of each section
+    but the final one and the first of each but the first when the
+    sections run on from one another; every first and last chapter of
+    every run when they do not.  A refrain whose verses fall in these
+    is a boundary marker.
     """
-    secs = sections_of(book, division)
+    secs = [sec for sec in sections_of(book, division) if not sec[2]]
     if not secs:
         return set(), set()
-    contiguous = all(secs[i][2] + 1 == secs[i + 1][1] for i in range(len(secs) - 1))
+    runs = []
+    for name, chs, rest in secs:
+        for part in span_text(chs).split(", "):
+            a, _, b = part.partition("-")
+            runs.append((int(a), int(b or a)))
+    runs.sort()
+    contiguous = all(runs[i][1] + 1 == runs[i + 1][0] for i in range(len(runs) - 1))
     if contiguous:
-        closing = {last for name, first, last in secs[:-1]}
-        opening = {first for name, first, last in secs[1:]}
+        closing = {b for a, b in runs[:-1]}
+        opening = {a for a, b in runs[1:]}
     else:
-        closing = {last for name, first, last in secs}
-        opening = {first for name, first, last in secs}
+        closing = {b for a, b in runs}
+        opening = {a for a, b in runs}
     return closing, opening

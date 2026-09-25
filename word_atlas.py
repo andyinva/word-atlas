@@ -906,9 +906,10 @@ class WordAtlasWindow(QMainWindow):
     def update_section_list(self, book):
         """Fill the Section box with the book's sections, division by division."""
         self.section_box.clear()
-        for division, secs in atlas_sections.divisions_of(book):
-            for name, first, last in secs:
-                self.section_box.addItem(f"{name}  ({first}-{last}, {division})", name)
+        n_chapters = self.atlas.book_info.get(book, {}).get("chapters")
+        for division, secs in atlas_sections.divisions_of(book, n_chapters):
+            for name, chapters, is_rest in secs:
+                self.section_box.addItem(f"{name}  ({atlas_sections.span_text(chapters)}, {division})", name)
         if self.section_box.count() == 0:
             self.section_box.addItem("(no sections in atlas_sections.py)", "")
 
