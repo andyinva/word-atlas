@@ -43,7 +43,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.9.4"   # the program version; the window title and every report print it
+VERSION = "0.9.6"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -770,15 +770,37 @@ def _parallels_overlap(atlas, book, partner, share):
     # both sides, or "thus saith the Lord GOD" would pair every oracle
     # with some verse of Jeremiah
     skip = common_roots(atlas, book)
+    # Across the testaments a Hebrew root never matches a Greek one, so
+    # the English stems of the words stand in for the roots (as the
+    # cross-testament echoes and kin do); the book's formulaic words
+    # are then the stems in more than PARALLEL_COMMON_SHARE of its verses
+    cross = (atlas.roots_mode == "strongs"
+             and atlas.book_info[book]["testament"] != atlas.book_info[partner]["testament"])
+    if cross:
+        _, surfaces = atlas.english_stems()
 
     def content_roots(name):
         out = {}
-        for ref, root in atlas.db.execute(
-                "SELECT v.reference, t.root FROM tokens t JOIN verses v USING (verse_id) "
+        column = "surface" if cross else "root"
+        for ref, unit in atlas.db.execute(
+                f"SELECT v.reference, t.{column} FROM tokens t JOIN verses v USING (verse_id) "
                 "WHERE v.book = ? AND t.is_stop = 0 ORDER BY t.verse_id, t.position", (name,)):
-            if root not in skip:
-                out.setdefault(ref, []).append(root)
+            if cross:
+                unit = surfaces.get(unit.lower()) or atlas.stemmer.root(unit.lower())
+            if unit not in skip:
+                out.setdefault(ref, []).append(unit)
         return out
+
+    if cross:
+        # The formulaic stems of the book, counted by verses reached
+        reached = {}
+        for ref, unit in atlas.db.execute(
+                "SELECT v.reference, t.surface FROM tokens t JOIN verses v USING (verse_id) "
+                "WHERE v.book = ? AND t.is_stop = 0", (book,)):
+            stem = surfaces.get(unit.lower()) or atlas.stemmer.root(unit.lower())
+            reached.setdefault(stem, set()).add(ref)
+        limit = PARALLEL_COMMON_SHARE * atlas.book_info[book]["verses"]
+        skip = {stem for stem, refs in reached.items() if len(refs) > limit}
 
     mine, theirs = content_roots(book), content_roots(partner)
     index = {}
@@ -2032,7 +2054,7 @@ def word_page(atlas, word, book_name=None, exact=False):
         if gloss:
             report.notes.append(f"{root} {gloss}")
         spelled = ", ".join(f"{sp} {n}" for sp, n in atlas.spellings(root))
-        report.notes.append(f"Spelled in this text as: {spelled}.")
+        report.notes.append(f"Spelled in the Bible as: {spelled}.")
     else:
         report.notes.append(f"Root '{root}', spelled {atlas.form(root)}"
                             + ("; no Strong's number is attached to this word."
@@ -2041,15 +2063,19 @@ def word_page(atlas, word, book_name=None, exact=False):
         f"Bible scale: weight {w['weight']} ({per_thousand(w['weight'], atlas.comparison_words(root))} "
         f"per 1,000 words of its {'testament' if is_strongs(root) else 'Bible'}), reach "
         f"{w['verses_reached']} verses, {w['chapters_reached']} chapters, "
-        f"{w['books_reached']} of {atlas.comparison_books(root)} books, shadow {w['shadow']:.0f}.")
+        f"{w['books_reached']} of {atlas.comparison_books(root)} books, shadow {w['shadow']:.0f} "
+        f"(the shadow is the summed pull of every neighbour the word draws more often than chance, "
+        f"within {atlas.window} words: its total influence over the words around it).")
     if atlas.has_depth and w["depth_book"]:
         report.notes.append(f"Deepest at: {w['depth_book']} {w['depth_chapter']} (depth {w['depth']:.0f}, "
                             f"the highest keyness the word reaches in any one chapter).")
     # Where the word is most at home: the books that prefer it most, by
     # keyness against the rest of its testament (or the Bible)
+    # At least HOME_MIN_WEIGHT occurrences, as the testament page asks,
+    # so two occurrences in Jude are not a second home
     home = atlas.db.execute(
-        "SELECT book, weight, keyness FROM word_book WHERE root = ? AND keyness > 0 "
-        "ORDER BY keyness DESC LIMIT 3", (root,)).fetchall()
+        "SELECT book, weight, keyness FROM word_book WHERE root = ? AND keyness > 0 AND weight >= ? "
+        "ORDER BY keyness DESC LIMIT 3", (root, HOME_MIN_WEIGHT)).fetchall()
     if home:
         report.notes.append("At home in: " + "; ".join(
             f"{h['book']} ({h['weight']}, keyness {h['keyness']:.0f})" for h in home) + ".")
@@ -2080,7 +2106,15 @@ def word_page(atlas, word, book_name=None, exact=False):
     sec.value_column = "per 1000"
     rows = {r["book"]: r for r in atlas.db.execute("SELECT * FROM word_book WHERE root = ?", (root,))}
     max_rate = max((1000 * r["weight"] / atlas.book_info[b]["words"] for b, r in rows.items()), default=1)
-    for book in atlas.books:
+    # A Strong's number belongs to one testament; the other's 39 (or 27)
+    # zero rows are noise, so only the word's own testament is listed
+    shown_books = atlas.books
+    if is_strongs(root):
+        own = "Old" if root.startswith("H") else "New"
+        shown_books = [b for b in atlas.books if atlas.book_info[b]["testament"] == own]
+        sec.note += (f"  {root} is a {'Hebrew' if own == 'Old' else 'Greek'} root, so only the "
+                     f"{own} Testament is listed; the other testament has none of it.")
+    for book in shown_books:
         info = atlas.book_info[book]
         r = rows.get(book)
         depth_cells = [round(r["depth"] or 0, 1), f"ch {r['depth_chapter']}"] if (r is not None and atlas.has_depth) else (["", ""] if atlas.has_depth else [])
@@ -2280,10 +2314,25 @@ def compare_page(atlas, a_name, b_name):
         chapters.update({("b", c): refs for c, refs in places_b[key].items()})
         kept[key] = (chapters, display)
     pieces = drop_pieces(kept)
+    # A phrase that is a refrain of either book (REFRAIN_MIN_CHAPTERS or
+    # more of its chapters) is set aside, as 6b does within a book: "a
+    # voice from heaven saying" is Revelation's own, and with the verse
+    # cap counted over both books together it slipped under and made
+    # Daniel 4 the closest chapter of four Revelation chapters
+    refrains = {}                     # key -> the book it is a refrain of
+    for key, (chapters, display) in kept.items():
+        if key in pieces:
+            continue
+        n_a = sum(1 for (side, c) in chapters if side == "a")
+        n_b = sum(1 for (side, c) in chapters if side == "b")
+        if n_a >= REFRAIN_MIN_CHAPTERS:
+            refrains[key] = a_book
+        elif n_b >= REFRAIN_MIN_CHAPTERS:
+            refrains[key] = b_book
 
     cell_weight, cell_count, cell_refs, cell_best = Counter(), Counter(), {}, {}
     for key, (chapters, display) in kept.items():
-        if key in pieces:
+        if key in pieces or key in refrains:
             continue
         weight = phrase_weight(atlas, key, column)
         a_chs = [c for (side, c) in chapters if side == "a"]
@@ -2305,7 +2354,8 @@ def compare_page(atlas, a_name, b_name):
         f"1. Chapter map [{a_book}] x [{b_book}]", [f"{a_book} \\ {b_book}"] + [str(c) for c in b_chapters],
         note=f"Chapters of {a_book} down, chapters of {b_book} across, each cell the summed rarity of "
              f"the phrases of three or more words the two chapters share and at most {CROSS_MAX_VERSES} "
-             f"verses of the two books hold together, so neither book's refrains fill the map.  A "
+             f"verses of the two books hold together.  A phrase found in {REFRAIN_MIN_CHAPTERS} or more "
+             f"chapters of either book is that book's refrain and is set aside first.  A "
              f"diagonal band is one book following the other's order; a column is a chapter the "
              f"other book keeps returning to.  Click a cell for the verses on both sides; double-click "
              f"for the {a_book} chapter's page; tick 'each column on its own scale' for the fainter pairs.",
@@ -2323,6 +2373,22 @@ def compare_page(atlas, a_name, b_name):
     heat.footer.append("Strongest pairs: " + "; ".join(
         f"{a_book} {ca} and {b_book} {cb} ({round(w)}, {cell_count[(ca, cb)]} phrases: "
         f"\"{cell_best[(ca, cb)][1]}\")" for (ca, cb), w in strongest) + ".")
+    # Column and row totals: the chapters of each book the other draws
+    # on most, so the reader need not add the columns up (Jeremiah 23
+    # and 32 recur as Ezekiel's partners; the totals say so at once)
+    col_total, row_total = Counter(), Counter()
+    for (ca, cb), w in cell_weight.items():
+        col_total[cb] += w
+        row_total[ca] += w
+    heat.footer.append(f"Chapters of {b_book} most drawn on: " + ", ".join(
+        f"{cb} ({round(w)})" for cb, w in col_total.most_common(6)) + ".")
+    heat.footer.append(f"Chapters of {a_book} most drawn on: " + ", ".join(
+        f"{ca} ({round(w)})" for ca, w in row_total.most_common(6)) + ".")
+    if refrains:
+        shown = sorted(refrains.items(), key=lambda kv: -phrase_weight(atlas, kv[0], column))[:8]
+        heat.footer.append("Refrains set aside: " + "; ".join(
+            f"\"{kept[key][1]}\" ({book})" for key, book in shown)
+            + (f"; and {len(refrains) - 8} more" if len(refrains) > 8 else "") + ".")
 
     def partner_table(number, this, other, this_chapters, other_chapters, lookup):
         sec = report.section(
@@ -2368,6 +2434,75 @@ def compare_page(atlas, a_name, b_name):
 
     partner_table(2, a_book, b_book, a_chapters, b_chapters, lambda c, o: (c, o))
     partner_table(3, b_book, a_book, b_chapters, a_chapters, lambda c, o: (o, c))
+
+    # -- verse level: which verses of each book have a parallel in the other --
+    # The book page's 4d and 5 for one pair of books: a chapter pair on
+    # the map can be opened to its verses.  The overlap rule (three
+    # content roots in the same order, PARALLEL_SHARE of the shorter
+    # verse); across the testaments by English stem.
+    cross = column == "word_string"
+    rule = (f"Two verses are parallel when the content {'stems' if cross else 'roots'} they share "
+            f"in the same order number at least {PARALLEL_MIN_SHARED} and make up at least "
+            f"{PARALLEL_SHARE:.0%} of the shorter verse; words in more than "
+            f"{PARALLEL_COMMON_SHARE:.0%} of the book's verses are set aside first.")
+
+    def shared_table(number, this, other, this_chapters):
+        matches = parallels(atlas, this, other)
+        sec = report.section(
+            f"{number}. Verses of [{this}] with a parallel in [{other}], by chapter",
+            ["chapter", "verses", "with a parallel", "share", "points to"],
+            note=f"How much of each chapter of {this} has a verse-level parallel in {other}.  {rule}  "
+                 f"'points to' is the chapter of {other} the parallels fall in most.  Click a row "
+                 f"for the verses on both sides; double-click for the chapter's page.")
+        by_chapter = {}
+        for ref, hits in matches.items():
+            ch = int(ref.rsplit(" ", 1)[1].split(":")[0])
+            by_chapter.setdefault(ch, {})[ref] = hits
+        n_verses = {r[0]: r[1] for r in atlas.db.execute(
+            "SELECT chapter, COUNT(*) FROM verses WHERE book = ? GROUP BY chapter", (this,))}
+        total_with = 0
+        for c in this_chapters:
+            hits = by_chapter.get(c, {})
+            n = n_verses.get(c, 0)
+            total_with += len(hits)
+            target = Counter()
+            refs = []
+            for ref, partners in hits.items():
+                refs.append(ref)
+                for pref, score in partners.most_common(2):
+                    target[int(pref.rsplit(" ", 1)[1].split(":")[0])] += score
+                    refs.append(pref)
+            points = ", ".join(f"{other} {pc} ({sc})" for pc, sc in target.most_common(2)) if target else "-"
+            sec.add([c, n, len(hits), f"{100 * len(hits) / n:.0f}%" if n else "", points],
+                    refs=refs, link={"book": this, "chapter": c})
+        n_all = sum(n_verses.values())
+        sec.footer.append(f"Whole book: {total_with} of {n_all} verses of {this} have a parallel in "
+                          f"{other} ({100 * total_with / n_all:.0f}%).")
+        return matches
+
+    matches_a = shared_table(4, a_book, b_book, a_chapters)
+    shared_table(5, b_book, a_book, b_chapters)
+
+    # -- the synopsis of the pair: only the verses that have a parallel --
+    syn = report.section(
+        f"6. Synopsis [{a_book}] x [{b_book}]: the verses with a parallel",
+        ["verse", f"in {b_book}", "text"],
+        note=f"Every verse of {a_book} that has a parallel in {b_book}, with its parallels "
+             f"(closest first, at most four) and its text; verses without one are left out, so "
+             f"the table is the two books' common ground read in {a_book}'s order.  Click a row "
+             f"for the verse and its parallels in full.")
+    for v in atlas.verses_of(a_book):
+        ref = v["reference"]
+        hits = matches_a.get(ref)
+        if not hits:
+            continue
+        shown = [h for h, c in hits.most_common()][:4]
+        cell = ", ".join(h.rsplit(" ", 1)[1] for h in shown)
+        if len(hits) > 4:
+            cell += f" +{len(hits) - 4}"
+        text = v["text"]
+        syn.add([ref.rsplit(" ", 1)[1], cell, text if len(text) <= 70 else text[:67] + "..."],
+                refs=[ref] + shown, link=None)
     return report
 
 

@@ -604,6 +604,49 @@ window 5, KJV", so a file read weeks later says what produced it; the
 version is kept in one place (atlas_pages.VERSION) and the window
 title reads the same one.
 
+The Compare page review (0.9.5) found Daniel 4 heading the strongest
+pairs against Revelation, the closest chapter for Revelation 10, 11,
+14 and 18, all on "a voice from heaven saying" (Daniel 4:31): a
+refrain of Revelation, but with the verse cap counted over the two
+books together it slipped under. The Compare page now sets aside any
+phrase found in three or more chapters of either book before the
+cells are summed, as 6b does within a book, and names the refrains it
+set aside in a footer. Daniel 7 now heads the pairs line (Revelation
+17, 13, 1, 5 and 6) and Daniel 4 drops to sixth. The cost is that a
+shared phrase which is also one book's habit goes with it: "Ah, Lord
+GOD, behold", the two calls (Ezekiel 4, Jeremiah 1 and 14), is a
+Jeremiah refrain and is now set aside there. Two footers of totals
+were added under each map, "chapters of Jeremiah most drawn on: 52,
+51, 31, 2, 25, 6", so the recurring partners need not be added up.
+On the word page the shadow is now defined where it is printed (the
+summed pull of every neighbour the word draws more often than chance
+within the window), a Strong's root lists only its own testament with
+a line saying the other has none, "At home in" asks the same five
+occurrences the testament page asks so two in Jude are no longer a
+second home, and the spellings line says "in the Bible", which is
+what its counts are.
+
+The Compare page (0.9.6) gained the verse level the book page has in
+4d and 5: sections 4 and 5 count, for each chapter of either book,
+the verses with a verse-level parallel in the other and say which
+chapter they point to, and section 6 is the synopsis of the pair, the
+verses of the first book that have a parallel in the second with
+their parallels and text, so a chapter pair on the map can be opened
+to its verses. The overlap rule is the book page's; across the
+testaments it runs on English stems, since a Hebrew root never
+matches a Greek one. A dossier now carries one build line at its
+head, with a contents line, and the pages inside it none. Run on the
+pairs the first Revelation review asked about: Ezekiel 40 to 48 draw
+on Exodus 27, 38 and 29 (the court and the altar, "long and five
+cubits broad", "bullock for a sin offering") and on 1 Kings 6 and 7
+(the temple, "cherubims and palm trees", 20 phrases between Ezekiel 41
+and 1 Kings 6), with a third to a half of the verses of 40 to 43 and
+45 paralleled; Ezekiel against Revelation is thin at book scale (8
+percent of Ezekiel's verses, 13 of Revelation's) but pointed at
+chapter scale: Revelation 21 to Ezekiel 40, 41 and 48, Revelation 22
+to Ezekiel 47, Revelation 4 to Ezekiel 1 and 10, Revelation 18 to
+Ezekiel 27 and 16, Revelation 19 to Ezekiel 38 and 39.
+
 Two smaller changes from the same page. Absorption now reaches across
 a single stop word, and runs before inference, so "father in law" and
 "mother in law" fold into H2859 and H2545 instead of "father" being

@@ -181,16 +181,27 @@ def dossier(atlas, book_name, brief=False):
     Returns the path written.
     """
     book = atlas.find_book(book_name)
-    parts = []
+    # One build line for the whole file, at the top, with a list of what
+    # the file holds; the parts below are rendered without their own
+    partners = chief_partners(atlas, book, 2)
+    n_chapters = atlas.book_info[book]["chapters"]
+    head = [f"WORD ATLAS  -  Dossier [{book}]" + (" (brief)" if brief else "")]
+    head.append("#" * len(head[0]))
+    head.append(atlas.build_line())
+    head.append(f"Contents: the book page; the {book} rows of its testament page; the Compare page "
+                f"against {' and '.join(partners)}; the {n_chapters} chapter pages"
+                + (" (trimmed to leading words, signature words, formulas, synopsis and kin)" if brief else "")
+                + "; the word pages of the ten most key signature words.")
+    parts = ["\n".join(head)]
     report = book_page(atlas, book)
-    parts.append(render(report, atlas))
+    parts.append(render(report))
     # The book's slice of its testament page: its home words, its row of
     # the home map, and the words whose home (or second home) it is
-    parts.append(render(testament_slice(atlas, book), atlas))
+    parts.append(render(testament_slice(atlas, book)))
     # The book against each of its two chief partners, chapter against
     # chapter: the companion to 4b and the synopsis
-    for partner in chief_partners(atlas, book, 2):
-        parts.append(render(compare_page(atlas, book, partner), atlas))
+    for partner in partners:
+        parts.append(render(compare_page(atlas, book, partner)))
     top_words = [r["root"] for r in atlas.db.execute(
         "SELECT root FROM word_book WHERE book = ? AND weight >= 3 ORDER BY keyness DESC LIMIT 10", (book,))]
     for chapter in range(1, atlas.book_info[book]["chapters"] + 1):
@@ -199,12 +210,12 @@ def dossier(atlas, book_name, brief=False):
             keep = ("1.", "2.", "5.", "6.")
             chapter_report.sections = [sec for sec in chapter_report.sections
                                        if sec.title.startswith(keep)]
-        parts.append(render(chapter_report, atlas))
+        parts.append(render(chapter_report))
     for root in top_words:
         try:
             # exact: the root as the book page counted it, so an untagged
             # stem opens its own page rather than a Strong's number
-            parts.append(render(word_page(atlas, root, book, exact=True), atlas))
+            parts.append(render(word_page(atlas, root, book, exact=True)))
         except ValueError:
             continue
     text = ("\n\n" + "=" * 110 + "\n\n").join(parts)

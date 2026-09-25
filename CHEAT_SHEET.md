@@ -196,9 +196,13 @@ cell for the verses, double-click for the book), 3 Whose word is this
 and second home; double-click a word for its page).
 
 **Compare page.** 1 Chapter map (first book down, second across,
-cells the shared rare phrasing; click for the verses), 2 and 3 each
-chapter's closest chapter in the other book, both ways, with a footer
-saying where one book follows the other's order.
+cells the shared rare phrasing; click for the verses; footers name
+the chapters each book draws on most and the refrains set aside), 2
+and 3 each chapter's closest chapter in the other book, both ways,
+with a footer saying where one book follows the other's order, 4 and
+5 the verses of each chapter with a verse-level parallel in the other
+book, and 6 the synopsis of the pair (the verses that have a parallel,
+with their parallels and text).
 
 **Kin page.** One table, closest chapters first, with the score, the
 number of shared words, how many are in the same order, the strongest

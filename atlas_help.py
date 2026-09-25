@@ -191,6 +191,8 @@ COLUMN_HELP = {
     "shared": "How many rare words the strongest pair of verses shares.",
     "in order": "How many of those shared words come in the same order in both verses.",
     "strongest pair": "The pair of verses (one here, one there) that scores highest.",
+    "with a parallel": "How many verses of the chapter have a verse-level parallel in the other "
+                       "book (three content words in the same order, 30% of the shorter verse).",
     "found by": "'roots' when the kin was found by shared Strong's numbers, within the testament; "
                 "'English' when it was found across the testaments by the English stems of the "
                 "words, since a Hebrew root never matches a Greek one.  An English row rests on "
