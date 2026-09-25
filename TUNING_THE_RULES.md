@@ -298,6 +298,19 @@ Renderings. Because one number can stand behind many English words
 column now says how many renderings a root has, so the one spelling
 printed does not hide the others.
 
+### Formulas on roots
+
+The last measure still on English wording was the formula. With the
+roots in place, a formula became a run of units in which each tagged
+content word stands as its Strong's number, so "the heathen" and "the
+nations" are one formula and "thus saith the Lord GOD" is found however
+a translator renders it. Each formula carries its commonest English
+wording for display, read off the verses it is found in, so the tables
+still read as English while the counting is done on the Hebrew and
+Greek. This was the step your reading of the 1a tables pointed to: once
+every number showed its lemma, the phrases were the one thing left
+being counted in translation.
+
 ### Small guards
 
 Two more came from the Job page. An obs/exp ratio built on fewer than

@@ -28,7 +28,7 @@ screens and this file.
 | Shadow | A word's total influence at a scale: weight, reach and pull together |
 | Signature words | Words far more common at this scale than in the rest of the Bible |
 | Spread | Keyness scaled by the share of chapters a word reaches; a "local" word lives in under a fifth of them |
-| Formula | A fixed run of two or more words used as a set phrase |
+| Formula | A fixed run of two or more words used as a set phrase; on a Strong's build a run of roots, found however its words are spelled, shown in its commonest English wording |
 | Echo | A formula that occurs in two or more separate books |
 | Echo partners | The books a text shares echoes with, counted over every echo |
 | Kin | Two verses sharing three or more rare words in any order; dependence through imagery rather than wording |
@@ -286,9 +286,23 @@ word and its KJV glosses from the lexicon and the spellings the text
 uses; when an English word is typed and several numbers stand behind
 it, section 0 lists them with counts so the reader can turn to the
 others (lord: H3068 6,486, G2962 715, H136 433, H113 228, H3050 47).
+Under every signature words table a section 1a lists the Hebrew or
+Greek behind it: each number's original word, its KJV glosses from the
+dictionary (the dictionary's bracketed marks stripped), and the
+spellings used for it in this book or chapter and across the Bible,
+with counts, so a book or chapter page carries the original words and
+not only their numbers, and the spellings column is the KJV's own
+concordance for the root (midst H8432 is "among" nearly as often as
+"midst"). The reach-and-depth chart takes the 40 most key words and
+the 20 deepest, so the local piles (feed H7462 in Ezekiel 34,
+merchandise in 27) sit on it beside the leading words; a chapter's
+leading words are Strong's roots only, with a depth of at least ten,
+so a thin chapter's line is short rather than padded. Formulas count
+their words by the stop list itself rather than the absorbed-word flag,
+which had let "a portion" show a negative rest count.
 Signature words, neighbors, kin and the parallels all run on the new
-roots; formulas and echoes stay on the English wording, since a formula
-is a matter of phrasing. Under Strong's roots the Synoptic parallels
+roots, and since 0.7.0 formulas and echoes do too (see phase 5
+completed below). Under Strong's roots the Synoptic parallels
 are stricter and truer: on Mark, Matthew 434, Luke 301, neither 186
 (English roots gave 493, 385, 121), because the Greek behind a similar
 English sentence often differs (Mark 5:2 "come out" G1831 against
@@ -394,6 +408,29 @@ Greek synonyms (G528 and G5221, both "meet") are still separate roots;
 folding cognates through the lexicon's derivations is a later step, as
 is the Septuagint text itself.
 
+## Phase 5 completed: formulas and echoes on Strong's roots
+
+The last measure still on English wording has moved to the roots
+(0.7.0). With `FORMULA_ROOTS = "strongs"` in `atlas_text.py`, a formula
+is a run of units in which every tagged content word stands as its
+Strong's number and stop words, absorbed words and untagged words
+stand as themselves. The verses table carries a `phrase_string` beside
+`word_string`, position for position; `ngrams` and `echoes` are keyed
+on the unit run and carry a `display`, the run's commonest English
+wording; the pages read the wording off the verses they list, so a
+formula is shown as its readers know it while being found however it
+is spelled. "the heathen" and "the nations" are one formula, the H1471,
+in 323 verses of 33 books; "thus saith the Lord GOD" is found whatever
+a translator does with it, and splits from "thus saith the LORD God"
+(H3068 H430, 29 verses) as the English capitals never reliably did;
+"a ram without blemish", "rams without blemish" and "ram without
+blemish" are one echo without any folding at query time. Clicking a
+formula or echo row finds every spelling, because the row carries its
+key. The English build still stores formulas on spellings, so the two
+can be compared in the Build box. Formula counts moved little in the
+Gospels and sharpened in the prophets, where the divine titles are the
+formulas.
+
 ## Phase 4 completed: depth and the reach-and-depth chart
 
 Depth, the last word in the vocabulary without a formula, is now built
@@ -425,6 +462,19 @@ deep, are the book's leading words; bottom right its spread words; top
 left its local piles. Labels are placed so they do not overlap, hover
 names any point, a click shows the word's verses in its deepest
 chapter, and a double-click opens the word's page.
+
+## Dossiers: one book in one file
+
+`atlas_query.py dossier Ezekiel` (or the Save dossier button) writes
+everything the atlas can say about a book into one text file under
+`reports/`: the book page with all its sections, every chapter page,
+and the word pages of the book's ten most key words, separated by
+rules. With `--brief` (the button's Yes) each chapter page keeps only
+its leading words, signature words, formulas and synopsis, which is
+what a review usually needs; Ezekiel comes to about 600 KB that way
+and Mark in full to about the same. The two chief-partner parallel
+tables are computed once per book and reused by every chapter page,
+so a dossier takes under a minute.
 
 ## Builds: keeping and going back
 

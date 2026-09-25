@@ -61,6 +61,7 @@ the top bar) and point at the thing you are wondering about.
 | Any book | Word pages only: show the word across the whole Bible instead of within the chosen book |
 | Go | Open the page |
 | Save as text | Write the page on screen to the `reports` folder as a plain text file |
+| Save dossier | Write everything about the chosen book to one text file in the `reports` folder: the book page, every chapter page and the top ten words' pages. Trimmed or full |
 | Rebuild atlas | Recompute every table from the Bible text (see part 7) |
 
 **Ask row** (a faster way to ask, using the notation in part 5)
@@ -132,14 +133,15 @@ meet most:
 | reach | How many books (or chapters) a word appears in: horizontal |
 | depth | How thickly a word piles up in its one deepest chapter (its highest chapter keyness), and where: vertical |
 | neighbors | Words that stand within five words of the head word in the same verse, more often than chance would put them there |
-| formula | A set phrase of two to five words that recurs |
+| formula | A set phrase of two to five words that recurs; a run of Strong's roots, found however its words are spelled, shown in its commonest wording |
 | echo | A formula of three or more words found in this book and in another, rare enough to mean something (at most six verses in the whole Bible) |
 | echo partner | A book that shares echoes with this one |
 | kin | Another chapter that shares several rare words with this passage, in the same order if possible |
 | weight | The sum of the rarity of the words involved; rarer words weigh more |
 | obs / exp | Observed count against expected count; obs well above exp is the interesting case |
 
-**Book page sections.** 1 Signature words. 2 Signature formulas.
+**Book page sections.** 1 Signature words, then 1a the Hebrew or
+Greek behind them (original word, KJV glosses, spellings here). 2 Signature formulas.
 3.x Neighbors of the book's key words (day and LORD are always shown,
 then the top signature words). 4 Echoes to other books, with 4a the
 echo partner books, 4b echoes by chapter (which partner chapter each
@@ -226,6 +228,7 @@ python atlas_query.py word day
 python atlas_query.py word day Joel
 python atlas_query.py kin Ezekiel 47
 python atlas_query.py testament New
+python atlas_query.py dossier Ezekiel --brief
 python atlas_query.py ask "'day' + 'night' [Ezekiel]"
 ```
 

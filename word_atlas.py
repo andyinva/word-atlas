@@ -55,7 +55,7 @@ import atlas_query
 import atlas_text
 from atlas_ask import AskError
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 
 # ---------------------------------------------------------------------------
 # Style: flat, 1 px frames, quiet grey headers, matching Bible Search Lite
@@ -770,6 +770,15 @@ class WordAtlasWindow(QMainWindow):
         self.save_btn.setEnabled(False)
         bar.addWidget(self.save_btn)
 
+        # Everything about the chosen book in one text file: the book
+        # page, every chapter page (trimmed), and the top words' pages
+        self.dossier_btn = QPushButton("Save dossier")
+        self.dossier_btn.setToolTip("Write everything about the chosen book to one text file under "
+                                    "reports/ (book page, every chapter, top words); takes about a minute")
+        self.dossier_btn.setProperty("help", "dossier")
+        self.dossier_btn.clicked.connect(self.save_dossier)
+        bar.addWidget(self.dossier_btn)
+
         # Rebuild atlas.db from bibles.db with the rules now in
         # atlas_text.py, then reload the modules and the page on screen.
         # For the trial-and-error phase: change a rule, click, compare.
@@ -951,6 +960,26 @@ class WordAtlasWindow(QMainWindow):
             self.history.append((kind, book, chapter, word))
             self.history_index = len(self.history) - 1
         self.update_history_buttons()
+
+    def save_dossier(self):
+        """Write the dossier of the book in the Book box to reports/."""
+        book = self.book_box.currentText()
+        brief = QMessageBox.question(
+            self, "Save dossier",
+            f"Write everything about {book} to one text file?\n\n"
+            f"Yes: chapter pages trimmed to leading words, signature words, formulas and synopsis "
+            f"(about half a megabyte).\nNo: full chapter pages (about three times larger).",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel)
+        if brief == QMessageBox.StandardButton.Cancel:
+            return
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        self.status.setText(f"Writing the {book} dossier ...")
+        QApplication.processEvents()
+        try:
+            path = atlas_query.dossier(self.atlas, book, brief == QMessageBox.StandardButton.Yes)
+        finally:
+            QApplication.restoreOverrideCursor()
+        self.status.setText(f"Dossier written: {os.path.basename(path)} ({os.path.getsize(path) // 1000} KB)")
 
     def save_page(self):
         """Write the page on screen to the reports folder as text."""
@@ -1211,7 +1240,12 @@ class WordAtlasWindow(QMainWindow):
         # Rows without stored references: look them up from the link
         if not refs and link:
             if "phrase" in link:
-                refs = self.atlas.verses_with_phrase(link["phrase"])
+                # A formula row carries its unit key when the build has
+                # one, so every spelling of the formula is found
+                if link.get("key"):
+                    refs = self.atlas.verses_with_phrase(link["key"], key=True)
+                else:
+                    refs = self.atlas.verses_with_phrase(link["phrase"])
                 label = f'"{link["phrase"]}" [Bible]'
             elif "word" in link:
                 root = link["word"]

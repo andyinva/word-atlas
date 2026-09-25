@@ -16,6 +16,8 @@ Usage:
     python3 atlas_query.py kin Ezekiel 47
     python3 atlas_query.py kin Ezekiel 47:1-12
     python3 atlas_query.py testament New
+    python3 atlas_query.py dossier Ezekiel          everything about one book, one file
+    python3 atlas_query.py dossier Ezekiel --brief  the same with chapter pages trimmed
     python3 atlas_query.py ask "'day' + 'night' [Ezekiel]"     (any line of notation)
 
 Author: Andrew Hopkins (with Claude)
@@ -129,6 +131,44 @@ def ask(atlas, line):
             print(f"  {r}  {v['text']}")
 
 
+def dossier(atlas, book_name, brief=False):
+    """
+    Everything the atlas can say about one book, in one text file:
+    the book page, the testament page's home words for the book, every
+    chapter page, and the word pages of the book's top signature
+    words.  With brief=True a chapter page keeps only its leading
+    words, signature words, formulas and synopsis, which is what a
+    review usually needs, and the file is about a third the size.
+    Returns the path written.
+    """
+    book = atlas.find_book(book_name)
+    parts = []
+    report = book_page(atlas, book)
+    parts.append(render(report))
+    top_words = [r["root"] for r in atlas.db.execute(
+        "SELECT root FROM word_book WHERE book = ? AND weight >= 3 ORDER BY keyness DESC LIMIT 10", (book,))]
+    for chapter in range(1, atlas.book_info[book]["chapters"] + 1):
+        chapter_report = chapter_page(atlas, book, chapter)
+        if brief:
+            keep = ("1.", "2.", "5.")
+            chapter_report.sections = [sec for sec in chapter_report.sections
+                                       if sec.title.startswith(keep)]
+        parts.append(render(chapter_report))
+    for root in top_words:
+        try:
+            parts.append(render(word_page(atlas, root, book)))
+        except ValueError:
+            continue
+    text = ("\n\n" + "=" * 110 + "\n\n").join(parts)
+    name = f"dossier_{book.lower().replace(' ', '_')}" + ("_brief" if brief else "")
+    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, name + ".txt")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return path
+
+
 def main(argv):
     if len(argv) < 3:
         print(__doc__)
@@ -137,6 +177,12 @@ def main(argv):
     command = argv[1].lower()
     if command == "ask":
         return ask(atlas, " ".join(argv[2:]))
+    if command == "dossier":
+        brief = "--brief" in argv
+        words = [a for a in argv[2:] if a != "--brief"]
+        path = dossier(atlas, " ".join(words), brief)
+        print(f"(written to {path}, {os.path.getsize(path) // 1000} KB)")
+        return
     try:
         if command == "book":
             report = book_page(atlas, " ".join(argv[2:]))

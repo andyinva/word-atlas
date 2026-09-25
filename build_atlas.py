@@ -17,7 +17,9 @@ Tables written
 --------------
 settings      key, value                       the rules used for this build
 books         book, order_index, testament, chapters, verses, words
-verses        verse_id, book, chapter, verse, reference, text, word_string
+verses        verse_id, book, chapter, verse, reference, text, word_string, phrase_string
+              (phrase_string = the units formulas are made of: Strong's numbers for
+              tagged content words, spellings for the rest; same positions as word_string)
 tokens        verse_id, position, surface, root, is_stop, strongs, morph
               (strongs and morph are filled when ROOTS is "strongs")
 words         root, form, weight, verses_reached, chapters_reached, books_reached, shadow,
@@ -30,9 +32,10 @@ word_book     root, book, weight, verses_reached, chapters_reached, keyness, sha
 word_chapter  root, book, chapter, weight, keyness
 pairs         scope, focus, companion, count, pull     (scope = 'Bible' or a book name)
 focus_windows scope, focus, occurrences, window_tokens
-ngrams        phrase, n, verses_total, books_total     (phrases in 2+ verses)
+ngrams        phrase, n, verses_total, books_total, display   (phrases in 2+ verses; phrase is
+              the unit key, display its commonest English wording)
 ngram_book    phrase, book, verses, times
-echoes        phrase, n, verse_id, book, reference     (rare phrases shared by 2+ books)
+echoes        phrase, n, verse_id, book, reference, display  (rare phrases shared by 2+ books)
 
 Usage:
     python3 build_atlas.py                       (about a minute)
@@ -56,9 +59,9 @@ import sys
 import time
 from collections import Counter, defaultdict
 
-from atlas_text import (ATLAS_PATH, BUILDS_DIR, ECHO_MAX_TOTAL, FORMULA_LENGTHS, LEXICON_CANDIDATES,
-                        ROOTS, STOPLIST, TRANSLATION, VOICE_TAGS, WINDOW, BibleText,
-                        find_database, has_substance, log_likelihood)
+from atlas_text import (ATLAS_PATH, BUILDS_DIR, ECHO_MAX_TOTAL, FORMULA_LENGTHS, FORMULA_ROOTS,
+                        LEXICON_CANDIDATES, ROOTS, STOPLIST, TRANSLATION, VOICE_TAGS, WINDOW,
+                        BibleText, find_database, has_substance, log_likelihood)
 
 # Bible-scale pairs with a count below this are not stored; one meeting
 # is not neighbors, and it keeps the table a sensible size.  Book-scale
@@ -72,7 +75,8 @@ CREATE TABLE settings      (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE books         (book TEXT PRIMARY KEY, order_index INTEGER, testament TEXT,
                             chapters INTEGER, verses INTEGER, words INTEGER);
 CREATE TABLE verses        (verse_id INTEGER PRIMARY KEY, book TEXT, chapter INTEGER,
-                            verse INTEGER, reference TEXT, text TEXT, word_string TEXT);
+                            verse INTEGER, reference TEXT, text TEXT, word_string TEXT,
+                            phrase_string TEXT);
 CREATE TABLE tokens        (verse_id INTEGER, position INTEGER, surface TEXT, root TEXT,
                             is_stop INTEGER, strongs TEXT, morph TEXT);
 CREATE TABLE lexicon       (number TEXT PRIMARY KEY, word TEXT, kjv_def TEXT, strongs_def TEXT,
@@ -91,10 +95,11 @@ CREATE TABLE pairs         (scope TEXT, focus TEXT, companion TEXT, count INTEGE
 CREATE TABLE focus_windows (scope TEXT, focus TEXT, occurrences INTEGER, window_tokens INTEGER,
                             PRIMARY KEY (scope, focus));
 CREATE TABLE ngrams        (phrase TEXT PRIMARY KEY, n INTEGER, verses_total INTEGER,
-                            books_total INTEGER);
+                            books_total INTEGER, display TEXT);
 CREATE TABLE ngram_book    (phrase TEXT, book TEXT, verses INTEGER, times INTEGER,
                             PRIMARY KEY (phrase, book));
-CREATE TABLE echoes        (phrase TEXT, n INTEGER, verse_id INTEGER, book TEXT, reference TEXT);
+CREATE TABLE echoes        (phrase TEXT, n INTEGER, verse_id INTEGER, book TEXT, reference TEXT,
+                            display TEXT);
 """
 
 INDEXES = """
@@ -171,6 +176,7 @@ class AtlasBuilder:
         rows = [
             ("translation", self.bible.translation),
             ("roots", self.bible.roots),
+            ("formula_roots", FORMULA_ROOTS if self.bible.roots == "strongs" else "english"),
             ("tags_placed", f"{self.bible.tags_placed} of {self.bible.tags_total}"),
             ("tags_inferred", str(self.bible.tags_inferred)),
             ("tags_absorbed", str(self.bible.tags_absorbed)),
@@ -201,9 +207,10 @@ class AtlasBuilder:
             # word_string is the tokens joined with spaces and padded, so
             # a phrase can be found as ' phrase ' without re-tokenizing
             word_string = " " + " ".join(t.surface for t in v.tokens) + " "
+            phrase_string = " " + " ".join(self.units(v)) + " "
             verse_rows.append((verse_id, v.book, v.chapter, v.number, v.reference,
-                               v.text, word_string))
-        self.db.executemany("INSERT INTO verses VALUES (?,?,?,?,?,?,?)", verse_rows)
+                               v.text, word_string, phrase_string))
+        self.db.executemany("INSERT INTO verses VALUES (?,?,?,?,?,?,?,?)", verse_rows)
 
         book_rows = []
         for order, book in enumerate(self.bible.books, start=1):
@@ -213,6 +220,24 @@ class AtlasBuilder:
                               stats["verses"], stats["words"]))
         self.db.executemany("INSERT INTO books VALUES (?,?,?,?,?,?)", book_rows)
         self.db.commit()
+
+    def units(self, verse):
+        """
+        The units a verse's formulas are made of, one per token.  Under
+        FORMULA_ROOTS "strongs" a content word with a Strong's number
+        (placed or inferred) stands as the number; stop words, absorbed
+        words and untagged words stand as their spelling.  Under
+        "english" every word stands as its spelling.
+        """
+        if FORMULA_ROOTS != "strongs":
+            return [t.surface for t in verse.tokens]
+        out = []
+        for t in verse.tokens:
+            if t.strongs and t.strongs[0] != "=" and t.surface not in STOPLIST:
+                out.append(t.root)
+            else:
+                out.append(t.surface)
+        return out
 
     def write_tokens(self):
         """Every word occurrence with its root and stoplist flag."""
@@ -460,16 +485,24 @@ class AtlasBuilder:
         times_book = defaultdict(Counter)         # phrase -> book -> raw times
         books_of = defaultdict(set)               # phrase -> {book}
 
+        wordings = defaultdict(Counter)           # phrase -> English wording -> count
+
         for verse_id, v in enumerate(self.bible.verses):
             words = [t.surface for t in v.tokens]
-            stops = [t.is_stop for t in v.tokens]
+            keys = self.units(v)
+            # Function words by the stop list itself, not the token flag:
+            # a word absorbed into its tagged neighbour ("burnt" in "burnt
+            # offering") is flagged like a stop word for the counts, but
+            # it is still a content word of a phrase
+            stops = [t.surface in STOPLIST for t in v.tokens]
             seen_here = set()
             for n in FORMULA_LENGTHS:
                 for i in range(len(words) - n + 1):
                     if stops[i + n - 1]:
                         continue                  # never ends on a function word
-                    phrase = " ".join(words[i:i + n])
+                    phrase = " ".join(keys[i:i + n])
                     times_book[phrase][v.book] += 1
+                    wordings[phrase][" ".join(words[i:i + n])] += 1
                     if phrase not in seen_here:
                         seen_here.add(phrase)
                         verses_total[phrase] += 1
@@ -478,14 +511,17 @@ class AtlasBuilder:
 
         self.log(f"  {len(verses_total)} distinct formulas; keeping those in 2+ verses")
         ngram_rows, book_rows = [], []
+        self.display = {}
         for phrase, total in verses_total.items():
             if total < 2:
                 continue
             n = phrase.count(" ") + 1
-            ngram_rows.append((phrase, n, total, len(books_of[phrase])))
+            display = wordings[phrase].most_common(1)[0][0]
+            self.display[phrase] = display
+            ngram_rows.append((phrase, n, total, len(books_of[phrase]), display))
             for book, verses in per_book[phrase].items():
                 book_rows.append((phrase, book, verses, times_book[phrase][book]))
-        self.db.executemany("INSERT INTO ngrams VALUES (?,?,?,?)", ngram_rows)
+        self.db.executemany("INSERT INTO ngrams VALUES (?,?,?,?,?)", ngram_rows)
         self.db.executemany("INSERT INTO ngram_book VALUES (?,?,?,?)", book_rows)
         self.db.commit()
         self.log(f"  {len(ngram_rows)} formulas, {len(book_rows)} formula-book rows")
@@ -496,20 +532,20 @@ class AtlasBuilder:
         echo_phrases = {
             phrase for phrase, total in verses_total.items()
             if 2 <= total <= ECHO_MAX_TOTAL and len(books_of[phrase]) >= 2
-            and phrase.count(" ") + 1 >= 3 and has_substance(phrase)}
+            and phrase.count(" ") + 1 >= 3 and has_substance(self.display[phrase])}
         echo_rows = []
         for verse_id, v in enumerate(self.bible.verses):
-            words = [t.surface for t in v.tokens]
+            keys = self.units(v)
             seen_here = set()
             for n in FORMULA_LENGTHS:
                 if n < 3:
                     continue
-                for i in range(len(words) - n + 1):
-                    phrase = " ".join(words[i:i + n])
+                for i in range(len(keys) - n + 1):
+                    phrase = " ".join(keys[i:i + n])
                     if phrase in echo_phrases and phrase not in seen_here:
                         seen_here.add(phrase)
-                        echo_rows.append((phrase, n, verse_id, v.book, v.reference))
-        self.db.executemany("INSERT INTO echoes VALUES (?,?,?,?,?)", echo_rows)
+                        echo_rows.append((phrase, n, verse_id, v.book, v.reference, self.display[phrase]))
+        self.db.executemany("INSERT INTO echoes VALUES (?,?,?,?,?,?)", echo_rows)
         self.db.commit()
         self.log(f"  {len(echo_phrases)} echo formulas, {len(echo_rows)} locations")
 

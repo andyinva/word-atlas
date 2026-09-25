@@ -54,7 +54,9 @@ FOCUS_WORDS = ["day", "LORD"]   # always shown on a book page, plus top signatur
 HOME_PER_BOOK = 2               # roots per book on the testament home map
 HOME_MIN_WEIGHT = 5             # a root needs this many occurrences to be a home word
 HOME_LIST_N = 150               # roots in the "whose word is this" table
-REACH_DEPTH_N = 40              # words on the reach-and-depth chart
+REACH_DEPTH_N = 40              # words on the reach-and-depth chart, by keyness
+REACH_DEPTH_DEEP_N = 20         # plus this many by depth, so the local piles are on it
+LEADING_MIN_DEPTH = 10          # a chapter's leading words need at least this depth
 ORDER_RUN_MIN = 4               # chapters in order before 4b reports "follows the order of"
 PARALLEL_TRIALS = (0.4, 0.5)    # shares tried beside PARALLEL_SHARE in the 4d footer
 PARALLEL_COMMON_SHARE = 0.10    # a root in more of a book's verses than this is formulaic there
@@ -137,6 +139,13 @@ class Atlas:
         # Depth (0.6.0) needs columns an older build lacks; the pages
         # leave the depth sections out rather than fail
         self.has_depth = "depth" in {r[1] for r in self.db.execute("PRAGMA table_info(word_book)")}
+        # Formulas on root units (phase 5, last step): the verses table
+        # then carries a phrase_string beside word_string, and ngrams and
+        # echoes carry an English display beside their unit key
+        verse_columns = {r[1] for r in self.db.execute("PRAGMA table_info(verses)")}
+        self.formula_roots = self.settings.get("formula_roots", "english")
+        self.phrase_column = "phrase_string" if "phrase_string" in verse_columns else "word_string"
+        self.has_display = "display" in {r[1] for r in self.db.execute("PRAGMA table_info(ngrams)")}
         self.books = [r["book"] for r in self.db.execute(
             "SELECT book FROM books ORDER BY order_index")]
         self.book_info = {r["book"]: dict(r) for r in self.db.execute("SELECT * FROM books")}
@@ -243,16 +252,25 @@ class Atlas:
         if not entry:
             return ""
         word, kjv_def, strongs_def = entry
-        text = kjv_def or strongs_def
-        if len(text) > 80:
-            text = text[:77] + "..."
+        text = clean_gloss(kjv_def or strongs_def, 80)
         return f"{word}: {text}" if word else text
 
-    def spellings(self, root, limit=6):
-        """How the text spells a root, commonest first: [(surface, count)]."""
-        return [(r[0], r[1]) for r in self.db.execute(
-            "SELECT surface, COUNT(*) FROM tokens WHERE root = ? GROUP BY surface "
-            "ORDER BY COUNT(*) DESC LIMIT ?", (root, limit))]
+    def spellings(self, root, limit=6, book=None, chapter=None):
+        """How the text spells a root, commonest first: [(surface, count)],
+        across the Bible or within one book or chapter."""
+        if book is None:
+            return [(r[0], r[1]) for r in self.db.execute(
+                "SELECT surface, COUNT(*) FROM tokens WHERE root = ? GROUP BY surface "
+                "ORDER BY COUNT(*) DESC LIMIT ?", (root, limit))]
+        sql = ("SELECT t.surface, COUNT(*) FROM tokens t JOIN verses v USING (verse_id) "
+               "WHERE t.root = ? AND v.book = ?")
+        params = [root, book]
+        if chapter is not None:
+            sql += " AND v.chapter = ?"
+            params.append(chapter)
+        sql += " GROUP BY t.surface ORDER BY COUNT(*) DESC LIMIT ?"
+        params.append(limit)
+        return [(r[0], r[1]) for r in self.db.execute(sql, params)]
 
     def roots_behind(self, word, testament=None):
         """
@@ -425,8 +443,37 @@ class Atlas:
     def count_phrase_outside(self, phrase, book):
         """Verses outside a book that contain a phrase (used for grown formulas)."""
         return self.db.execute(
-            "SELECT COUNT(*) FROM verses WHERE book != ? AND word_string LIKE ?",
+            f"SELECT COUNT(*) FROM verses WHERE book != ? AND {self.phrase_column} LIKE ?",
             (book, f"% {phrase} %")).fetchone()[0]
+
+    def display_of(self, key, references):
+        """
+        The commonest English wording of a unit key (a formula as the
+        tables store it) among the verses given, read off the verses
+        themselves: the words at the positions where the key occurs.
+        Under English formulas the key is its own wording.
+        """
+        if self.phrase_column == "word_string":
+            return key
+        parts = key.split()
+        n = len(parts)
+        wordings = Counter()
+        marks = ",".join("?" * len(references))
+        for ws, ps in self.db.execute(
+                f"SELECT word_string, phrase_string FROM verses WHERE reference IN ({marks})", references):
+            words, units = ws.split(), ps.split()
+            for i in range(len(units) - n + 1):
+                if units[i:i + n] == parts:
+                    wordings[" ".join(words[i:i + n])] += 1
+        if wordings:
+            return wordings.most_common(1)[0][0]
+        row = self.db.execute("SELECT display FROM ngrams WHERE phrase = ?", (key,)).fetchone() \
+            if self.has_display else None
+        return row[0] if row else key
+
+    def content_units(self, key):
+        """The content units of a formula key (stop words left out)."""
+        return tuple(u for u in key.split() if u not in STOPLIST)
 
     # -- growing formulas (same idea as phase 1, now against stored strings) --------
 
@@ -488,9 +535,13 @@ class Atlas:
         params.append(limit)
         return [r[1] for r in self.db.execute(sql, params)]
 
-    def verses_with_phrase(self, phrase, book=None, limit=200):
-        """References of verses containing a formula, optionally within one book."""
-        sql = "SELECT reference FROM verses WHERE word_string LIKE ?"
+    def verses_with_phrase(self, phrase, book=None, limit=200, key=False):
+        """References of verses containing a formula, optionally within one
+        book.  With key=True the phrase is a unit key (Strong's numbers)
+        and is looked for in phrase_string; otherwise it is English
+        wording looked for in word_string."""
+        column = self.phrase_column if key else "word_string"
+        sql = f"SELECT reference FROM verses WHERE {column} LIKE ?"
         params = [f"% {phrase} %"]
         if book:
             sql += " AND book = ?"
@@ -509,18 +560,23 @@ def per_thousand(count, total):
     return round(1000 * count / total, 2) if total else 0.0
 
 
-def phrases_in(verses):
-    """Formula counts for a set of verse rows: phrase -> (verses, times)."""
+def phrases_in(verses, phrase_column="word_string"):
+    """
+    Formula counts for a set of verse rows: key -> (verses, times).  The
+    key is the unit key (phrase_string) when the build has one, else the
+    English wording; function words are judged on the English either way.
+    """
     counts = {}
     for v in verses:
         words = v["word_string"].split()
+        units = v[phrase_column].split() if phrase_column != "word_string" else words
         stops = [w in STOPLIST for w in words]
         seen = set()
         for n in FORMULA_LENGTHS:
             for i in range(len(words) - n + 1):
                 if stops[i + n - 1]:
                     continue
-                phrase = " ".join(words[i:i + n])
+                phrase = " ".join(units[i:i + n])
                 a, t = counts.get(phrase, (0, 0))
                 counts[phrase] = (a + (0 if phrase in seen else 1), t + 1)
                 seen.add(phrase)
@@ -574,6 +630,18 @@ def parallels(atlas, book, partner, share=None):
     if PARALLEL_METHOD == "runs":
         return parallels_by_runs(atlas, book, partner)
     share = PARALLEL_SHARE if share is None else share
+    # Cached on the atlas: every chapter page of a book asks for the
+    # same two partner tables, and a dossier asks for them 48 times
+    cache = atlas.__dict__.setdefault("_parallels", {})
+    key = (book, partner, share)
+    if key in cache:
+        return cache[key]
+    cache[key] = result = _parallels_overlap(atlas, book, partner, share)
+    return result
+
+
+def _parallels_overlap(atlas, book, partner, share):
+    """The overlap rule itself; see parallels()."""
 
     # The book's own formulaic words (in more than PARALLEL_COMMON_SHARE
     # of its verses: Ezekiel's lord, god, saith, know) are set aside on
@@ -737,14 +805,54 @@ def signature_words_section(atlas, report, title, rows, n_scope, scope_label,
         spread_rows.sort(key=lambda r: -r[1])
         sec.footer.append("By spread-weighted keyness: "
                           + ", ".join(atlas.form(r) for r, sp, share in spread_rows[:10]) + ".")
+    lexicon_section(atlas, report, title, top, book, chapter, scope_label)
     return top
+
+
+# Strong's dictionary marks its glosses with "[idiom]", "[phrase]" and
+# the like; the pages leave the marks out
+GLOSS_MARKS = re.compile(r"\[[a-z ]+\]\s*")
+
+
+def clean_gloss(text, limit=90):
+    """A dictionary gloss without its bracketed marks, cut to a length."""
+    text = GLOSS_MARKS.sub("", (text or "").strip())
+    return text if len(text) <= limit else text[:limit - 3] + "..."
+
+
+def lexicon_section(atlas, report, title, roots, book=None, chapter=None, scope_label="Bible"):
+    """
+    The Hebrew or Greek behind a signature words table: each root with
+    its original word from Strong's dictionary, the KJV glosses, and
+    how this text spells it.  Only on a Strong's build, and only for
+    roots that are numbers.
+    """
+    if atlas.roots_mode != "strongs" or not atlas.lexicon:
+        return
+    numbered = [r for r in roots if is_strongs(r) and atlas.lexicon_entry(r)]
+    if not numbered:
+        return
+    head = title.split(".")[0]
+    sec = report.section(
+        f"{head}a. The words behind section {head}",
+        ["word", "original", "KJV glosses", f"spelled in {scope_label}", "spelled in the Bible"],
+        note="Each Strong's number of the table above with its Hebrew or Greek word and the "
+             "English the King James translators used for it (Strong's dictionary), then the "
+             f"spellings used for it in {scope_label} and across the Bible, commonest first with "
+             "counts.  Double-click a row for the word's page.")
+    for root in numbered:
+        word, kjv_def, strongs_def = atlas.lexicon_entry(root)
+        glosses = clean_gloss(kjv_def or strongs_def)
+        here = ", ".join(f"{sp} {n}" for sp, n in atlas.spellings(root, limit=5, book=book, chapter=chapter))
+        bible = ", ".join(f"{sp} {n}" for sp, n in atlas.spellings(root, limit=5))
+        sec.add([atlas.form(root), word, glosses, here, bible], link={"word": root})
 
 
 def signature_formulas_section(atlas, report, title, verses, book, n_scope):
     """Add the signature formulas table for a set of verses."""
     n_out = atlas.n_bible - n_scope
-    strings = {v["reference"]: v["word_string"] for v in verses}
-    phrase_counts = phrases_in(verses)
+    strings = {v["reference"]: v[atlas.phrase_column] for v in verses}
+    phrase_counts = phrases_in(verses, atlas.phrase_column)
 
     scored = []
     for phrase, (a, times) in phrase_counts.items():
@@ -792,17 +900,22 @@ def signature_formulas_section(atlas, report, title, verses, book, n_scope):
             folded.append(row)
     rows = folded
 
+    by_roots = atlas.phrase_column != "word_string"
     sec = report.section(
         title, ["formula", "verses", "times", "rest", "keyness", "where"],
         note="Runs of 2 to 5 words found in at least two different verses, ranked by how much "
              "more often this text uses them than the rest of the Bible.  Keyness is judged on "
-             "verses, so a phrase repeated inside one verse counts once; 'times' is the raw count.")
+             "verses, so a phrase repeated inside one verse counts once; 'times' is the raw count."
+             + ("  A formula is a run of Strong's roots, so it is found however its words are "
+                "spelled (the heathen and the nations are one formula); the wording shown is "
+                "its commonest here." if by_roots else ""))
     for phrase, a, times, b, g2, refs in rows[:TOP_N]:
         where = ", ".join(r.split(" ", 1)[1] if r.startswith(book + " ") else r for r in refs[:6])
         if len(refs) > 6:
             where += ", ..."
-        sec.add([phrase, a, times, b, round(g2, 1), where], refs=refs,
-                link={"phrase": phrase})
+        shown = atlas.display_of(phrase, refs) if by_roots else phrase
+        sec.add([shown, a, times, b, round(g2, 1), where], refs=refs,
+                link={"phrase": shown, "key": phrase})
 
 
 def neighbors_section(atlas, report, title, scope, root, word, scope_label):
@@ -849,7 +962,11 @@ def echoes_section(atlas, report, title, book, chapter=None):
         if there:
             found.append((phrase, here, there))
 
+    by_roots = atlas.phrase_column != "word_string"
+
     def rarity_of(phrase):
+        if by_roots:
+            return sum(atlas.rarity(u) for u in atlas.content_units(phrase))
         return sum(atlas.rarity(atlas.root_of(w)) for w in phrase.split() if w not in STOPLIST)
     found.sort(key=lambda f: (-rarity_of(f[0]), -len(f[0].split()), len(f[2])))
 
@@ -860,6 +977,8 @@ def echoes_section(atlas, report, title, book, chapter=None):
     # ("stand", "stood" and "standing afar off" likewise).  The longest
     # spelling is shown and the locations are pooled.
     def root_key(phrase):
+        if by_roots:
+            return atlas.content_units(phrase)
         return tuple(atlas.root_of(w) for w in phrase.split() if w not in STOPLIST)
 
     kept = {}                 # root key -> [phrase, here, there]
@@ -870,7 +989,7 @@ def echoes_section(atlas, report, title, book, chapter=None):
         refs = list(here) + list(there)
         marks = ",".join("?" * len(refs))
         strings = [r[0] for r in atlas.db.execute(
-            f"SELECT word_string FROM verses WHERE reference IN ({marks})", refs)]
+            f"SELECT {atlas.phrase_column} FROM verses WHERE reference IN ({marks})", refs)]
         grown = atlas.grow_formula(phrase, strings) if strings else phrase
         key = root_key(grown)
         # A key nested inside a longer kept key with the same places is a piece
@@ -894,11 +1013,14 @@ def echoes_section(atlas, report, title, book, chapter=None):
              f"another book, and in no more "
              f"than {ECHO_MAX_TOTAL} verses of the whole Bible.  Ranked by the rarity of their "
              f"words; spellings of one echo are folded together.  Each is a possible quotation, "
-             f"allusion or shared idiom; only reading the two passages can say which.")
+             f"allusion or shared idiom; only reading the two passages can say which."
+             + ("  Echoes are runs of Strong's roots, found however their words are spelled; the "
+                "wording shown is the commonest among the verses listed." if by_roots else ""))
     for key in order[:ECHO_N]:
         phrase, here, there = kept[key]
-        sec.add([phrase, ", ".join(here), ", ".join(there)], refs=here + there,
-                link={"phrase": phrase})
+        shown = atlas.display_of(phrase, here + there) if by_roots else phrase
+        sec.add([shown, ", ".join(here), ", ".join(there)], refs=here + there,
+                link={"phrase": shown, "key": phrase})
     if len(found) > ECHO_N:
         sec.footer.append(f"{len(found) - ECHO_N} more candidate echoes not shown; the tallies "
                           f"below count all of them.")
@@ -1234,7 +1356,7 @@ def reach_depth_section(atlas, report, title, book, info):
     """
     sec = report.section(
         title, ["word", "reach", "depth", "deepest at", "count", "keyness"],
-        note=f"The {REACH_DEPTH_N} most key words of {book} placed by reach (percent of the book's "
+        note=f"The {REACH_DEPTH_N} most key words of {book}, and the {REACH_DEPTH_DEEP_N} deepest, placed by reach (percent of the book's "
              f"{info['chapters']} chapters the word occurs in) against depth (the highest keyness it "
              f"reaches in one chapter, with that chapter).  Wide and deep, top right, are the book's "
              f"leading words; wide and shallow, bottom right, its spread words; narrow and deep, top "
@@ -1242,9 +1364,20 @@ def reach_depth_section(atlas, report, title, book, info):
              f"double-click for the word's page.",
         kind="scatter")
     sec.x_column, sec.y_column = "reach", "depth"
-    for r in atlas.db.execute(
-            "SELECT root, weight, chapters_reached, keyness, depth, depth_chapter FROM word_book "
-            "WHERE book = ? AND weight >= 3 ORDER BY keyness DESC LIMIT ?", (book, REACH_DEPTH_N)):
+    # The words chosen by book keyness lean toward reach; the deepest
+    # local piles (feed H7462 in Ezekiel 34, merchandise in 27) have
+    # modest keyness for the book as a whole, so the top by depth are
+    # added to fill the top left of the chart
+    by_key = atlas.db.execute(
+        "SELECT root, weight, chapters_reached, keyness, depth, depth_chapter FROM word_book "
+        "WHERE book = ? AND weight >= 3 ORDER BY keyness DESC LIMIT ?", (book, REACH_DEPTH_N)).fetchall()
+    by_depth = atlas.db.execute(
+        "SELECT root, weight, chapters_reached, keyness, depth, depth_chapter FROM word_book "
+        "WHERE book = ? AND weight >= 3 ORDER BY depth DESC LIMIT ?", (book, REACH_DEPTH_DEEP_N)).fetchall()
+    chosen = {r["root"]: r for r in by_key}
+    for r in by_depth:
+        chosen.setdefault(r["root"], r)
+    for r in sorted(chosen.values(), key=lambda r: -r["keyness"]):
         reach = round(100 * r["chapters_reached"] / info["chapters"])
         sec.add([atlas.form(r["root"]), reach, round(r["depth"] or 0, 1),
                  f"{book} {r['depth_chapter']}", r["weight"], round(r["keyness"], 1)],
@@ -1266,9 +1399,13 @@ def chapter_page(atlas, book_name, chapter):
     if atlas.has_depth:
         # The leading words of the passage: the words whose deepest place
         # in the whole book is this chapter
-        leading = atlas.db.execute(
+        # Untagged stems ("shalt", "hath", "whether") are left out: with
+        # no number behind them they are compared against the whole
+        # Bible and lead only where a chapter has few strong words
+        leading = [r for r in atlas.db.execute(
             "SELECT root, depth FROM word_book WHERE book = ? AND depth_chapter = ? AND weight >= 3 "
-            "ORDER BY depth DESC LIMIT 6", (book, chapter)).fetchall()
+            "AND depth >= ? ORDER BY depth DESC LIMIT 12", (book, chapter, LEADING_MIN_DEPTH))
+            if is_strongs(r[0]) or atlas.roots_mode != "strongs"][:6]
         if leading:
             report.notes.append("Leading words (words whose deepest chapter in the book is this one): "
                                 + ", ".join(f"{atlas.form(r[0])} ({r[1]:.0f})" for r in leading) + ".")
@@ -1384,10 +1521,7 @@ def word_page(atlas, word, book_name=None):
                      "Double-click another to turn to its page.")
             for r, n in behind[:12]:
                 entry = atlas.lexicon_entry(r) or ("", "", "")
-                glosses = entry[1] or entry[2]
-                if len(glosses) > 90:
-                    glosses = glosses[:87] + "..."
-                sec.add([atlas.form(r), n, entry[0], glosses], link={"word": r})
+                sec.add([atlas.form(r), n, entry[0], clean_gloss(entry[1] or entry[2])], link={"word": r})
 
     sec = report.section(
         f"1. Shadow map '{atlas.form(root)}' [each book]",
@@ -1429,14 +1563,19 @@ def word_page(atlas, word, book_name=None):
     sec = report.section(f"3. Formulas holding '{atlas.form(root)}' [Bible]",
                          ["formula", "verses", "books"],
                          note="Formulas of 2 to 5 words containing this word, most widespread first.")
-    # Formulas are stored on the English wording, so search with the
-    # root's commonest spelling (a number typed or double-clicked has none)
-    needle = atlas.forms.get(root) or (word if word.isupper() else word.lower())
+    # Formulas are stored on unit keys (the root itself on a Strong's
+    # build, the commonest spelling on an English one)
+    if atlas.phrase_column == "word_string":
+        needle = atlas.forms.get(root) or (word if word.isupper() else word.lower())
+    else:
+        needle = root
+    display_col = ", display" if atlas.has_display else ""
     for r in atlas.db.execute(
-            "SELECT phrase, verses_total, books_total FROM ngrams "
+            f"SELECT phrase, verses_total, books_total{display_col} FROM ngrams "
             "WHERE (' ' || phrase || ' ') LIKE ? ORDER BY verses_total DESC LIMIT ?",
             (f"% {needle} %", TOP_N)):
-        sec.add([r["phrase"], r["verses_total"], r["books_total"]], link={"phrase": r["phrase"]})
+        shown = r["display"] if atlas.has_display else r["phrase"]
+        sec.add([shown, r["verses_total"], r["books_total"]], link={"phrase": shown, "key": r["phrase"]})
     if not sec.rows:
         sec.note += "  (none stored: the word never ends a formula found in 2+ verses)"
     return report

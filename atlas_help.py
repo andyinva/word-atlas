@@ -60,6 +60,10 @@ HELP = {
     "go": "Open the page described by the boxes to the left.",
     "save": "Write the page on screen into the reports folder as a plain text file, laid "
             "out exactly as the command-line version prints it.",
+    "dossier": "Write everything the atlas can say about the book in the Book box to one text "
+               "file under reports/: the book page, every chapter page (trimmed to leading words, "
+               "signature words, formulas and synopsis, or in full), and the word pages of the "
+               "book's ten most key words.  Takes about a minute.",
     "rebuild": "Recompute every table from the Bible text with the rules now in "
                "atlas_text.py.  Takes about a minute and replaces the working atlas.db; "
                "a label keeps a copy under builds/.  Use it after changing a rule.",
@@ -138,8 +142,9 @@ COLUMN_HELP = {
             "meet than chance predicts (log-likelihood).  Bigger is stronger.",
     "in the rest of the Bible": "The same word's neighbors everywhere except this book, "
                                 "for comparison with the left-hand side.",
-    "formula": "A set phrase of two to five words that recurs in the text.  Click for "
-               "the verses holding it.",
+    "formula": "A set phrase of two to five words that recurs in the text.  On a Strong's "
+               "build it is a run of roots, found however its words are spelled, and shown in "
+               "its commonest wording here.  Click for the verses holding it, in every spelling.",
     "verses": "How many verses hold the formula (or, in a sharing table, how many verses "
               "the chapter has).",
     "times": "How many times the formula occurs here, counting repeats within a verse.",
@@ -176,6 +181,9 @@ COLUMN_HELP = {
     "verse": "The verse of this chapter.  Click for the verse and its parallels in full.",
     "text": "The opening words of the verse.",
     "original word": "The Hebrew or Greek word behind the number, from Strong's dictionary.",
+    "original": "The Hebrew or Greek word behind the number, from Strong's dictionary.",
+    "spelled here as": "The English spellings this text uses for the root, commonest first, with counts.",
+    "spelled in the Bible": "The English spellings the whole Bible uses for the root, commonest first, with counts.",
     "home words (count of testament)": "The six words most at home in the book, best first, "
                                        "each with the book's count of the word and the "
                                        "testament's total.",
@@ -202,6 +210,7 @@ COLUMN_PATTERNS = [
     (re.compile(r"^in (.+)$"), "The head word's neighbors inside {0}: the neighbor, how many "
                                "times they meet, and the pull between them."),
     (re.compile(r"^(.+) only$"), "Verses with a parallel in {0} but not in the other partner."),
+    (re.compile(r"^spelled in (.+)$"), "The English spellings used for the root in {0}, commonest first, with counts."),
 ]
 
 # Help for the pictures

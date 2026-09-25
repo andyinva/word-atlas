@@ -68,6 +68,17 @@ LEXICON_CANDIDATES = [
 # Company window: this many words either side, never crossing a verse
 WINDOW = 5
 
+# What a formula is made of (phase 5, last step).
+#   "strongs"  a formula is a run of roots: a tagged content word stands
+#              as its Strong's number, so "the heathen" and "the nations"
+#              are one formula (the H1471) and "thus saith the Lord GOD"
+#              is found however a word in it is spelled.  Stop words and
+#              untagged words stand as themselves.  Each formula carries
+#              its commonest English wording for display.
+#   "english"  a formula is a run of spellings, as in the earlier builds.
+# Follows ROOTS unless set otherwise.
+FORMULA_ROOTS = "strongs"
+
 # Formula lengths (n-grams) to record
 FORMULA_LENGTHS = (2, 3, 4, 5)
 
