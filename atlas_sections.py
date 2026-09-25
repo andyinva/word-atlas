@@ -111,6 +111,33 @@ SECTIONS = {
 }
 
 
+# A conventional date for a section, where it differs from the book's
+# date in BOOK_DATES (atlas_text.py): the section page's echo tables then
+# label partners earlier, contemporary or later from this date instead.
+# With Second Isaiah at the exile, its Jeremiah and Psalms echoes read
+# the other way round from First Isaiah's, and the "who reads whom" table
+# becomes the place where the two datings of the book are compared on
+# the same evidence.  Negative is BC.  A section not listed uses the
+# book's date.
+SECTION_DATES = {
+    "Isaiah": {
+        "Isaiah 40 to 66": -540,
+        "Second Isaiah": -545,
+        "Third Isaiah": -515,
+    },
+    "Psalms": {
+        "Book V": -450,
+        "Songs of Ascents": -450,
+        "Final Hallel": -400,
+    },
+}
+
+
+def section_date(book, name):
+    """The section's own conventional date, or None to use the book's."""
+    return SECTION_DATES.get(book, {}).get(name)
+
+
 REST_PREFIX = "Rest of"      # the name given to the chapters a division leaves out
 FEW_WORDS = 1000             # a section under this many words is marked 'few'
 

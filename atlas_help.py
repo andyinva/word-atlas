@@ -229,7 +229,11 @@ COLUMN_HELP = {
     "gap": "How many chapters apart the chapter and its partner are.  Neighbours share phrasing "
            "because the story continues; a wide gap means the author came back to the same "
            "wording later.",
-    "kind": "'adjacent' when the partner is the next chapter along (the story continuing), "
+    "sections": "Which sections of the book (its main division in atlas_sections.py) the refrain's "
+                "chapters fall in: 'all in' one section, or 'spans' several.  A refrain that never "
+                "crosses a proposed seam is evidence for the seam.",
+    "kind": "'near' when the partner is two chapters away, which may be either.  "
+            "'adjacent' when the partner is the next chapter along (the story continuing), "
             "'doublet?' when the two are three or more chapters apart (a passage told twice, "
             "a candidate to read side by side), blank in between.",
     "refrain": "A phrase of three or more words that recurs in three or more chapters of the book: "

@@ -28,8 +28,8 @@ import re
 import sqlite3
 from collections import Counter, defaultdict
 
-from atlas_sections import (FEW_WORDS, divisions_of, find_section, sections_of, section_of,
-                            seam_chapters, span_text)
+from atlas_sections import (FEW_WORDS, divisions_of, find_section, sections_of, section_date,
+                            section_of, seam_chapters, span_text)
 from atlas_text import (ATLAS_PATH, ECHO_MAX_TOTAL, FOCUS_MIN_OCCURRENCES,
                         FORMULA_LENGTHS, PARALLEL_METHOD, PARALLEL_MIN_SHARED,
                         PARALLEL_RUN, PARALLEL_RUN_CONTENT, PARALLEL_SHARE, STOPLIST,
@@ -45,7 +45,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.1"   # the program version; the window title and every report print it
+VERSION = "0.10.2"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -83,6 +83,7 @@ INTERJECTIONS = {"oh", "o", "ah", "alas", "behold", "lo", "yea", "nay", "amen", 
 RATIO_MIN_ECHOES = 20           # obs/exp on fewer echoes is marked 'few'
 QUOTE_MIN_WORDS = 5             # an echo this long in exactly two verses is quotation grade
 PARALLEL_MIN_APPLIES = 0.05     # 4d is left out when fewer verses than this share have a parallel
+NARROW_PARTNER_SHARE = 0.8      # a partner with this share of its echo weight in five chapters is too narrow for 4d
 WHO_READS_N = 3                 # rarest echoes cited per partner in the who-reads-whom table
 
 
@@ -1100,13 +1101,14 @@ def neighbors_section(atlas, report, title, scope, root, word, scope_label):
                 link={"word": l["neighbor"], "book": scope, "pair": root} if l else None)
 
 
-def echoes_section(atlas, report, title, book, chapter=None, scope_name=None):
+def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, date=None):
     """
     Echoes between a book (or chapter, or chapter range) and other
     books, rarest first.  chapter is None for the whole book, an int for
     one chapter, or a list of chapters for a section (not always a run:
     Asaph is Psalm 50 and 73 to 83); scope_name is how a section is
-    called in the titles.
+    called in the titles; date is a section's own conventional date, used
+    in place of the book's for the earlier/contemporary/later labels.
     """
     is_range = isinstance(chapter, (tuple, list, set, frozenset))
     if is_range:
@@ -1296,7 +1298,7 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None):
         expected = total_echoes * words / words_outside
         partner_rows.append((pb, len(keys), round(sum(keys.values())),
                              round(len(keys) / expected, 2) if expected else 0,
-                             round(1000 * len(keys) / words, 2), relation_in_time(book, pb)))
+                             round(1000 * len(keys) / words, 2), relation_in_time(book, pb, date)))
     partner_rows.sort(key=lambda r: -r[2])
     for row in partner_rows[:TOP_N]:
         shown = list(row)
@@ -1314,6 +1316,11 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None):
     for pb, n, w, ratio, rate, rel in partner_rows:
         by_time[rel] += n
         by_time_weight[rel] += w
+    if date is not None:
+        tally.footer.append(
+            f"This section is dated {abs(date)} {'BC' if date < 0 else 'AD'} in SECTION_DATES "
+            f"(atlas_sections.py), against {abs(BOOK_DATES.get(book, 0))} for {book} as a whole in "
+            f"BOOK_DATES; the earlier, contemporary and later labels here follow the section's date.")
     tally.footer.append(
         "By conventional dating (edit BOOK_DATES in atlas_text.py to change): echoes with "
         + ", ".join(f"{rel} books {by_time[rel]} (weight {by_time_weight[rel]})"
@@ -1519,7 +1526,24 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None):
         # is Luke's own material.  For any other book it still says
         # whether its two chief partners overlap or divide the text.
         if len(partner_rows) >= 2:
-            a_book, b_book = partner_rows[0][0], partner_rows[1][0]
+            # The two heaviest partners whose echoes are spread through
+            # the book: one with NARROW_PARTNER_SHARE or more of its weight
+            # in five chapters (2 Kings in Isaiah 7 and 36 to 39, 94
+            # percent) would hold a column that is empty elsewhere, while a
+            # pointed partner spread through the book (Daniel in
+            # Revelation, 59 percent) keeps its place
+            candidates = [row[0] for row in partner_rows[:6]]
+
+            def concentration(pb):
+                """Share of the partner's echo weight held by its five heaviest chapters here."""
+                by_ch = sorted((sum(keys.values()) for (ch, p), keys in cell_keys.items() if p == pb),
+                               reverse=True)
+                total = sum(by_ch)
+                return sum(by_ch[:5]) / total if total else 1.0
+
+            broad = [pb for pb in candidates if concentration(pb) <= NARROW_PARTNER_SHARE]
+            ranked = broad + [pb for pb in candidates if pb not in broad]
+            a_book, b_book = ranked[0], ranked[1]
             gospel = book in GOSPELS and a_book in GOSPELS and b_book in GOSPELS
             reading = (f"For a Gospel: both is the triple tradition, one partner only is material "
                        f"shared with that Gospel alone, neither is this Gospel's own.  "
@@ -1539,7 +1563,11 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None):
                      f"formulas do not count as parallels"
                      + (f" (here: {', '.join(atlas.form(r) for r in common)})" if common else "")
                      + f".  A verse carrying a quotation-grade echo with a partner (see 4a2) counts as "
-                     f"a parallel too.  'both' = a parallel in {a_book} and one in {b_book}; 'neither' = no "
+                     f"a parallel too.  The two partners are the heaviest whose echoes are spread through "
+                     f"{book}: a partner with more than {NARROW_PARTNER_SHARE:.0%} of its echo weight in "
+                     f"five chapters (2 Kings in Isaiah 7 and 36 to 39) is passed over, so it does not "
+                     f"hold a column empty everywhere else.  "
+                     f"'both' = a parallel in {a_book} and one in {b_book}; 'neither' = no "
                      f"parallel with either.  " + reading
                      + "An empty stretch in one column is a passage the partner does not have.")
             chapter_verses = {r[0]: r[1] for r in atlas.db.execute(
@@ -1880,7 +1908,8 @@ def section_page(atlas, book_name, section_name):
     report.sections[-len(focus)].note = ("Neighbors is stored at book and Bible scale, so the left "
                                          "column is the whole book.  " + report.sections[-len(focus)].note)
 
-    echoes_section(atlas, report, f"4. Echoes [{label}] -> other books", book, chapters, scope_name=label)
+    echoes_section(atlas, report, f"4. Echoes [{label}] -> other books", book, chapters,
+                   scope_name=label, date=section_date(book, name))
     if len(chapters) > 1:
         within_book_section(atlas, report, f"6. Echoes within [{label}]: chapter against chapter",
                             book, chapter_range=chapters)
@@ -2079,8 +2108,9 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
         note="For each chapter, the chapter of the same book it shares the most rare phrasing with "
              "(weight = summed rarity of the shared phrases, phrases = how many they share), the "
              "phrase that weighs most, and the next partner.  'gap' is the distance between the two; "
-             f"neighbours share phrasing because the story continues ('adjacent'), chapters "
-             f"{DOUBLET_GAP} or more apart because the author repeated himself ('doublet?').  "
+             f"neighbours share phrasing because the story continues ('adjacent'), a chapter one "
+             f"removed may be either ('near'), chapters {DOUBLET_GAP} or more apart because the "
+             f"author repeated himself ('doublet?').  "
              "Refrains (phrases in three or more chapters) are set aside and listed below.  Click "
              "a row for the verses on both sides; double-click for the chapter's page.")
     for a in chapters_all:
@@ -2093,7 +2123,7 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
         b, w = partners[0]
         key = (min(a, b), max(a, b))
         gap = abs(a - b)
-        kind = "doublet?" if gap >= DOUBLET_GAP else ("adjacent" if gap == 1 else "")
+        kind = "doublet?" if gap >= DOUBLET_GAP else ("adjacent" if gap == 1 else "near")
         second = f"{partners[1][0]} ({round(partners[1][1])})" if len(partners) > 1 else "-"
         pairs.add([a, b, gap, kind, round(w), cell_count[key], cell_best[key][1], second],
                   refs=sorted(set(cell_refs[key]), key=ref_order),
@@ -2105,10 +2135,11 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
         # the seams: "amen and amen" at 41:13, 72:19 and 89:52 closes
         # Books I, II and III of the Psalter
         closing, opening = seam_chapters(book)
+        main_secs = sections_of(book, None, atlas.book_info[book]["chapters"])
         has_seams = bool(closing)
         ref_sec = report.section(
             title.split(".")[0] + f"b. Refrains [{book}]: phrases in {REFRAIN_MIN_CHAPTERS} or more chapters",
-            ["refrain", "chapters", "verses"] + (["at the seams"] if has_seams else []),
+            ["refrain", "chapters", "verses"] + (["at the seams", "sections"] if has_seams else []),
             note="Phrases of three or more words that recur in three or more chapters of the book, "
                  "rarest first: the book's own refrains, set aside from the map above so they do "
                  "not inflate many cells at once.  Forms that differ only by stop words are one "
@@ -2116,7 +2147,10 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
                  "stricter rule between books, three chapters and four verses, so a refrain here may "
                  "still count there.)  Click for the verses."
                  + ("  'at the seams' counts the refrain's chapters that close or open a section of "
-                    "the book (see section 7): a refrain found only there marks the book's divisions."
+                    "the book (see section 7): a refrain found only there marks the book's divisions.  "
+                    "'sections' says whether the refrain stays inside one section ('all in Second "
+                    "Isaiah') or spans several: a refrain that never crosses a proposed seam is "
+                    "evidence for the seam, and one that does marks a chapter the division must explain."
                     if has_seams else ""))
         # Refrains that differ only by stop words ("james and john", "and
         # james and john"; "an unclean spirit", "the unclean spirits", one
@@ -2149,6 +2183,16 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
                 if opens:
                     at.append(f"{len(opens)} of {len(chapters_of)} open one")
                 row.append("; ".join(at) if at else "")
+                # Which sections of the main division the refrain's chapters fall in
+                in_secs = []
+                for c in chapters_of:
+                    for sname, schs, srest in main_secs:
+                        if c in schs and sname not in in_secs:
+                            in_secs.append(sname)
+                if len(in_secs) == 1:
+                    row.append(f"all in {in_secs[0]}")
+                else:
+                    row.append(f"spans {len(in_secs)}: " + ", ".join(in_secs))
             ref_sec.add(row, refs=refs, link={"phrase": display, "key": key})
 
 

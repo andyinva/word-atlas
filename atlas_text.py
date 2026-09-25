@@ -822,13 +822,14 @@ DISPUTED_DATES = {"Job", "Joel", "Jonah", "Daniel", "Ecclesiastes", "Song of Sol
                   "Numbers", "Deuteronomy", "Isaiah", "Zechariah", "2 Peter", "Jude", "James"}
 
 
-def relation_in_time(book, partner):
+def relation_in_time(book, partner, date=None):
     """
     'earlier', 'later' or 'contemporary': where a partner book stands in
     time relative to a book, by the conventional dates above.  Unknown
-    books come back as '?'.
+    books come back as '?'.  With date given, the text is placed at that
+    date instead of the book's (a section with its own date).
     """
-    a, b = BOOK_DATES.get(book), BOOK_DATES.get(partner)
+    a, b = (date if date is not None else BOOK_DATES.get(book)), BOOK_DATES.get(partner)
     if a is None or b is None:
         return "?"
     if b < a - DATE_SLACK:

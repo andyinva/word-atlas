@@ -25,6 +25,7 @@ screens and this file.
 | Depth | How thickly a word is piled up in one small place (vertical): the highest keyness a word reaches in any one chapter, and the chapter where it does. The leading words of a passage are the words whose deepest chapter it is |
 | Neighbors | The words that fall within the window of a given word more often than chance predicts |
 | Pull | How strongly one word draws a neighbor, the strength of one tie |
+| Tie | One pairing of a word with a neighbor that meets it more often than chance; a word's shadow is the sum of its ties, and a word with many strong ties casts a large one |
 | Shadow | A word's total influence at a scale: weight, reach and pull together |
 | Signature words | Words far more common at this scale than in the rest of the Bible |
 | Spread | Keyness scaled by the share of chapters a word reaches; a "local" word lives in under a fifth of them |
@@ -35,6 +36,8 @@ screens and this file.
 | Window | How many words either side count as "near" (5, inside the verse) |
 | Root | The base form that several spellings are gathered under: a Strong's number (H3068, G3056) where the text is tagged, otherwise an English stem |
 | Keyness | How much more often a word (or formula) occurs here than the rest of its testament or the Bible would predict; log-likelihood, so 10.8 is one chance in a thousand |
+| Log-likelihood | The test behind keyness: how surprising a word's count here is, given its count in the comparison text and the sizes of both. Above 3.8 the difference is unlikely to be chance (one in twenty), above 6.6 one in a hundred, above 10.8 one in a thousand; the sign goes negative when the word is rarer here than expected. See Dunning's G squared |
+| Dunning's G squared | The formula the log-likelihood uses, from Ted Dunning's 1993 paper on the statistics of surprise. Take the word's count here and in the comparison text; work out what each count would be if the word were spread over both texts evenly, in proportion to their sizes (the expected counts); then for each of the four cells (the word here, the word there, all other words here, all other words there) multiply the observed count by the logarithm of observed over expected, add the four up, and double the sum. A word spread evenly scores near zero; a word piled up on one side scores high. It is preferred to the older chi-squared test because it stays honest for rare words and small texts, where chi-squared exaggerates, and corpus linguists have used it for keywords since Dunning proposed it |
 | Rarity | How rare a word is, as the negative logarithm of its share of all words in its testament; one in a thousand scores about 7, one in a hundred thousand about 11.5 |
 | Single-word formula | A formula that has lost all but one word to tidying, as "and joseph" loses its conjunction; a name after "and" is not a set phrase, so such rows are passed over rather than printed |
 | Run | Words standing one after another: a formula is a run of two to five, an echo a shared run grown to its full length. Also chapters in a row whose pointers never go backwards, the evidence that a book follows another's order |
@@ -789,6 +792,117 @@ section under 1,000 words (FEW_WORDS) is marked "few" beside its name,
 as 4a marks a small partner, so its rows are read lightly. The section
 page and the echo and within-book sections take a chapter list, not a
 range, so a split section's page runs over its own chapters.
+
+The Isaiah read asked for four more things (0.10.2). The refrains
+table gained a "sections" column beside "at the seams": "all in
+Isaiah 40 to 66" for "the sons of the stranger", "all in Isaiah 1 to
+39" for "the son of Amoz" and "hand is stretched out still", "spans 2"
+for "break forth into singing" (14, 44, 49, 54), so on a book without
+doxologies 6b is still a divisions test. A section may carry its own
+conventional date in SECTION_DATES (atlas_sections.py): Second Isaiah
+at 545 BC, Third at 515, the Psalter's Book V at 450; a section page's
+4a and 4a2 then label partners earlier, contemporary or later from
+the section's date, with a footer saying so, and Jeremiah reads
+"earlier" and the Psalms "later" for Second Isaiah where the book as
+a whole has both "later". That makes the section pages the place
+where two datings of one book are compared on the same evidence. The
+sharing table (4d) now passes over a partner whose echoes are
+concentrated in a few chapters (more than 80 percent of its weight in
+five, NARROW_PARTNER_SHARE): 2 Kings, 94 percent in Isaiah 7 and 36
+to 39, gives way to Psalms and Jeremiah, while Daniel, 59 percent
+across Revelation, keeps its column. And 6a's "kind" says "near" at a
+gap of two, which may be either the story continuing or a doublet.
+
+## Reading the section tables: Isaiah as the worked example
+
+The Psalter showed that the section layer could find a structure
+everyone agrees on. Isaiah is the harder test, because its division
+is an argument rather than a fact: for a century most scholars have
+read chapters 1 to 39 as the eighth-century prophet and 40 to 66 as a
+later writer (or two), on the grounds of vocabulary, subject and
+outlook. atlas_sections.py carries both the two-part and the
+three-part division, and the tables built from the KJV alone, with no
+knowledge of the argument, come out on the side of the division. This
+is what to look for on any book, told on Isaiah.
+
+The leading words are the vocabulary argument made by counting.
+Chapters 1 to 39 lead with Assyria, Hezekiah, Egypt, hosts, king and
+Moab: politics and geography, the Assyrian crisis and the oracles
+against the nations. Chapters 40 to 66 lead with redeemer H1350 (23
+times, in 13 of the 27 chapters), am (84 times in 21 chapters, the "I
+am he" and "I am the LORD" declarations), former H7223 (the "former
+things"), created H1254, name and know. That is the list of Second
+Isaiah's characteristic words that S. R. Driver drew up a century
+ago (go'el, bara, the former things, I am he, declare, know), found
+here from the counts. The three-part table sharpens it: Second Isaiah
+(40 to 55) keeps am, formed, declare H5046, know, graven image and
+awake (the "awake, awake" calls of 51 and 52), while Third Isaiah (56
+to 66) leads with rejoice, sabbath H7676 (56, 58, 66), everlasting,
+stranger H5236 (56, 60, 61, 62) and peace H2814, which is chashah,
+"keep silence", the "I will not hold my peace" of 57, 62, 64 and 65.
+Sabbath and the foreigner are exactly the grounds on which Bernhard
+Duhm separated 56 to 66 in 1892, and "keep silence" is a motif of
+that section no list mentions. The "in N of M chapters" figure is
+what makes these readable: a word in 13 of 27 chapters is the
+section's voice, a word in 2 of 27 is one chapter's.
+
+7b, the section-against-section map, is the two-Isaiah hypothesis as
+a matrix. First Isaiah against itself scores 196, Second Isaiah
+against itself 152, and the two against each other 19. Compare the
+Psalter, where the Elohistic block and the rest of the book scored 82
+against diagonals of 126 and 258: parts of one book sharing a common
+stock of phrasing. Isaiah's halves share a fraction of that. The
+three-part version adds that Second and Third Isaiah share more with
+each other (28) than either does with First (19 and 16), and that
+Third Isaiah's own diagonal is low (63), a short section that repeats
+itself little; that is the shape of the view that 56 to 66 depends on
+40 to 55 rather than standing alone. One caveat a reader needs: First
+Isaiah's diagonal is padded by its narrative block, since 36 and 37
+(160), 7 and 36 (127) and 37 and 38 (117) are the three strongest
+pairs in the book and all are the Hezekiah story told in prose.
+
+Section 6, the chapter-against-chapter map, found the bridges the
+commentaries cite as evidence. Chapters 35 and 51 at 151 ("sorrow and
+sighing shall flee away", 35:10 and 51:11 word for word) is the
+standard reason for placing chapter 35 with Second Isaiah; 11 and 65
+at 113 ("the lion shall eat straw like the ox", 11:6 to 9 and 65:25)
+is the standard cross-reference between the halves; 49 and 60 at 137
+("lift up thine eyes round about", 49:18 and 60:4) is the standard
+link between Second and Third; 13 and 34 are the Babylon and Edom
+oracles sharing their imagery of desolation; 2 and 31 share the idols
+of silver and gold. Twelve strongest pairs, every one in the
+literature.
+
+7a, the echo map by section, reads the book's sources part by part.
+First Isaiah to 2 Kings at 650 is the shared narrative of chapters 36
+to 39. Psalms climbs through the book, 93, 145, 189, as the prophecy
+turns hymnic. Micah is 50 for First Isaiah and 9 for Second, which is
+Isaiah 2 beside Micah 4. Job peaks in Third Isaiah through chapter
+59's "conceive mischief and bring forth". The Compare page against
+Jeremiah confirms the known shared oracles, Isaiah 15 and 16 with
+Jeremiah 48 (Moab), 13 and 14 with Jeremiah 50 and 51 (Babylon), 24
+with Jeremiah 48 ("the pit and the snare", 24:17 and 48:43), all
+above the floor with nothing spurious beside them.
+
+The refrains table (6b) tells the same story in a different way. "At
+the seams" says almost nothing on Isaiah, which has no doxologies;
+what the table shows instead is refrains confined to one section:
+"the former things" in 41, 42, 43, 46 and 48; "redeemer the holy" in
+41, 43, 48 and 54; "the sons of the stranger" in 56, 61 and 62; "the
+son of Amoz" only in 1 to 39; "hand is stretched out still" in 5, 9
+and 10. A refrain that never crosses a proposed seam is evidence for
+the seam, and one that does ("break forth into singing" in 14, 44, 49
+and 54) marks the kind of chapter critics argue about.
+
+What to take from this for other books: read the leading words first
+and ask whether they are the section's voice or one chapter's; read
+7b for whether the parts share a common stock of phrasing or not;
+read section 6's strongest pairs for the bridges; read 7a for whether
+the parts draw on different sources; and read 6b for refrains that
+stay inside one part. Where the layer describes a division, as on the
+Psalter, these will agree with what a reader knows. Where it argues
+one, as on Isaiah, they are the evidence, and the table in
+atlas_sections.py is where to try the alternative and see what moves.
 
 ## Two books, chapter against chapter
 
