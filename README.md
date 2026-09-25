@@ -592,6 +592,18 @@ darkened, moon, light), and Daniel 7 finds Revelation 17, 13, 5 and 4
 translators' wording, as the cross-testament echoes do, and the
 column keeps that visible.
 
+The dossier (0.9.4) now holds what a reader asking for "everything
+about Mark" would otherwise have to fetch from three other pages: the
+book's rows of its testament page (its home words, its row of the
+home map, and the words whose home or second home it is), and the
+Compare page against each of its two chief partners (Mark x Matthew,
+Mark x Luke), placed after the book page and before the chapters.
+Every text report also opens with a build line under its title, "Word
+Atlas 0.9.4; build 'strongs' made 2026-09-25, roots Strong's numbers,
+window 5, KJV", so a file read weeks later says what produced it; the
+version is kept in one place (atlas_pages.VERSION) and the window
+title reads the same one.
+
 Two smaller changes from the same page. Absorption now reaches across
 a single stop word, and runs before inference, so "father in law" and
 "mother in law" fold into H2859 and H2545 instead of "father" being

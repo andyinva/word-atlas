@@ -63,7 +63,7 @@ the top bar) and point at the thing you are wondering about.
 | Any book | Word pages only: show the word across the whole Bible instead of within the chosen book |
 | Go | Open the page |
 | Save as text | Write the page on screen to the `reports` folder as a plain text file |
-| Save dossier | Write everything about the chosen book to one text file in the `reports` folder: the book page, every chapter page and the top ten words' pages. Trimmed or full |
+| Save dossier | Write everything about the chosen book to one text file in the `reports` folder: the book page, its rows of the testament page, the Compare page against each of its two chief partners, every chapter page and the top ten words' pages. Trimmed or full. Every report opens with a build line naming the version and the build |
 | Rebuild atlas | Recompute every table from the Bible text (see part 7) |
 
 **Ask row** (a faster way to ask, using the notation in part 5)

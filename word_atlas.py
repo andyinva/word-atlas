@@ -55,7 +55,7 @@ import atlas_query
 import atlas_text
 from atlas_ask import AskError
 
-VERSION = "0.9.3"
+VERSION = atlas_pages.VERSION     # one version for the window and the reports
 
 # ---------------------------------------------------------------------------
 # Style: flat, 1 px frames, quiet grey headers, matching Bible Search Lite
@@ -1001,7 +1001,7 @@ class WordAtlasWindow(QMainWindow):
         """Write the page on screen to the reports folder as text."""
         if not getattr(self, "report", None):
             return
-        path = atlas_query.save(self.report, atlas_query.render(self.report))
+        path = atlas_query.save(self.report, atlas_query.render(self.report, self.atlas))
         self.status.setText(f"Saved to {path}")
 
     def ask(self):

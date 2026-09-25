@@ -43,6 +43,8 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
+VERSION = "0.9.4"   # the program version; the window title and every report print it
+
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
 ECHO_N = 60         # echoes shown per page, best first
@@ -496,6 +498,18 @@ class Atlas:
                          "pull": log_likelihood(a, b, inside, n_rest - inside)})
         rows.sort(key=lambda r: -r["pull"])
         return rows[:limit]
+
+    def build_line(self):
+        """
+        One line saying which program and which build made a report:
+        the version, the build label and date, the roots rule and the
+        window.  Printed under the title of every text report, so a
+        file read weeks later says what produced it.
+        """
+        label = self.settings.get("label") or "unlabelled"
+        roots = "Strong's numbers" if self.roots_mode == "strongs" else "English stems"
+        return (f"Word Atlas {VERSION}; build '{label}' made {self.settings.get('built', '?')}, "
+                f"roots {roots}, window {self.window}, {self.settings.get('translation', '')}.")
 
     def english_stems(self):
         """
@@ -1548,9 +1562,6 @@ def book_page(atlas, book_name):
                     f"Book page [{book}] ({atlas.settings['translation']})")
     report.notes.append(f"{book}: {info['verses']} verses, {info['chapters']} chapters, "
                         f"{info['words']} words.  Rest of the Bible: {atlas.n_bible - info['words']} words.")
-    report.notes.append(f"Window {atlas.window}, atlas built {atlas.settings['built']}"
-                        + (f", build '{atlas.settings['label']}'" if atlas.settings.get("label") else "")
-                        + ".")
     report.notes.append(atlas.divine_name_note())
 
     rows = [(r["root"], r["weight"], r["chapters_reached"], r["keyness"]) for r in atlas.db.execute(

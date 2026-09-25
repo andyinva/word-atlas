@@ -29,13 +29,19 @@ import re
 import sys
 
 from atlas_ask import AskError, parse
-from atlas_pages import Atlas, book_page, chapter_page, compare_page, kin_page, testament_page, word_page
+from atlas_pages import Atlas, book_page, chapter_page, chief_partners, compare_page, kin_page, testament_page, word_page
 
 
-def render(report):
-    """Lay a Report out as plain text."""
+def render(report, atlas=None):
+    """
+    Lay a Report out as plain text.  With the atlas given, the build
+    line (program version, build label and date, roots rule, window)
+    is printed under the title, so the file says what made it.
+    """
     lines = ["WORD ATLAS  -  " + report.title]
     lines.append("#" * len(lines[0]))
+    if atlas is not None:
+        lines.append(atlas.build_line())
     lines.extend(report.notes)
 
     for sec in report.sections:
@@ -101,7 +107,7 @@ def ask(atlas, line):
             report = chapter_page(atlas, a["book"], a["chapter"])
         else:
             report = kin_page(atlas, a["book"], a["chapter"])
-        text = render(report)
+        text = render(report, atlas)
         print(text)
         print(f"(saved to {save(report, text)})")
         return
@@ -135,12 +141,41 @@ def ask(atlas, line):
             print(f"  {r}  {v['text']}")
 
 
+def testament_slice(atlas, book):
+    """
+    The testament page cut down to one book: section 1 keeps the
+    book's row, section 2 (the home map) the book's row, section 3 the
+    words whose home or second home the book is.  The columns and notes
+    are the testament page's own.
+    """
+    testament = atlas.book_info[book]["testament"]
+    full = testament_page(atlas, testament)
+    full.title = f"Testament page [{testament}], the rows for {book}"
+    for sec in full.sections:
+        keep = []
+        for i, row in enumerate(sec.rows):
+            link = sec.links[i] or {}
+            if sec.title.startswith("3."):
+                mine = row[1] == book or str(row[6]).startswith(book + " ")
+            else:
+                mine = link.get("book") == book
+            if mine:
+                keep.append(i)
+        sec.rows = [sec.rows[i] for i in keep]
+        sec.refs = [sec.refs[i] for i in keep]
+        sec.links = [sec.links[i] for i in keep]
+        if sec.title.startswith("3."):
+            sec.note += f"  Cut to the words whose home or second home is {book}."
+    return full
+
+
 def dossier(atlas, book_name, brief=False):
     """
     Everything the atlas can say about one book, in one text file:
-    the book page, the testament page's home words for the book, every
-    chapter page, and the word pages of the book's top signature
-    words.  With brief=True a chapter page keeps only its leading
+    the book page, the book's rows of its testament page (home words,
+    home map, whose word is this), the Compare page against each of
+    its two chief partners, every chapter page, and the word pages of
+    the book's top signature words.  With brief=True a chapter page keeps only its leading
     words, signature words, formulas, synopsis and kin, which is what a
     review usually needs, and the file is about a third the size.
     Returns the path written.
@@ -148,7 +183,14 @@ def dossier(atlas, book_name, brief=False):
     book = atlas.find_book(book_name)
     parts = []
     report = book_page(atlas, book)
-    parts.append(render(report))
+    parts.append(render(report, atlas))
+    # The book's slice of its testament page: its home words, its row of
+    # the home map, and the words whose home (or second home) it is
+    parts.append(render(testament_slice(atlas, book), atlas))
+    # The book against each of its two chief partners, chapter against
+    # chapter: the companion to 4b and the synopsis
+    for partner in chief_partners(atlas, book, 2):
+        parts.append(render(compare_page(atlas, book, partner), atlas))
     top_words = [r["root"] for r in atlas.db.execute(
         "SELECT root FROM word_book WHERE book = ? AND weight >= 3 ORDER BY keyness DESC LIMIT 10", (book,))]
     for chapter in range(1, atlas.book_info[book]["chapters"] + 1):
@@ -157,12 +199,12 @@ def dossier(atlas, book_name, brief=False):
             keep = ("1.", "2.", "5.", "6.")
             chapter_report.sections = [sec for sec in chapter_report.sections
                                        if sec.title.startswith(keep)]
-        parts.append(render(chapter_report))
+        parts.append(render(chapter_report, atlas))
     for root in top_words:
         try:
             # exact: the root as the book page counted it, so an untagged
             # stem opens its own page rather than a Strong's number
-            parts.append(render(word_page(atlas, root, book, exact=True)))
+            parts.append(render(word_page(atlas, root, book, exact=True), atlas))
         except ValueError:
             continue
     text = ("\n\n" + "=" * 110 + "\n\n").join(parts)
@@ -212,7 +254,7 @@ def main(argv):
             return
     except ValueError as e:
         raise SystemExit(str(e))
-    text = render(report)
+    text = render(report, atlas)
     print(text)
     print(f"(saved to {save(report, text)})")
 
