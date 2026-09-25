@@ -426,3 +426,18 @@ Read each report against the text. The question for phase 1 is which
 of the four sections finds patterns worth building the full program
 around, and whether the window and the stoplist need changing. Add any
 misrooted words you notice to `Stemmer.EXCEPTIONS`.
+
+## Sources and licence
+
+The code and documents in this repository are released under the MIT
+licence (see `LICENSE`). The atlas is built from files that are not in
+the repository: `bibles.db`, the Bible Search Lite database, whose KJV
+text is public domain and whose `verse_strongs` table carries the
+public-domain Strong's tagging of it; and `strongs.csv`, the Strong's
+dictionary from the strongs3 project (MIT licence), read from
+`strongs3-master/data_processed/` or from beside the scripts. To build
+the atlas from scratch you need a `bibles.db` with the KJV in the
+Bible Search Lite layout (books, verses, translations, verse_texts) and
+a `verse_strongs` table (verse_id, word_position, strongs_number,
+morphology, word_text); `inspect_strongs.py` reports whether a
+database has what is needed.
