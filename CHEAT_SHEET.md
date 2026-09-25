@@ -171,7 +171,10 @@ each chapter's closest partner in the book, with the gap between them
 and a kind: "adjacent" (the story continuing) or "doublet?" (three or
 more chapters apart, a passage told twice). 6b the book's refrains,
 phrases found in three or more chapters, kept out of the map and
-listed on their own.
+listed on their own. 7 Sections (books with a table in
+atlas_sections.py): each part with its leading words, 7a the echo map
+by section, 7b the parts against each other; 6b then says which
+refrains fall at the seams.
 
 **Chapter page.** Opens with the chapter's leading words (the words
 whose deepest chapter in the book is this one), then the same sections

@@ -191,6 +191,14 @@ COLUMN_HELP = {
     "shared": "How many rare words the strongest pair of verses shares.",
     "in order": "How many of those shared words come in the same order in both verses.",
     "strongest pair": "The pair of verses (one here, one there) that scores highest.",
+    "section": "A part of the book as atlas_sections.py divides it (the five books of the Psalter, "
+               "Ezekiel's four parts); edit that file to change the divisions.",
+    "at the seams": "How many of the refrain's chapters close or open a section of the book.  A "
+                    "refrain found only at the seams marks the book's divisions, as 'amen and amen' "
+                    "closes Books I, II and III of the Psalter.",
+    "leading words (keyness against the rest of the book)": "The words most key to the section "
+                    "against the rest of the same book, with count and keyness: what this part talks "
+                    "about that the others do not.",
     "with a parallel": "How many verses of the chapter have a verse-level parallel in the other "
                        "book (three content words in the same order, 30% of the shorter verse).",
     "found by": "'roots' when the kin was found by shared Strong's numbers, within the testament; "
