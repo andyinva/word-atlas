@@ -36,6 +36,7 @@ screens and this file.
 | Window | How many words either side count as "near" (5, inside the verse) |
 | Root | The base form that several spellings are gathered under: a Strong's number (H3068, G3056) where the text is tagged, otherwise an English stem |
 | Keyness | How much more often a word (or formula) occurs here than the rest of its testament or the Bible would predict; log-likelihood, so 10.8 is one chance in a thousand |
+| Normalization | Dividing a raw count by the size of the thing it was counted in, so parts of different sizes can be compared: per 1,000 words (section 1, 4a, 7a, 7b), or as a share of a total (the concentration rule in 4d, the home map's percentages). Keyness takes the idea one step further and asks how surprising the difference from the expected count is |
 | Log-likelihood | The test behind keyness: how surprising a word's count here is, given its count in the comparison text and the sizes of both. Above 3.8 the difference is unlikely to be chance (one in twenty), above 6.6 one in a hundred, above 10.8 one in a thousand; the sign goes negative when the word is rarer here than expected. See Dunning's G squared |
 | Dunning's G squared | The formula the log-likelihood uses, from Ted Dunning's 1993 paper on the statistics of surprise. Take the word's count here and in the comparison text; work out what each count would be if the word were spread over both texts evenly, in proportion to their sizes (the expected counts); then for each of the four cells (the word here, the word there, all other words here, all other words there) multiply the observed count by the logarithm of observed over expected, add the four up, and double the sum. A word spread evenly scores near zero; a word piled up on one side scores high. It is preferred to the older chi-squared test because it stays honest for rare words and small texts, where chi-squared exaggerates, and corpus linguists have used it for keywords since Dunning proposed it |
 | Rarity | How rare a word is, as the negative logarithm of its share of all words in its testament; one in a thousand scores about 7, one in a hundred thousand about 11.5 |
@@ -47,7 +48,8 @@ screens and this file.
 | Quotation grade | An echo of five or more words found in exactly two verses of the whole Bible, one here and one there: the strongest evidence of one text reading another |
 | Chief partners | The two books a text shares the most distinct echoes with; the partners the sharing table and synopsis are drawn against |
 | Points to | The partner chapters a chapter's echoes lead to, each carrying at least a tenth of the chapter's echo weight |
-| In time | Whether a partner is conventionally dated earlier, contemporary or later than the text; earlier is what it could have read, later who could have read it |
+| In time | Whether a partner is conventionally dated earlier, contemporary or later than the text; earlier is what it could have read, later who could have read it. "(disputed)" marks a partner the critical dates would put on the other side |
+| Critical date | A second date for a book whose dating is a live dispute (CRITICAL_DATES in atlas_text.py), the one most critical scholarship prefers, against the conventional date in BOOK_DATES; the labels follow the conventional date and say "(disputed)" where the two disagree |
 | Obs/exp | Echoes shared with a partner against how many its length alone would predict; above one is more than chance, marked "few" under twenty echoes |
 | Local | A word found in under a fifth of a book's chapters; a book within the book |
 | Leading words | Of a chapter: the words whose deepest chapter in the whole book is this one. Of a book, on the reach-and-depth chart: the words that are both wide and deep |
@@ -812,6 +814,29 @@ five, NARROW_PARTNER_SHARE): 2 Kings, 94 percent in Isaiah 7 and 36
 to 39, gives way to Psalms and Jeremiah, while Daniel, 59 percent
 across Revelation, keeps its column. And 6a's "kind" says "near" at a
 gap of two, which may be either the story continuing or a doublet.
+
+The Ezekiel read (0.10.3) raised the dating question from the other
+side: 4a marked Leviticus "earlier" on the conventional date, while
+the direction between Ezekiel and the Holiness Code is one of the
+classic disputes. atlas_text.py now carries a second table,
+CRITICAL_DATES, the dates most critical scholarship prefers for the
+books whose dating is a live dispute (Leviticus at 550 for the
+Holiness Code written in the exile, Isaiah at 540, the Pentateuch at
+550, Daniel at 165, the later New Testament letters at 90 to 130).
+Wherever the two datings put a partner on different sides of a text
+the label prints "earlier (disputed)" and a footer under 4a gives
+both datings, so the caveat that Isaiah's page carried by hand now
+appears on every page it applies to: Ezekiel's Leviticus, Exodus,
+Numbers, Genesis and Isaiah are all disputed, and the footer says why
+in each case. DISPUTED_DATES is now derived from the two tables
+rather than kept by hand. The same read noted that 7c's "deepest at"
+is partly size, since keyness grows with the section: a word spread
+through Ezekiel is deepest in its 19,848-word first part. 7c now
+carries "depth/1000" and "deepest/1000 at", the same keyness per
+1,000 words of the section, which removes the size: Adonai YHWH is
+deepest by keyness in 1 to 24 and deepest for its length in
+Restoration, while the temple vision's cubits and side are deepest
+on both measures.
 
 ## Reading the section tables: Isaiah as the worked example
 

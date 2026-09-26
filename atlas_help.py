@@ -180,7 +180,9 @@ COLUMN_HELP = {
                                      "words), each with the verse here and the verse there; "
                                      "(q) marks quotation grade.  One echo per verse pair.  "
                                      "Click the row for the verses on both sides.",
-    "in time": "Whether the partner is conventionally dated earlier, later or about the "
+    "in time": "'(disputed)' means the critical dates in CRITICAL_DATES would put the partner on "
+               "the other side; the footer of 4a gives both datings.  "
+               "Whether the partner is conventionally dated earlier, later or about the "
                "same time as this book (dates in atlas_text.py, disputed for many books).",
     "chapter": "The chapter.  Double-click to open the chapter's page.",
     "chief partners (by weight)": "The two books this chapter's echoes point to most, by weight.",
@@ -229,6 +231,9 @@ COLUMN_HELP = {
     "gap": "How many chapters apart the chapter and its partner are.  Neighbours share phrasing "
            "because the story continues; a wide gap means the author came back to the same "
            "wording later.",
+    "depth/1000": "The section depth (keyness) per 1,000 words of the section: the same figure with "
+                  "the section's size removed, so a large part does not win by being large.",
+    "deepest/1000 at": "The section where the word is thickest for the section's length.",
     "sections": "Which sections of the book (its main division in atlas_sections.py) the refrain's "
                 "chapters fall in: 'all in' one section, or 'spans' several.  A refrain that never "
                 "crosses a proposed seam is evidence for the seam.",

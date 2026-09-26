@@ -815,21 +815,33 @@ BOOK_DATES = {
 }
 
 
+# A second, critical date for the books whose dating is a live dispute:
+# where the two datings put a partner on different sides of a text, the
+# label prints as "earlier (disputed)" and a footer names both dates.
+# The conventional date above is the traditional or early one; this is
+# the one most critical scholarship prefers.  Leviticus 650 is the
+# Holiness Code as pre-exilic law; 550 is the view that it was written
+# in the exile, after Ezekiel.  Edit either table; a book in only one
+# has no dispute.
+CRITICAL_DATES = {
+    "Genesis": -550, "Exodus": -550, "Leviticus": -550, "Numbers": -550,
+    "Deuteronomy": -620, "Joshua": -560, "Judges": -560, "Ruth": -450,
+    "Job": -450, "Psalms": -400, "Proverbs": -400, "Song of Solomon": -250,
+    "Isaiah": -540, "Joel": -400, "Jonah": -400, "Obadiah": -550,
+    "Zechariah": -450, "Daniel": -165, "Ecclesiastes": -250,
+    "Matthew": 85, "John": 100, "Ephesians": 90, "Colossians": 80,
+    "1 Timothy": 110, "2 Timothy": 110, "Titus": 110, "James": 100,
+    "1 Peter": 90, "2 Peter": 130, "Jude": 100,
+}
+
 # Books whose date is disputed enough that the earlier/contemporary/later
-# labels on their pages should be read as a hypothesis
-DISPUTED_DATES = {"Job", "Joel", "Jonah", "Daniel", "Ecclesiastes", "Song of Solomon",
-                  "Obadiah", "Ruth", "Psalms", "Proverbs", "Genesis", "Exodus", "Leviticus",
-                  "Numbers", "Deuteronomy", "Isaiah", "Zechariah", "2 Peter", "Jude", "James"}
+# labels on their pages should be read as a hypothesis: those with a
+# critical date that differs from the conventional one
+DISPUTED_DATES = {book for book, date in CRITICAL_DATES.items() if BOOK_DATES.get(book) != date}
 
 
-def relation_in_time(book, partner, date=None):
-    """
-    'earlier', 'later' or 'contemporary': where a partner book stands in
-    time relative to a book, by the conventional dates above.  Unknown
-    books come back as '?'.  With date given, the text is placed at that
-    date instead of the book's (a section with its own date).
-    """
-    a, b = (date if date is not None else BOOK_DATES.get(book)), BOOK_DATES.get(partner)
+def _relation(a, b):
+    """'earlier', 'later' or 'contemporary' for two dates, '?' if either is missing."""
     if a is None or b is None:
         return "?"
     if b < a - DATE_SLACK:
@@ -837,6 +849,39 @@ def relation_in_time(book, partner, date=None):
     if b > a + DATE_SLACK:
         return "later"
     return "contemporary"
+
+
+def relation_in_time(book, partner, date=None):
+    """
+    'earlier', 'later' or 'contemporary': where a partner book stands in
+    time relative to a book, by the conventional dates above.  Unknown
+    books come back as '?'.  With date given, the text is placed at that
+    date instead of the book's (a section with its own date).  When the
+    critical dates (CRITICAL_DATES) put the partner on a different
+    side, the label carries ' (disputed)'.
+    """
+    a = date if date is not None else BOOK_DATES.get(book)
+    label = _relation(a, BOOK_DATES.get(partner))
+    a_crit = date if date is not None else CRITICAL_DATES.get(book, BOOK_DATES.get(book))
+    b_crit = CRITICAL_DATES.get(partner, BOOK_DATES.get(partner))
+    if label != "?" and _relation(a_crit, b_crit) != label:
+        return label + " (disputed)"
+    return label
+
+
+def dating_dispute(book, partner, date=None):
+    """
+    Both datings of a pair, for a footer: ((conventional dates, label),
+    (critical dates, label)), or None when they agree.
+    """
+    a = date if date is not None else BOOK_DATES.get(book)
+    b = BOOK_DATES.get(partner)
+    a_crit = date if date is not None else CRITICAL_DATES.get(book, a)
+    b_crit = CRITICAL_DATES.get(partner, b)
+    conv, crit = _relation(a, b), _relation(a_crit, b_crit)
+    if conv == crit or "?" in (conv, crit):
+        return None
+    return ((a, b, conv), (a_crit, b_crit, crit))
 
 
 def find_database():

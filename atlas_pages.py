@@ -34,7 +34,7 @@ from atlas_text import (ATLAS_PATH, ECHO_MAX_TOTAL, FOCUS_MIN_OCCURRENCES,
                         FORMULA_LENGTHS, PARALLEL_METHOD, PARALLEL_MIN_SHARED,
                         PARALLEL_RUN, PARALLEL_RUN_CONTENT, PARALLEL_SHARE, STOPLIST,
                         Stemmer, has_substance, log_likelihood, relation_in_time, trim_formula, BOOK_DATES,
-                        DISPUTED_DATES)
+                        CRITICAL_DATES, DISPUTED_DATES, dating_dispute)
 
 # A Strong's number as a root or inside a printed label ("lord H3068")
 STRONGS_IN_TEXT = re.compile(r"(?:^|\s|\()([HG]\d{1,5})(?:$|\s|\))")
@@ -45,7 +45,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.2"   # the program version; the window title and every report print it
+VERSION = "0.10.3"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -1314,6 +1314,7 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
     by_time = Counter()
     by_time_weight = Counter()
     for pb, n, w, ratio, rate, rel in partner_rows:
+        rel = rel.replace(" (disputed)", "")
         by_time[rel] += n
         by_time_weight[rel] += w
     if date is not None:
@@ -1329,11 +1330,24 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
           "books are who could have read it; the table cannot tell direction for contemporaries.  "
           "Earlier is not the same as source: an earlier partner may share idiom with this text "
           "without either having read the other.")
-    if book in DISPUTED_DATES:
+    # Where the critical dates put a partner on the other side of this
+    # text, say so once, with both datings, for every such partner shown
+    disputes = []
+    for row in partner_rows[:TOP_N]:
+        d = dating_dispute(book, row[0], date)
+        if d:
+            (a, b, conv), (ac, bc, crit) = d
+            disputes.append(f"{row[0]} {conv} by the conventional dates ({abs(a)} and {abs(b)}), "
+                            f"{crit} by the critical ones ({abs(ac)} and {abs(bc)})")
+    if disputes:
         tally.footer.append(
-            f"The date of {book} itself is among the most disputed in the Bible, so the earlier, "
-            f"contemporary and later labels on this page are a hypothesis resting on the one "
-            f"conventional date in BOOK_DATES ({BOOK_DATES.get(book)}); move it and they move.")
+            "'(disputed)' marks a partner the two datings place on different sides: "
+            + "; ".join(disputes) + ".  Both tables are in atlas_text.py (BOOK_DATES, CRITICAL_DATES); "
+            "the labels follow the conventional one.")
+    elif book in DISPUTED_DATES:
+        tally.footer.append(
+            f"The date of {book} is disputed (conventional {abs(BOOK_DATES.get(book, 0))}, critical "
+            f"{abs(CRITICAL_DATES.get(book, 0))}), though no partner shown changes side between the two.")
 
     # -- who reads whom: each partner's rarest echoes, with both references ------
     # The partner table rewards volume; this one shows the evidence.
@@ -1351,7 +1365,8 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
              f"two verses of the whole Bible: one here, one there, and nowhere else; an echo that "
              f"meets the test only by English wording across the testaments (the translators' "
              f"idiom, not a shared root) is counted apart as 'by English'.  Earlier "
-             f"partners are what {book} could have read, later ones who could have read it; "
+             f"partners are what {book} could have read, later ones who could have read it "
+             f"('(disputed)' where the critical dates would say otherwise; see 4a); "
              f"the rarest echo is the one to cite, and the ratio in 4a is the one to distrust "
              f"when the count is small.  Click a row for the verses on both sides.")
     order_in_time = {"earlier": 0, "contemporary": 1, "later": 2, "?": 3}
@@ -1362,7 +1377,7 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
     for row in partner_rows[TOP_N:]:
         if sum(1 for e in partner_echoes.get(row[0], []) if e[2]) >= 2:
             listed.append(row)
-    for pb, n, w, ratio, rate, rel in sorted(listed, key=lambda r: (order_in_time.get(r[5], 3), -r[2])):
+    for pb, n, w, ratio, rate, rel in sorted(listed, key=lambda r: (order_in_time.get(r[5].replace(" (disputed)", ""), 3), -r[2])):
         # Quotation-grade echoes first, then by rarity: summed rarity alone
         # favours long runs of moderately common words
         echoes_pb = sorted(partner_echoes.get(pb, []), key=lambda e: (-e[2], -e[0], -e[1]))
@@ -1813,11 +1828,14 @@ def reach_depth_by_section(atlas, report, title, book, secs, sec_words):
     belongs to the whole book.
     """
     sec = report.section(
-        title, ["word", "reach", "depth", "deepest at", "count", "keyness"],
+        title, ["word", "reach", "depth", "deepest at", "depth/1000", "deepest/1000 at", "count", "keyness"],
         note=f"The {REACH_DEPTH_N} most key words of {book}, placed by reach (percent of the book's "
              f"{len(secs)} sections the word occurs in) against depth (the highest keyness it reaches "
              f"in one section, against the rest of its testament).  Top right: the whole book's words; "
-             f"top left: one section's own.  Double-click for the word's page.",
+             f"top left: one section's own.  Keyness grows with the size of the section, so a word "
+             f"spread through the book is 'deepest at' its largest part; 'depth/1000' is the same "
+             f"keyness per 1,000 words of the section, which removes the size and names the part "
+             f"where the word is thickest for its length.  Double-click for the word's page.",
         kind="scatter")
     sec.x_column, sec.y_column = "reach", "depth"
     top = atlas.db.execute(
@@ -1831,6 +1849,7 @@ def reach_depth_by_section(atlas, report, title, book, secs, sec_words):
         total_weight = total["weight"] if total else sum(by_ch.values())
         n_compare = atlas.comparison_words(root)
         best, best_name, reached = 0.0, "-", 0
+        best_rate, best_rate_name = 0.0, "-"
         for name, chs, is_rest in secs:
             in_chs = set(chs)
             a = sum(w for c, w in by_ch.items() if c in in_chs)
@@ -1841,8 +1860,12 @@ def reach_depth_by_section(atlas, report, title, book, secs, sec_words):
             k = log_likelihood(a, total_weight - a, n1, n_compare - n1)
             if k > best:
                 best, best_name = k, name
+            rate = 1000 * k / n1 if n1 else 0
+            if rate > best_rate:
+                best_rate, best_rate_name = rate, name
         reach = round(100 * reached / len(secs))
-        sec.add([atlas.form(root), reach, round(best, 1), best_name, r["weight"], round(r["keyness"], 1)],
+        sec.add([atlas.form(root), reach, round(best, 1), best_name, round(best_rate, 1), best_rate_name,
+                 r["weight"], round(r["keyness"], 1)],
                 link={"word": root, "book": book})
 
 
