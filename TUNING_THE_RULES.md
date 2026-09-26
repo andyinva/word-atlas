@@ -372,6 +372,44 @@ pass") and left three percent of the content words without a number,
 nearly all of them words the text really does split between two
 roots ("went" between H3212 and H1980).
 
+### The section layer
+
+The Psalms dossier showed the refrain table finding "amen and amen"
+in Psalms 41, 72 and 89, which are the doxologies that close Books I,
+II and III of the Psalter. The tool had found the seams of a
+collection by counting, but it had no idea of a seam: nothing in it
+knew that a book has parts. The section layer was built to give it
+that idea and then to test it. A table (atlas_sections.py) lists the
+parts of a book as a reader knows them, and a book may be divided
+more than one way, since the Psalter is five books and also a set of
+collections and also an Elohistic block that cuts across the books.
+The pages then run their tables at that scale: each part's leading
+words against the rest of the book, the echo map and the within-book
+map summed to parts, a reach-and-depth chart with the part as its
+unit, and a column on the refrains table saying whether a refrain
+stays inside one part or crosses a seam. Each part has a page of its
+own and may carry its own date, so the "who reads whom" table can be
+read under two datings of one book.
+
+The layer was tuned in three rounds, each a Psalms read. The first
+found that leading words needed to say in how many of the part's
+chapters they fall, because Psalm 119 alone was giving Book V its
+commandments, precepts and statutes. The second found three limits
+in the collections: a division that leaves chapters out must get a
+"rest of the book" part, or the Elohistic block has nothing to be
+set against; a part must be allowed to be a list of chapters, or
+Asaph (Psalm 50 and 73 to 83) splits into a single 446-word psalm
+that per-thousand scaling turns into a partner of everything; and a
+part under a thousand words must be marked "few". The third was
+Isaiah, where the division is an argument rather than a fact, and
+the tables came out on the side of the argument: the two halves lead
+with the vocabulary the handbooks list for each, the halves share a
+fraction of the phrasing that parts of one book share, and the
+strongest chapter pairs are the bridges the commentaries cite. That
+read is written up as a worked example in the README, because it is
+the case where the layer stopped describing a division and began to
+argue one.
+
 ## How the shaping works
 
 Looking back over the whole run, there is a shape to it that is worth
@@ -435,6 +473,69 @@ used a term the list had not defined. After thirty rounds the rules
 files are a record of every decision and the pages read as a
 description of each book that a careful reader would recognise, which
 is the test the whole thing was built to pass.
+
+## The numbers behind the rules
+
+Three kinds of number run through every table, and a reader who can
+tell them apart can read any page. They are worth setting out once,
+in plain words, because the rules above are mostly rules about which
+of them to use and where to draw a line on it.
+
+The first is normalization: a raw count divided by the size of the
+thing it was counted in, so that parts of different sizes can be
+compared. Book V of the Psalter has 12,500 words and Book III 6,800;
+on raw echo weight the larger part wins simply by being larger.
+Dividing each by its own word count and multiplying up to a round
+figure puts them on one scale, which is what "per 1,000 words" means
+wherever it appears (section 1, the partner table, the section maps).
+A share is the same operation with the total as the divisor: the home
+map's percentages, or the concentration rule that keeps a partner out
+of the sharing table when more than 80 percent of its echo weight
+sits in five chapters. Normalization answers "how much, for its
+size"; it does not say whether the amount is remarkable.
+
+The second is keyness, which asks exactly that. Take a word's count in
+the text of interest and in the comparison text, and the sizes of
+both. Work out what each count would be if the word were spread over
+the two texts evenly, in proportion to their sizes: those are the
+expected counts. Then for each of the four cells (the word here, the
+word there, all other words here, all other words there) multiply the
+observed count by the logarithm of observed over expected, add the
+four up, and double the sum. That is Dunning's G squared, from Ted
+Dunning's 1993 paper on the statistics of surprise, and it is what
+the tables print as keyness and call log-likelihood. A word spread
+evenly scores near zero; a word piled up on one side scores high; the
+sign is made negative when the word is rarer here than expected.
+Above 3.8 the difference is unlikely to be chance (one in twenty),
+above 6.6 one in a hundred, above 10.8 one in a thousand. Selah is
+the example to keep: 71 times in the Psalter's 43,000 words and 3
+times in the rest of the Old Testament's 560,000. Spread evenly the
+Psalter would hold about 5 of the 74; it holds 71, and the four cells
+doubled come to roughly 350, so the table calls selah the Psalter's
+word and means it. The older chi-squared test would do the same job
+for common words but exaggerates for rare words and small texts,
+which is why corpus linguists have used Dunning's test for keywords
+since he proposed it, and why the atlas does.
+
+The third is rarity, which is keyness's raw material turned round: not
+how surprising a word is here, but how uncommon it is anywhere, as the
+negative logarithm of its share of all words in its testament. A word
+that is one in a thousand scores about 7, one in a hundred thousand
+about 11.5. Rarity is what makes an echo weigh: "ten thousand times
+ten thousand" outweighs "a voice from heaven saying" because its words
+are rarer, and the weight of a phrase is the rarity of its content
+words added up. Pull, the strength of one tie between a word and a
+neighbour, is a cousin of keyness applied to pairs (how much more
+often than chance the two meet within the window), and shadow is a
+word's ties added up.
+
+Most of the rules in this paper are lines drawn on one of these
+three. The floor under the Compare lists is a line on weight; the
+quotation grade is a line on rarity and count; "few" is a line on
+size, put there because normalization without a size warning turns a
+small text into a partner of everything; the refrain rule is a line
+on how many chapters and verses a phrase fills. Knowing which number
+a rule sits on is usually enough to guess what moving it will do.
 
 ## What the process taught
 
