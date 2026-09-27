@@ -9,3 +9,15 @@ strongs_report*.txt
 strongs.csv
 strongs3-master/
 Sept With Strongs/
+
+# metadata.db is kept in git through its text backup, metadata_backup.sql
+metadata.db
+metadata.db.before-restore-*
+*.db.restoring
+*.sql.tmp
+
+# metadata.db is kept in git through its text backup, metadata_backup.sql
+metadata.db
+metadata.db.before-restore-*
+*.db.restoring
+*.sql.tmp
