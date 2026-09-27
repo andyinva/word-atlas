@@ -56,6 +56,14 @@ import atlas_sections
 import atlas_text
 from atlas_ask import AskError
 
+# The metadata.db backup (passages, books, Septuagint chapter map).  Kept
+# optional: if the backup files are missing the window works as before.
+try:
+    from atlas_backup import MetadataBackup
+    from atlas_backup_dialog import MetadataBackupDialog, backup_if_stale
+except ImportError:
+    MetadataBackup = None
+
 VERSION = atlas_pages.VERSION     # one version for the window and the reports
 
 # ---------------------------------------------------------------------------
@@ -854,6 +862,16 @@ class WordAtlasWindow(QMainWindow):
         self.restore_btn.setProperty("help", "restore")
         ask_bar.addWidget(self.restore_btn)
         self.fill_build_box()
+
+        # Back up or restore metadata.db, the one database that cannot be
+        # rebuilt.  The tooltip always says whether a backup is due; the
+        # backup is also refreshed automatically when the window closes.
+        if MetadataBackup is not None:
+            ask_bar.addSpacing(12)
+            self.backup_btn = QPushButton("Metadata backup...")
+            self.backup_btn.clicked.connect(self.open_backup_dialog)
+            ask_bar.addWidget(self.backup_btn)
+            self.update_backup_button()
         root.addLayout(ask_bar)
 
         line = QFrame()
@@ -1182,6 +1200,37 @@ class WordAtlasWindow(QMainWindow):
         shutil.copyfile(working, backup)
         shutil.copyfile(rules, working)
         self.status.setText(f"Rules of '{label}' restored to atlas_text.py; click Rebuild atlas to apply")
+
+    # -- metadata backup ----------------------------------------------------------------
+
+    def update_backup_button(self):
+        """Show the backup's state in the button's tooltip, and mark it when a backup is due."""
+        try:
+            status = MetadataBackup().status()
+        except Exception as err:          # never let the backup stop the window
+            self.backup_btn.setToolTip(f"Backup status unknown: {err}")
+            return
+        self.backup_btn.setToolTip(status.describe() + "\n(The backup is also refreshed "
+                                   "automatically when Word Atlas closes.)")
+        # A small mark on the button when a backup is due.
+        due = status.db_exists and not status.up_to_date
+        self.backup_btn.setText("Metadata backup... *" if due else "Metadata backup...")
+
+    def open_backup_dialog(self):
+        """Open the backup dialog, then refresh the button's state."""
+        dialog = MetadataBackupDialog(self)
+        dialog.backup_written.connect(
+            lambda path: self.status.setText(f"Metadata backed up to {os.path.basename(path)}"))
+        dialog.metadata_restored.connect(
+            lambda: self.status.setText("metadata.db restored from the backup"))
+        dialog.exec()
+        self.update_backup_button()
+
+    def closeEvent(self, event):
+        """On closing, refresh the metadata backup if metadata.db has changed."""
+        if MetadataBackup is not None:
+            backup_if_stale()             # quiet, and never blocks closing
+        super().closeEvent(event)
 
     # -- rebuilding ---------------------------------------------------------------------
 
