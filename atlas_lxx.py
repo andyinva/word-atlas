@@ -11,6 +11,21 @@ Usage:
     python atlas_lxx.py books prefer DanOG      use this text for its English book
     python atlas_lxx.py corpora                 show the text sources and languages
 
+    python atlas_lxx.py versification build     build the verse map from TVTMS
+    python atlas_lxx.py versification check     how many English verses find their Greek
+    python atlas_lxx.py versification review    sections worth checking by hand
+    python atlas_lxx.py versification show "Jer 31:31"
+    python atlas_lxx.py versification set "Jer 49:1" "Jer 30:17"   (by hand; always wins)
+    python atlas_lxx.py versification set "Jer 49:34" --absent
+    python atlas_lxx.py versification unset "Jer 49:1"
+
+The verse map is built from STEPBible's TVTMS file, which you download
+once (it is not copied into this project; its licence asks that it be
+fetched from STEPBible):
+    cd ~/projects
+    git clone --depth 1 --filter=blob:none --sparse https://github.com/STEPBible/STEPBible-Data.git
+    cd STEPBible-Data && git sparse-checkout set Versification
+
 The scan reads the same verse file septuagint_bridge.py uses:
     <data>/lxx/08_versification/001_verse_c_modified_KEEP.csv
 (default <data> is ~/projects/scripture-motifs/data).
@@ -18,17 +33,24 @@ The scan reads the same verse file septuagint_bridge.py uses:
 Every change also refreshes metadata_backup.sql.
 """
 
+# Type hints are read lazily, so the method named "list" below cannot
+# hide the built-in list type.
+from __future__ import annotations
+
 import argparse
+import re
 import sqlite3
 from pathlib import Path
 
 from atlas_backup import MetadataBackup
-from atlas_metadata import Corpora, LxxBookTable, MetadataStore
+from atlas_metadata import (Corpora, LxxBookTable, LxxResolver, LxxVerseMapStore,
+                            MetadataStore, ReferenceParser)
 
 # Folder this script lives in, so it works the same on Ubuntu and Windows.
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA = Path.home() / "projects" / "scripture-motifs" / "data"
 VERSE_FILE = Path("lxx") / "08_versification" / "001_verse_c_modified_KEEP.csv"
+DEFAULT_TVTMS_DIR = Path.home() / "projects" / "STEPBible-Data" / "Versification"
 
 
 class LxxTool:
@@ -83,6 +105,212 @@ class LxxTool:
         print(f"{code} is now the preferred Septuagint text for {book}.")
         self.refresh_backup()
 
+    # ------------------------------------------------------------------
+    # Versification
+    # ------------------------------------------------------------------
+    def _verse_map_store(self) -> LxxVerseMapStore:
+        store = LxxVerseMapStore(self.metadata)
+        if not store.has_table():
+            raise SystemExit("metadata.db has no lxx_verse_map table yet; "
+                             "run create_metadata_db.py once to add it.")
+        return store
+
+    @staticmethod
+    def _find_tvtms(path: Path | None) -> Path:
+        """The TVTMS file: the path given, or the one in ~/projects/STEPBible-Data."""
+        if path and path.is_file():
+            return path
+        folder = path if path and path.is_dir() else DEFAULT_TVTMS_DIR
+        found = sorted(folder.glob("TVTMS*.txt")) if folder.exists() else []
+        if not found:
+            raise SystemExit(f"No TVTMS file found in {folder}. See 'python atlas_lxx.py -h' "
+                             "for the two commands that download it.")
+        return found[0]
+
+    def build_versification(self, tvtms: Path | None, data_dir: Path, atlas: Path) -> None:
+        """Build the verse map from TVTMS against the Rahlfs verse file."""
+        from collections import Counter
+        from atlas_versification import RahlfsVerses, TvtmsReader, VerseMapBuilder
+        store = self._verse_map_store()
+        tvtms_path = self._find_tvtms(tvtms)
+        verse_file = data_dir.expanduser() / VERSE_FILE
+        if not verse_file.exists():
+            raise SystemExit(f"Septuagint verse file not found: {verse_file}")
+        print(f"Reading {tvtms_path.name} ...")
+        rahlfs = RahlfsVerses(verse_file)
+        builder = VerseMapBuilder(rahlfs, self.books.codes_by_book())
+        rows, results = builder.table_rows(TvtmsReader(tvtms_path).records())
+        # The safeguard for verses TVTMS calls absent but Rahlfs may have;
+        # it needs the English verse list from atlas.db.
+        if atlas.exists():
+            from atlas_versification import flag_unclaimed
+            plain = LxxResolver(self.metadata)
+            plain.forward, plain.reverse = {}, {}      # chapter map and same number only
+            flagged = flag_unclaimed(rows, self._english_verses(atlas), rahlfs, plain.to_lxx)
+            if flagged:
+                print(f"{flagged} verses TVTMS calls absent have an unclaimed Rahlfs verse at "
+                      "the same number; left absent and marked for review as candidates.")
+        else:
+            print("atlas.db not found, so the absent-verse check was skipped.")
+        stored = store.replace_tvtms(rows)
+        # The STEPBible credit, kept once with the data it applies to.
+        from atlas_versification import TVTMS_CREDIT
+        conn = sqlite3.connect(self.metadata.path)
+        try:
+            conn.execute("INSERT OR REPLACE INTO meta_info (key, value) "
+                         "VALUES ('lxx_verse_map_source', ?)", (TVTMS_CREDIT,))
+            conn.commit()
+        finally:
+            conn.close()
+        absent = sum(1 for r in rows if r[4] is None)
+        review = len({r[7].split(";")[0] for r in rows if r[6]})
+        chosen = Counter(r.column for r in results if r.column)
+        print(f"Stored {stored} verse rows ({absent} marked not in the Greek) "
+              f"from {len(chosen) and sum(chosen.values())} TVTMS sections.")
+        print(f"{review} sections are marked for review "
+              "(see: python atlas_lxx.py versification review).")
+        manual = sum(1 for r in store.rows() if r[6] == "manual")
+        if manual:
+            print(f"{manual} rows entered by hand were kept and take precedence.")
+        self.refresh_backup()
+        if atlas.exists():
+            print()
+            self.check_versification(data_dir, atlas)
+
+    def _english_verses(self, atlas: Path) -> list[tuple]:
+        """Every Old Testament verse in atlas.db (the KJV), as (book_num, ch, v)."""
+        if not atlas.exists():
+            raise SystemExit(f"atlas.db not found at {atlas}; it supplies the English verse list.")
+        conn = sqlite3.connect(atlas)
+        try:
+            rows = conn.execute("SELECT book, chapter, verse FROM verses").fetchall()
+        finally:
+            conn.close()
+        verses = []
+        for book, chapter, verse in rows:
+            num = self.metadata.number_for_name(book)
+            if num is not None and num <= 39:
+                verses.append((num, int(chapter), int(verse)))
+        return verses
+
+    def check_versification(self, data_dir: Path, atlas: Path) -> None:
+        """How many English verses find their Septuagint verse, book by book."""
+        from atlas_versification import RahlfsVerses, VerseMapChecker
+        rahlfs = RahlfsVerses(data_dir.expanduser() / VERSE_FILE)
+        result = VerseMapChecker(rahlfs, LxxResolver(self.metadata)).check(
+            self._english_verses(atlas))
+        unresolved = result.total - result.found - result.absent
+        print(f"English OT verses: {result.total:,}")
+        print(f"  found in Rahlfs:          {result.found:,} "
+              f"({100 * result.found / result.total:.1f}%)")
+        print(f"  not in the Greek (map):   {result.absent:,}")
+        print(f"  number not in Rahlfs:     {unresolved:,}  (mostly verses the Greek lacks)")
+        if result.missing_by_book:
+            print("\nNumbers not in Rahlfs, by book:")
+            for book, missing in sorted(result.missing_by_book.items(), key=lambda x: -len(x[1])):
+                chapters = sorted({c for _b, c, _v in missing})
+                shown = ", ".join(str(c) for c in chapters[:12]) + (" ..." if len(chapters) > 12 else "")
+                print(f"  {self.metadata.name_of(book):<16}{len(missing):>5}   chapters {shown}")
+        print("\nRahlfs verses no English verse reaches (mostly Greek additions):")
+        print("  " + ", ".join(f"{code} {n}" for code, n in result.unreached.most_common()))
+
+    def review_versification(self) -> None:
+        """The sections marked for review, as ranges."""
+        rows = self._verse_map_store().rows(review_only=True)
+        if not rows:
+            print("Nothing is marked for review.")
+            return
+        print("Sections where Rahlfs follows none of TVTMS's traditions exactly.")
+        print("Worth checking against the Greek text; correct any verse with 'versification set'.\n")
+        for text in self._ranges(rows):
+            print("  " + text)
+
+    def _ranges(self, rows) -> list[str]:
+        """Consecutive rows with the same offset shown as one line."""
+        lines, run = [], []
+
+        def flush():
+            if not run:
+                return
+            b, c, v1, code, lc, lv1 = run[0][:6]
+            v2, lv2 = run[-1][2], run[-1][5]
+            name = self.metadata.name_of(b)
+            eng = f"{name} {c}:{v1}" + (f"-{v2}" if v2 != v1 else "")
+            if lc is None:
+                note = run[0][8] if len(run[0]) > 8 else ""
+                hint = ""
+                if "CANDIDATE" in note:
+                    hint = "   (candidate: Rahlfs " + note.split("CANDIDATE ")[1].split(" (")[0] + ")"
+                lines.append(f"{eng:<26} not in the Greek{hint}")
+            else:
+                lxx = f"{code} {lc}:{lv1}" + (f"-{lv2}" if lv2 != lv1 else "")
+                lines.append(f"{eng:<26} -> {lxx}")
+            run.clear()
+
+        for row in rows:
+            if run:
+                p = run[-1]
+                same_run = (row[0] == p[0] and row[1] == p[1] and row[2] == p[2] + 1
+                            and row[3] == p[3] and row[4] == p[4]
+                            and ((row[5] is None and p[5] is None) or
+                                 (row[5] is not None and p[5] is not None and row[5] == p[5] + 1)))
+                if not same_run:
+                    flush()
+            run.append(row)
+        flush()
+        return lines
+
+    def _english_ref(self, text: str) -> tuple[int, int, int]:
+        """One English verse, e.g. 'Jer 31:31'."""
+        r = ReferenceParser(self.metadata).parse_one(text)
+        if (r.chapter_start, r.verse_start) != (r.chapter_end, r.verse_end):
+            raise SystemExit(f"Give a single verse, not a range: {text}")
+        return r.book_num, r.chapter_start, r.verse_start
+
+    def show_verse(self, text: str) -> None:
+        """Where an English verse is in Rahlfs, and why."""
+        book, ch, v = self._english_ref(text)
+        resolver = LxxResolver(self.metadata)
+        target = resolver.to_lxx(book, ch, v)
+        rule = ("verse map" if (book, ch, v) in resolver.forward else
+                "chapter map" if ch in resolver.chapters.forward.get(book, {}) else
+                "same number")
+        name = self.metadata.name_of(book)
+        if target is None:
+            print(f"{name} {ch}:{v} is not in the Greek ({rule}).")
+        else:
+            print(f"{name} {ch}:{v} = Rahlfs {target[0]}.{target[1]}.{target[2]} ({rule}).")
+
+    def set_verse(self, text: str, target: str | None, absent: bool, note: str) -> None:
+        """Enter one mapping by hand."""
+        book, ch, v = self._english_ref(text)
+        resolver = LxxResolver(self.metadata)
+        code = resolver.code_for(book) or ""
+        if absent:
+            LxxVerseMapStore(self.metadata).set_manual(book, ch, v, code, None, None,
+                                                       note or "entered by hand")
+            print(f"{self.metadata.name_of(book)} {ch}:{v}: marked not in the Greek (by hand).")
+        else:
+            m = re.match(r"^\s*(?P<b>.+?)\s+(?P<c>\d+)[:.](?P<v>\d+)\s*$", target or "")
+            if not m:
+                raise SystemExit("Give the Rahlfs verse as e.g. 'Jer 30:17', or use --absent.")
+            code = m["b"] if m["b"] in {c for cs in resolver.codes.values() for c in cs} else \
+                resolver.code_for(self.metadata.find_book(m["b"]))
+            LxxVerseMapStore(self.metadata).set_manual(book, ch, v, code, int(m["c"]), int(m["v"]),
+                                                       note or "entered by hand")
+            print(f"{self.metadata.name_of(book)} {ch}:{v} = Rahlfs {code}.{m['c']}.{m['v']} (by hand).")
+        self.refresh_backup()
+
+    def unset_verse(self, text: str) -> None:
+        """Remove a hand-made mapping (the TVTMS row, if any, applies after the next build)."""
+        book, ch, v = self._english_ref(text)
+        if LxxVerseMapStore(self.metadata).remove_manual(book, ch, v):
+            print(f"Removed the hand-made mapping for {text}. Run 'versification build' "
+                  "to restore the TVTMS row, if there is one.")
+            self.refresh_backup()
+        else:
+            print(f"No hand-made mapping for {text}.")
+
     def corpora(self) -> None:
         """The text sources and their languages."""
         conn = sqlite3.connect(self.metadata.path)
@@ -113,10 +341,45 @@ def main() -> None:
 
     commands.add_parser("corpora", help="show the text sources and their languages")
 
+    vers = commands.add_parser("versification", help="English -> Septuagint verse map")
+    vc = vers.add_subparsers(dest="vers_command", required=True)
+    for name, text in (("build", "build the map from TVTMS"), ("check", "check it")):
+        sub = vc.add_parser(name, help=text)
+        sub.add_argument("--data", type=Path, default=DEFAULT_DATA)
+        sub.add_argument("--atlas", type=Path, default=SCRIPT_DIR / "atlas.db")
+        if name == "build":
+            sub.add_argument("--tvtms", type=Path, default=None,
+                             help="the TVTMS file or its folder")
+    vc.add_parser("review", help="sections worth checking by hand")
+    show = vc.add_parser("show", help="where an English verse is in Rahlfs")
+    show.add_argument("verse")
+    vset = vc.add_parser("set", help="enter one verse by hand")
+    vset.add_argument("verse")
+    vset.add_argument("target", nargs="?", default=None)
+    vset.add_argument("--absent", action="store_true", help="the verse is not in the Greek")
+    vset.add_argument("--note", default="")
+    unset = vc.add_parser("unset", help="remove a hand-made mapping")
+    unset.add_argument("verse")
+
     args = parser.parse_args()
     tool = LxxTool(args.metadata)
     if args.command == "corpora":
         tool.corpora()
+    elif args.command == "versification":
+        if args.vers_command == "build":
+            tool.build_versification(args.tvtms, args.data, args.atlas)
+        elif args.vers_command == "check":
+            tool.check_versification(args.data, args.atlas)
+        elif args.vers_command == "review":
+            tool.review_versification()
+        elif args.vers_command == "show":
+            tool.show_verse(args.verse)
+        elif args.vers_command == "set":
+            if not args.absent and not args.target:
+                raise SystemExit("Give the Rahlfs verse, or --absent.")
+            tool.set_verse(args.verse, args.target, args.absent, args.note)
+        else:
+            tool.unset_verse(args.verse)
     elif args.books_command == "scan":
         tool.scan(args.data)
     elif args.books_command == "list":

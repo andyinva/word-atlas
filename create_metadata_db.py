@@ -22,7 +22,7 @@ from pathlib import Path
 
 # Version number of the table layout. It is stored inside the database so
 # later scripts can check which layout they are reading.
-SCHEMA_VERSION = "3"   # 2 = adds lxx_chapter_map; 3 = adds corpora and lxx_books
+SCHEMA_VERSION = "4"   # 2 = lxx_chapter_map; 3 = corpora, lxx_books; 4 = lxx_verse_map
 
 # ---------------------------------------------------------------------------
 # Table layout
@@ -94,6 +94,27 @@ CREATE TABLE IF NOT EXISTS lxx_chapter_map (
     lxx_chapter INTEGER NOT NULL,
     source_note TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (book_num, eng_chapter)
+);
+
+-- English verse -> Septuagint (Rahlfs) verse, where the numbers differ.
+-- Built from STEPBible's TVTMS data by "python atlas_lxx.py versification
+-- build"; rows you add by hand (origin 'manual') always win and are never
+-- replaced by a rebuild. lxx_chapter NULL = the verse is not in the Greek.
+-- review = 1 when Rahlfs follows none of TVTMS's traditions exactly in
+-- that section, so the row is worth checking against the Greek text.
+-- Lookup order everywhere: this table, then lxx_chapter_map, then the
+-- same chapter and verse.
+CREATE TABLE IF NOT EXISTS lxx_verse_map (
+    book_num    INTEGER NOT NULL REFERENCES books(book_num),
+    eng_chapter INTEGER NOT NULL,
+    eng_verse   INTEGER NOT NULL,
+    lxx_code    TEXT NOT NULL,
+    lxx_chapter INTEGER,
+    lxx_verse   INTEGER,
+    origin      TEXT NOT NULL CHECK (origin IN ('tvtms', 'manual')),
+    review      INTEGER NOT NULL DEFAULT 0 CHECK (review IN (0, 1)),
+    source_note TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (book_num, eng_chapter, eng_verse)
 );
 
 -- The text sources the atlas can measure, each with its language.
@@ -233,6 +254,13 @@ SEED_NOTE = "seed: standard canon grouping (editable)"
 LXX_MAP_SEED = [
     (24, 50, 27, "Babylon oracle; confirmed in septuagint_bridge.py"),
     (24, 51, 28, "Babylon oracle; confirmed in septuagint_bridge.py"),
+    # Rahlfs prints Proverbs 25-29 as chapters 32-36 (same verse counts,
+    # checked against the Rahlfs verse file: 28, 28, 27, 28, 27).
+    (20, 25, 32, "Rahlfs order; verse counts checked"),
+    (20, 26, 33, "Rahlfs order; verse counts checked"),
+    (20, 27, 34, "Rahlfs order; verse counts checked"),
+    (20, 28, 35, "Rahlfs order; verse counts checked"),
+    (20, 29, 36, "Rahlfs order; verse counts checked"),
 ]
 
 # ---------------------------------------------------------------------------

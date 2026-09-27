@@ -46,8 +46,8 @@ Named passages (metadata.db)
                    Revelation, the only New Testament book loaded).
   --sources A B    adds section 4: how strongly the passage echoes each
                    named Septuagint passage (Old Testament ranges only).
-                   English chapter numbers are turned into Rahlfs numbers
-                   with the lxx_chapter_map table (atlas_passages.py lxx-map).
+                   English verse numbers are turned into Rahlfs numbers
+                   through metadata.db's verse map (atlas_lxx.py versification).
   Named passages need atlas_metadata.py beside this script; without
   --passage and --sources the script runs exactly as before.
 
@@ -364,21 +364,21 @@ class BrentonEnglish:
 class SeptuagintPassages:
     """Finds the Septuagint verses that make up a named passage.
 
-    Passages in metadata.db use English book names and chapter numbers.
-    This turns each range into Rahlfs references: the book becomes its
-    Rahlfs code (RAHLFS_CODES), and the chapter goes through the chapter
-    map, so English Jeremiah 51 finds Septuagint Jeremiah 28.
+    Passages in metadata.db use English book names and verse numbers.
+    Each Septuagint verse is turned back into its English verse by
+    LxxResolver (the verse map, then the chapter map, then the same
+    number), so English Jeremiah 51 finds Rahlfs Jeremiah 28, English
+    Psalm 23 finds Rahlfs Psalm 22, and so on.
     """
 
     # "Jer.28.7" -> ("Jer", 28, 7). Verses with letters (Esther's
     # additions, "1a") do not fit and are left out of named passages.
     REF = re.compile(r"^(?P<code>[^.]+)\.(?P<ch>\d+)\.(?P<v>\d+)$")
 
-    def __init__(self, lxx, metadata, chapter_map, codes):
+    def __init__(self, lxx, metadata, resolver):
         self.lxx = lxx
         self.metadata = metadata
-        self.chapter_map = chapter_map
-        self.codes = codes
+        self.resolver = resolver
         # Every reference, split once: code -> [(ref, chapter, verse)]
         self.by_code = defaultdict(list)
         for ref in lxx.order:
@@ -387,11 +387,9 @@ class SeptuagintPassages:
                 self.by_code[m["code"]].append((ref, int(m["ch"]), int(m["v"])))
 
     def code_for(self, book_num):
-        """The first Rahlfs code for a book that the loaded Septuagint has."""
-        for code in self.codes.get(book_num, []):
-            if code in self.by_code:
-                return code
-        return None
+        """The preferred Rahlfs code for a book, if the loaded Septuagint has it."""
+        code = self.resolver.code_for(book_num)
+        return code if code in self.by_code else None
 
     def refs_for(self, passage):
         """(Septuagint refs in text order, list of warnings) for a passage."""
@@ -407,12 +405,12 @@ class SeptuagintPassages:
                 continue
             found = []
             for ref, lxx_ch, verse in self.by_code[code]:
-                eng_ch = self.chapter_map.english_chapter(r.book_num, lxx_ch)
-                if eng_ch is not None and r.contains(r.book_num, eng_ch, verse):
+                english = self.resolver.to_english(code, lxx_ch, verse)
+                if english is not None and r.contains(*english):
                     found.append(ref)
             if not found:
                 warnings.append(f"{passage.name}: no Septuagint verses found for {label} "
-                                "(the chapter may need a line in the chapter map)")
+                                "(check it with: python atlas_lxx.py versification show)")
             refs += found
         return refs, warnings
 
@@ -968,8 +966,7 @@ def main():
     passage, source_passages, metadata = None, [], None
     if args.passage or args.sources:
         try:
-            from atlas_metadata import (LxxBookTable, LxxChapterMap,
-                                        MetadataStore, PassageStore)
+            from atlas_metadata import LxxResolver, MetadataStore, PassageStore
         except ImportError:
             sys.exit("Named passages need atlas_metadata.py in the same folder.")
         metadata = MetadataStore(Path(args.metadata).expanduser())
@@ -1007,10 +1004,9 @@ def main():
     # The named Septuagint sources for section 4.
     sources, warnings = [], []
     if source_passages:
-        # Book codes from the lxx_books table (atlas_lxx.py books scan),
-        # or the built-in list before the first scan.
-        finder_passages = SeptuagintPassages(lxx, metadata, LxxChapterMap(metadata),
-                                             LxxBookTable(metadata).codes_by_book())
+        # English <-> Septuagint verses through the verse map, chapter map
+        # and book table in metadata.db (atlas_lxx.py).
+        finder_passages = SeptuagintPassages(lxx, metadata, LxxResolver(metadata))
         for sp in source_passages:
             refs, notes = finder_passages.refs_for(sp)
             warnings += notes

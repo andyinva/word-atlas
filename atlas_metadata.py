@@ -15,6 +15,8 @@ Classes:
     LxxChapterMap    English chapter -> Septuagint (Rahlfs) chapter
     Corpora          the text sources and their languages (the language rule)
     LxxBookTable     the Septuagint's own books, scanned from its verse file
+    LxxVerseMapStore the verse-level English -> Septuagint map (table)
+    LxxResolver      English verse <-> Septuagint verse, in both directions
 
 This file is a library; atlas_passages.py is the command-line tool that
 uses it.
@@ -68,6 +70,12 @@ class MetadataStore:
     # Add a line here if a report ever warns that a name was skipped.
     BOOK_ALIASES = {
         "psalm": "psalms",
+        # Common abbreviations that are not simply the start of the name.
+        "1kgs": "1kings", "2kgs": "2kings", "1ki": "1kings", "2ki": "2kings",
+        "jdg": "judges", "jgs": "judges", "sng": "songofsolomon", "sos": "songofsolomon",
+        "ezk": "ezekiel", "jol": "joel", "nam": "nahum", "mrk": "mark", "mk": "mark",
+        "jhn": "john", "jn": "john", "php": "philippians", "phm": "philemon",
+        "jas": "james", "1jn": "1john", "2jn": "2john", "3jn": "3john",
         "songofsongs": "songofsolomon",
         "canticles": "songofsolomon",
         "revelations": "revelation",
@@ -696,3 +704,158 @@ class LxxBookTable:
             return self.metadata.name_of(row[0])
         finally:
             conn.close()
+
+
+# ===========================================================================
+# The verse-level map and the resolver
+# ===========================================================================
+# Rahlfs prints Ezra and Nehemiah as one book, 2 Esdras: Ezra is its
+# chapters 1-10 and Nehemiah its chapters 11-23.
+EZRA, NEHEMIAH = 15, 16
+ESDRAS_CODE = "2Esdr"
+NEHEMIAH_OFFSET = 10
+
+
+class LxxVerseMapStore:
+    """Reads and writes the lxx_verse_map table."""
+
+    COLUMNS = ("book_num, eng_chapter, eng_verse, lxx_code, lxx_chapter, lxx_verse, "
+               "origin, review, source_note")
+
+    def __init__(self, metadata: MetadataStore):
+        self.metadata = metadata
+
+    def _connect(self):
+        return sqlite3.connect(self.metadata.path)
+
+    def has_table(self) -> bool:
+        conn = self._connect()
+        try:
+            conn.execute("SELECT 1 FROM lxx_verse_map LIMIT 1")
+            return True
+        except sqlite3.OperationalError:
+            return False
+        finally:
+            conn.close()
+
+    def rows(self, review_only: bool = False) -> list[tuple]:
+        if not self.has_table():
+            return []
+        where = "WHERE review = 1" if review_only else ""
+        conn = self._connect()
+        try:
+            return conn.execute(
+                f"SELECT {self.COLUMNS} FROM lxx_verse_map {where} "
+                "ORDER BY book_num, eng_chapter, eng_verse").fetchall()
+        finally:
+            conn.close()
+
+    def replace_tvtms(self, rows: list[tuple]) -> int:
+        """
+        Replace every TVTMS-built row with a new set. Manual rows are kept
+        and win: a TVTMS row for the same verse is skipped. Returns how
+        many rows were stored.
+        """
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM lxx_verse_map WHERE origin = 'tvtms'")
+            before = conn.execute("SELECT COUNT(*) FROM lxx_verse_map").fetchone()[0]
+            conn.executemany(
+                f"INSERT OR IGNORE INTO lxx_verse_map ({self.COLUMNS}) "
+                "VALUES (?, ?, ?, ?, ?, ?, 'tvtms', ?, ?)", rows)
+            conn.commit()
+            return conn.execute("SELECT COUNT(*) FROM lxx_verse_map").fetchone()[0] - before
+        finally:
+            conn.close()
+
+    def set_manual(self, book_num: int, chapter: int, verse: int,
+                   code: str, lxx_chapter, lxx_verse, note: str) -> None:
+        """Add or replace one hand-made row (lxx_chapter None = not in the Greek)."""
+        conn = self._connect()
+        try:
+            conn.execute(
+                f"INSERT OR REPLACE INTO lxx_verse_map ({self.COLUMNS}) "
+                "VALUES (?, ?, ?, ?, ?, ?, 'manual', 0, ?)",
+                (book_num, chapter, verse, code, lxx_chapter, lxx_verse, note))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def remove_manual(self, book_num: int, chapter: int, verse: int) -> bool:
+        conn = self._connect()
+        try:
+            cur = conn.execute(
+                "DELETE FROM lxx_verse_map WHERE origin = 'manual' AND book_num = ? "
+                "AND eng_chapter = ? AND eng_verse = ?", (book_num, chapter, verse))
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
+
+
+class LxxResolver:
+    """
+    Finds the Septuagint verse for an English verse, and the English verse
+    for a Septuagint verse. The lookup order is always:
+        1. lxx_verse_map   (verse-level, from TVTMS or entered by hand)
+        2. lxx_chapter_map (whole chapters, such as Proverbs 25-29 = 32-36)
+        3. the same chapter and verse
+    A verse the map records as absent returns None: it is not in the Greek.
+    """
+
+    def __init__(self, metadata: MetadataStore):
+        self.metadata = metadata
+        self.chapters = LxxChapterMap(metadata)
+        self.codes = LxxBookTable(metadata).codes_by_book()
+        self.forward: dict[tuple, tuple | None] = {}
+        self.reverse: dict[tuple, tuple] = {}
+        for (book, ch, v, code, lch, lv, *_rest) in LxxVerseMapStore(metadata).rows():
+            target = (code, lch, lv) if lch is not None else None
+            self.forward[(book, ch, v)] = target
+            if target:
+                self.reverse[target] = (book, ch, v)
+
+    def code_for(self, book_num: int) -> str | None:
+        """The preferred Rahlfs code for an English book (2Esdr for Ezra and Nehemiah)."""
+        if book_num in (EZRA, NEHEMIAH):
+            return ESDRAS_CODE
+        codes = self.codes.get(book_num)
+        return codes[0] if codes else None
+
+    def to_lxx(self, book_num: int, chapter: int, verse: int):
+        """(code, chapter, verse) in Rahlfs, or None if not in the Greek."""
+        key = (book_num, chapter, verse)
+        if key in self.forward:
+            return self.forward[key]
+        code = self.code_for(book_num)
+        if code is None:
+            return None
+        if book_num == NEHEMIAH:
+            return (code, chapter + NEHEMIAH_OFFSET, verse)
+        lxx_chapter = self.chapters.forward.get(book_num, {}).get(chapter, chapter)
+        return (code, lxx_chapter, verse)
+
+    def to_english(self, code: str, lxx_chapter: int, lxx_verse: int):
+        """(book_num, chapter, verse) in English, or None if it has no English verse."""
+        target = (code, lxx_chapter, lxx_verse)
+        if target in self.reverse:
+            return self.reverse[target]
+        # Which English book this code stands for.
+        if code == ESDRAS_CODE:
+            if lxx_chapter > NEHEMIAH_OFFSET:
+                book, chapter = NEHEMIAH, lxx_chapter - NEHEMIAH_OFFSET
+            else:
+                book, chapter = EZRA, lxx_chapter
+        else:
+            book = next((b for b, codes in self.codes.items() if codes and codes[0] == code), None)
+            if book is None:
+                return None           # a book outside the 66, or a second text
+            chapter = self.chapters.english_chapter(book, lxx_chapter)
+            if chapter is None:
+                return None
+        english = (book, chapter, lxx_verse)
+        # If that English verse is mapped somewhere else (or is absent), this
+        # Septuagint verse is not its counterpart.
+        if english in self.forward:
+            return None
+        return english
