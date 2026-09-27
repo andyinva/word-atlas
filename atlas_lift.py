@@ -51,6 +51,23 @@ passage is compared with:
     group        the passage's baseline group, passage verses left out (default)
     book         the rest of the passage's own book(s)
     NAME         another named passage (overlapping verses left out)
+--text and --against-text choose where each side's words come from:
+    kjv          atlas.db (the default)
+    lxx          lxx.db, the Septuagint (build it with build_lxx.py)
+A Septuagint verse is placed by its English equivalent (the verse map in
+metadata.db), so passages keep their English references; Greek
+additions with no English verse are not included.
+
+MIXED TEXTS: the KJV and the Septuagint were tagged by different projects,
+so when a report uses both, two rules make them comparable:
+    * one stop rule for Greek: a Greek word is a function word only if it
+      is on the Greek lemma stoplist (the Septuagint's), and then it is
+      left out on both sides; every other Greek word counts in full on
+      both sides, whichever English word the KJV used for it
+    * root equivalents (metadata.db, atlas_lxx.py equivalents): numbers
+      the two taggings use for the same word are counted as one
+      (the KJV's "saw" G1492 and the Septuagint's G3708, for example)
+Reports on one text alone are not changed by either rule.
 Keyness for a passage is computed against that same baseline, using
 log_likelihood from atlas_text.py when it can be imported, so it means
 exactly what it means everywhere else in the atlas.
@@ -61,6 +78,7 @@ Usage:
     python atlas_lift.py --book Joel             (real report from atlas.db)
     python atlas_lift.py --passage "Isaiah 40-66" --against "Isaiah 1-39"
     python atlas_lift.py --passage "Harlot city"
+    python atlas_lift.py --passage "Revelation harlot" --against "Gentile cities" --against-text lxx
 """
 
 import argparse
@@ -72,8 +90,8 @@ from dataclasses import dataclass
 from math import log
 from pathlib import Path
 
-from atlas_metadata import (Corpora, MetadataStore, Passage, PassageStore, is_strongs,
-                            language_of_root)
+from atlas_metadata import (Corpora, MetadataStore, Passage, PassageStore, RootEquivalents,
+                            is_strongs, language_of_root)
 
 # Use the atlas's own log-likelihood function when possible, so passage
 # keyness is computed exactly the way build_atlas.py computes it.
@@ -479,6 +497,15 @@ class VerseIndex:
 
     VERSES_SQL = "SELECT verse_id, book, chapter, verse FROM verses"
 
+    # Every word per verse with its stop flag, for mixed-text reports,
+    # where Greek words follow the Greek stop rule instead of the KJV's.
+    WORDS_ALL_SQL = """
+        SELECT verse_id, root, is_stop, COUNT(*)
+        FROM tokens
+        WHERE root IS NOT NULL AND root <> ''
+        GROUP BY verse_id, root, is_stop
+    """
+
     # Content words per verse, stop words left out (same rule as book mode).
     WORDS_SQL = """
         SELECT verse_id, root, COUNT(*)
@@ -492,10 +519,21 @@ class VerseIndex:
 
     GLOSS_SQL = "SELECT root, form FROM words"
 
-    def __init__(self, atlas_path: Path, metadata: MetadataStore):
+    # Septuagint verse ids are offset so they never collide with atlas.db's.
+    LXX_OFFSET = 10_000_000
+
+    def __init__(self, atlas_path: Path, metadata: MetadataStore, lxx_path: Path | None = None):
         if not atlas_path.exists():
             sys.exit(f"atlas.db not found at {atlas_path}")
         self.metadata = metadata
+        # Which text each verse comes from: "kjv" or "lxx".
+        self.text_of: dict[int, str] = {}
+        # Mixed-text rules apply only when the Septuagint is loaded.
+        self.mixed = lxx_path is not None
+        self.greek_stop: set[str] = set()
+        self.equivalents: dict[str, str] = RootEquivalents(metadata).mapping() if self.mixed else {}
+        if self.mixed:
+            self.greek_stop = self._greek_stop_roots(lxx_path)
         # Text sources and their languages, for the language rule.
         self.corpora = Corpora(metadata)
         self.location: dict[int, tuple[int, int, int]] = {}   # verse_id -> (book, chapter, verse)
@@ -509,8 +547,20 @@ class VerseIndex:
                 book_num = metadata.number_for_name(book_name)
                 if book_num is not None:
                     self.location[verse_id] = (book_num, int(chapter), int(verse))
-            for verse_id, root, count in conn.execute(self.WORDS_SQL):
-                self.words[verse_id][root] += int(count)
+                    self.text_of[verse_id] = "kjv"
+            if self.mixed:
+                # Greek words follow the Greek stop rule; Hebrew words and
+                # English stems keep the KJV's own stop flags.
+                for verse_id, root, is_stop, count in conn.execute(self.WORDS_ALL_SQL):
+                    if root.startswith("G"):
+                        key = self.equivalents.get(root, root)
+                        if key not in self.greek_stop and root not in self.greek_stop:
+                            self.words[verse_id][key] += int(count)
+                    elif not is_stop:
+                        self.words[verse_id][root] += int(count)
+            else:
+                for verse_id, root, count in conn.execute(self.WORDS_SQL):
+                    self.words[verse_id][root] += int(count)
             for verse_id, count in conn.execute(self.SIZE_SQL):
                 self.size[verse_id] = int(count)
             for root, form in conn.execute(self.GLOSS_SQL):
@@ -520,22 +570,70 @@ class VerseIndex:
             sys.exit(f"Query on atlas.db failed: {err}")
         finally:
             conn.close()
+        if lxx_path is not None:
+            self._load_lxx(lxx_path)
 
-    def verses_in_passage(self, passage: Passage) -> set[int]:
-        """Every verse_id inside a passage's ranges."""
-        return {vid for vid, (b, c, v) in self.location.items() if passage.contains(b, c, v)}
+    def _load_lxx(self, lxx_path: Path) -> None:
+        """
+        Add the Septuagint verses from lxx.db. Each is placed at its English
+        equivalent; verses without one (Greek additions) are left out.
+        """
+        if not lxx_path.exists():
+            sys.exit(f"lxx.db not found at {lxx_path}; build it with: python build_lxx.py")
+        off = self.LXX_OFFSET
+        conn = sqlite3.connect(lxx_path)
+        try:
+            for vid, b, c, v in conn.execute(
+                    "SELECT verse_id, eng_book, eng_chapter, eng_verse FROM verses "
+                    "WHERE eng_book IS NOT NULL"):
+                self.location[vid + off] = (b, c, v)
+                self.text_of[vid + off] = "lxx"
+            for vid, root, count in conn.execute(
+                    "SELECT verse_id, root, COUNT(*) FROM tokens WHERE is_stop = 0 "
+                    "GROUP BY verse_id, root"):
+                if vid + off in self.location:
+                    self.words[vid + off][self.equivalents.get(root, root)] += int(count)
+            for vid, count in conn.execute("SELECT verse_id, COUNT(*) FROM tokens GROUP BY verse_id"):
+                if vid + off in self.location:
+                    self.size[vid + off] = int(count)
+            # Lemma-keyed roots show their Greek lemma; Strong's roots keep
+            # the KJV's English gloss when it has one.
+            for root, lemma in conn.execute("SELECT root, lemma FROM roots"):
+                self.glosses.setdefault(root, lemma)
+        finally:
+            conn.close()
 
-    def verses_in_books(self, book_nums) -> set[int]:
-        """Every verse_id in the given books."""
+    @staticmethod
+    def _greek_stop_roots(lxx_path: Path) -> set[str]:
+        """The Greek function words: every root the Septuagint build marked as a stop word."""
+        if not lxx_path.exists():
+            sys.exit(f"lxx.db not found at {lxx_path}; build it with: python build_lxx.py")
+        conn = sqlite3.connect(lxx_path)
+        try:
+            return {r for (r,) in conn.execute(
+                "SELECT DISTINCT root FROM tokens WHERE is_stop = 1")}
+        finally:
+            conn.close()
+
+    def verses_in_passage(self, passage: Passage, text: str = "kjv") -> set[int]:
+        """Every verse_id of one text ("kjv" or "lxx") inside a passage's ranges."""
+        return {vid for vid, (b, c, v) in self.location.items()
+                if self.text_of[vid] == text and passage.contains(b, c, v)}
+
+    def verses_in_books(self, book_nums, text: str = "kjv") -> set[int]:
+        """Every verse_id of one text in the given books."""
         wanted = set(book_nums)
-        return {vid for vid, (b, _, _) in self.location.items() if b in wanted}
+        return {vid for vid, (b, _, _) in self.location.items()
+                if self.text_of[vid] == text and b in wanted}
 
     def testament_of_verse(self, verse_id: int) -> str:
         return self.metadata.testament_of(self.location[verse_id][0])
 
     def language_of_verse(self, verse_id: int) -> str:
-        """The language a verse's words are keyed in (atlas.db holds the KJV:
-        Hebrew Strong's numbers in the OT, Greek in the NT)."""
+        """The language a verse's words are keyed in: the Septuagint is Greek;
+        the KJV has Hebrew Strong's numbers in the OT and Greek in the NT."""
+        if self.text_of[verse_id] == "lxx":
+            return self.corpora.language_of("greek-lxx")
         return self.corpora.kjv_language_of_book(self.location[verse_id][0])
 
 
@@ -550,21 +648,25 @@ class BaselineBuilder:
         self.metadata = metadata
         self.store = store
 
-    def build(self, passage: Passage, target: set[int], against: str) -> tuple[set[int], str]:
-        """Return (baseline verse_ids, plain description). Target verses are always left out."""
+    def build(self, passage: Passage, target: set[int], against: str,
+              text: str = "kjv") -> tuple[set[int], str]:
+        """
+        Return (baseline verse_ids, plain description), taken from one text
+        ("kjv" or "lxx"). Target verses are always left out.
+        """
         choice = against.strip().lower()
         if choice == "group":
-            return self._group(passage, target)
+            return self._group(passage, target, text)
         if choice == "book":
             books = passage.book_nums()
             names = ", ".join(self.metadata.name_of(b) for b in books)
-            return self.index.verses_in_books(books) - target, f"rest of {names}"
+            return self.index.verses_in_books(books, text) - target, f"rest of {names}"
         # Anything else is taken as the name of another passage.
         other = self.store.require(against)
-        verses = self.index.verses_in_passage(other) - target
+        verses = self.index.verses_in_passage(other, text) - target
         return verses, f"passage '{other.name}' ({other.describe(self.metadata)})"
 
-    def _group(self, passage: Passage, target: set[int]) -> tuple[set[int], str]:
+    def _group(self, passage: Passage, target: set[int], text: str = "kjv") -> tuple[set[int], str]:
         """
         The passage's baseline group(s), one testament at a time, with the
         same fallback as book mode: if a group has too few books in a
@@ -587,7 +689,7 @@ class BaselineBuilder:
                 parts.append(f"all {testament} books ({', '.join(groups)} has too few)")
             else:
                 parts.append(f"{', '.join(groups)} ({testament})")
-            verses |= self.index.verses_in_books(books)
+            verses |= self.index.verses_in_books(books, text)
         return verses - target, "; ".join(parts) + ", passage verses left out"
 
 
@@ -622,7 +724,8 @@ class PassageLiftCalculator:
         self.include_english = include_english
 
         if not target:
-            sys.exit("The passage matched no verses in atlas.db.")
+            sys.exit("The passage has no verses in the chosen text (--text). "
+                     "The Septuagint has no New Testament, and Greek additions are not placed.")
         if not baseline:
             sys.exit("The baseline is empty (it may overlap the passage completely).")
 
@@ -660,7 +763,9 @@ class PassageLiftCalculator:
         ll = ATLAS_LOG_LIKELIHOOD or signed_log_likelihood
         result = []
         for word, count in self.target_counts.items():
-            if not self.include_english and not is_strongs(word):
+            # Strong's numbers and Septuagint lemma keys are both "tagged";
+            # only English stems (no language) count as untagged.
+            if not self.include_english and language_of_root(word) is None:
                 continue
             if count < self.min_count:
                 continue
@@ -701,7 +806,8 @@ class PassageLiftCalculator:
         """Header facts for the passage report."""
         english = 0
         if not self.include_english:
-            english = sum(n for w, n in self.target_counts.items() if not is_strongs(w))
+            english = sum(n for w, n in self.target_counts.items()
+                          if language_of_root(w) is None)
         chapters = {self.index.location[v][:2] for v in self.target}
         source = "atlas_text.log_likelihood" if ATLAS_LOG_LIKELIHOOD else "built-in G2"
         return BookSummary(
@@ -771,7 +877,9 @@ class LiftReport:
             "-" * len(header),
         ]
         for r in self.rows[:top]:
-            line = f"{r.word:<10}"
+            # Long Septuagint lemma keys are cut to fit; the gloss column
+            # shows the full lemma.
+            line = f"{r.word[:9]:<10}"
             if show_gloss:
                 # Trim long glosses so the columns stay lined up.
                 line += f"{r.gloss[:19]:<20}"
@@ -828,6 +936,12 @@ def main() -> None:
     parser.add_argument("--passage", help="a named passage from metadata.db")
     parser.add_argument("--against", default="group",
                         help="passage baseline: group, book, or another passage's name")
+    parser.add_argument("--text", choices=["kjv", "lxx"], default="kjv",
+                        help="where the passage's words come from (default kjv)")
+    parser.add_argument("--against-text", choices=["kjv", "lxx"], default=None,
+                        help="where the baseline's words come from (default: same as --text)")
+    parser.add_argument("--lxx", type=Path, default=SCRIPT_DIR / "lxx.db",
+                        help="the Septuagint database built by build_lxx.py")
     parser.add_argument("--atlas", type=Path, default=SCRIPT_DIR / "atlas.db")
     parser.add_argument("--metadata", type=Path, default=SCRIPT_DIR / "metadata.db")
     parser.add_argument("--top", type=int, default=25, help="how many words to show")
@@ -893,16 +1007,23 @@ def run_passage_report(args, metadata: MetadataStore) -> None:
     store = PassageStore(metadata)
     passage = store.require(args.passage)
 
-    index = VerseIndex(args.atlas, metadata)
-    target = index.verses_in_passage(passage)
+    against_text = args.against_text or args.text
+    uses_lxx = "lxx" in (args.text, against_text)
+    index = VerseIndex(args.atlas, metadata, args.lxx if uses_lxx else None)
+    target = index.verses_in_passage(passage, args.text)
     baseline, baseline_text = BaselineBuilder(index, metadata, store).build(
-        passage, target, args.against)
+        passage, target, args.against, against_text)
+    label = {"kjv": "KJV", "lxx": "Septuagint"}
 
     calc = PassageLiftCalculator(index, target, baseline,
                                  cushion=args.cushion, min_count=args.min_count,
                                  min_keyness=args.min_keyness, sort=args.sort,
                                  include_english=args.include_english)
     summary = calc.summary(passage, baseline_text, metadata)
+    summary.note += f"\nTexts: passage {label[args.text]}, baseline {label[against_text]}"
+    if index.mixed:
+        summary.note += (f"\nMixed-text rules: Greek stop rule; "
+                         f"{len(index.equivalents)} root equivalents (atlas_lxx.py equivalents)")
     report = LiftReport(summary, calc.rows(), calc)
     print(report.render(args.top))
 

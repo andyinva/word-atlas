@@ -17,6 +17,7 @@ Classes:
     LxxBookTable     the Septuagint's own books, scanned from its verse file
     LxxVerseMapStore the verse-level English -> Septuagint map (table)
     LxxResolver      English verse <-> Septuagint verse, in both directions
+    RootEquivalents  Strong's numbers two taggings use for the same Greek word
 
 This file is a library; atlas_passages.py is the command-line tool that
 uses it.
@@ -859,3 +860,62 @@ class LxxResolver:
         if english in self.forward:
             return None
         return english
+
+
+# ===========================================================================
+# Root equivalents
+# ===========================================================================
+class RootEquivalents:
+    """
+    Reads and edits the root_equivalents table: Strong's numbers that the
+    KJV New Testament and the Septuagint taggings use for the same Greek
+    word. Applied only when a report mixes the two texts.
+    """
+
+    def __init__(self, metadata: MetadataStore):
+        self.metadata = metadata
+
+    def _connect(self):
+        return sqlite3.connect(self.metadata.path)
+
+    def mapping(self) -> dict[str, str]:
+        """{root: group_root}; empty if the table does not exist yet."""
+        conn = self._connect()
+        try:
+            return dict(conn.execute("SELECT root, group_root FROM root_equivalents"))
+        except sqlite3.OperationalError:
+            return {}
+        finally:
+            conn.close()
+
+    def rows(self) -> list[tuple]:
+        conn = self._connect()
+        try:
+            return conn.execute(
+                "SELECT root, group_root, source_note FROM root_equivalents "
+                "ORDER BY group_root, root").fetchall()
+        except sqlite3.OperationalError:
+            return []
+        finally:
+            conn.close()
+
+    def add(self, root: str, group_root: str, note: str) -> None:
+        conn = self._connect()
+        try:
+            conn.execute("INSERT OR REPLACE INTO root_equivalents VALUES (?, ?, ?)",
+                         (root, group_root, note))
+            conn.commit()
+        except sqlite3.OperationalError:
+            sys.exit("metadata.db has no root_equivalents table yet; "
+                     "run create_metadata_db.py once to add it.")
+        finally:
+            conn.close()
+
+    def remove(self, root: str) -> bool:
+        conn = self._connect()
+        try:
+            cur = conn.execute("DELETE FROM root_equivalents WHERE root = ?", (root,))
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()

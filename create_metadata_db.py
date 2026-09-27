@@ -22,7 +22,7 @@ from pathlib import Path
 
 # Version number of the table layout. It is stored inside the database so
 # later scripts can check which layout they are reading.
-SCHEMA_VERSION = "4"   # 2 = lxx_chapter_map; 3 = corpora, lxx_books; 4 = lxx_verse_map
+SCHEMA_VERSION = "5"   # 2 = lxx_chapter_map; 3 = corpora, lxx_books; 4 = lxx_verse_map; 5 = root_equivalents
 
 # ---------------------------------------------------------------------------
 # Table layout
@@ -115,6 +115,18 @@ CREATE TABLE IF NOT EXISTS lxx_verse_map (
     review      INTEGER NOT NULL DEFAULT 0 CHECK (review IN (0, 1)),
     source_note TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (book_num, eng_chapter, eng_verse)
+);
+
+-- Strong's numbers that two taggings use for the same Greek word. The KJV
+-- New Testament and the Septuagint were tagged by different projects:
+-- the KJV tags "saw" (eidon) as G1492, the Septuagint files it under
+-- horao, G3708. When a report mixes the two texts, each root listed here
+-- is counted as its group_root on both sides. Reports on one text alone
+-- are not affected.
+CREATE TABLE IF NOT EXISTS root_equivalents (
+    root        TEXT PRIMARY KEY,
+    group_root  TEXT NOT NULL,
+    source_note TEXT NOT NULL DEFAULT ''
 );
 
 -- The text sources the atlas can measure, each with its language.
@@ -274,6 +286,52 @@ CORPUS_SEED = [
                            "(read by septuagint_bridge.py; not yet in atlas.db)"),
 ]
 
+# ---------------------------------------------------------------------------
+# Seed rows for root equivalents (see the root_equivalents table)
+# ---------------------------------------------------------------------------
+# Each tuple: (root, group_root, note). Verbs whose forms Strong's numbers
+# under separate entries, which the two taggings split differently.
+EQUIVALENT_SEED = [
+    ("G3708", "G1492", "horao 'see': the Septuagint tags eidon here, the KJV NT under G1492 "
+                       "(counts checked: G3708 LXX 1,437 / NT 64; G1492 LXX 105 / NT 679)"),
+    ("G3700", "G1492", "optanomai/opsomai, future forms of 'see'"),
+    ("G2036", "G3004", "eipon 'said', aorist of lego"),
+    ("G2046", "G3004", "ereo, future of lego"),
+    ("G4483", "G3004", "rheo/errethe, passive of lego"),
+    ("G5315", "G2068", "phago/ephagon 'ate', aorist of esthio"),
+    # Forms of eimi 'to be', numbered separately in the KJV's Strong's; the
+    # Septuagint tags them all as eimi, a function word (found by tags check).
+    ("G1488", "G1510", "ei 'art', form of eimi"),
+    ("G1498", "G1510", "eien, form of eimi"),
+    ("G1511", "G1510", "einai 'to be', form of eimi"),
+    ("G1526", "G1510", "eisi 'are', form of eimi"),
+    ("G2070", "G1510", "esmen 'we are', form of eimi"),
+    ("G2071", "G1510", "esomai 'will be', form of eimi"),
+    ("G2075", "G1510", "este 'you are', form of eimi"),
+    ("G2076", "G1510", "esti 'is', form of eimi"),
+    ("G2077", "G1510", "esto 'let be', form of eimi"),
+    ("G2258", "G1510", "en 'was', form of eimi"),
+    ("G2468", "G1510", "isthi 'be', form of eimi"),
+    ("G5600", "G1510", "o, subjunctive of eimi"),
+    ("G5607", "G1510", "on 'being', form of eimi"),
+    # Forms of houtos 'this', likewise.
+    ("G5023", "G3778", "tauta, form of houtos"),
+    ("G5024", "G3778", "tauta (the same), form of houtos"),
+    ("G5025", "G3778", "tautais/tautas, form of houtos"),
+    ("G5026", "G3778", "taute/tauten/tautes, form of houtos"),
+    ("G5124", "G3778", "touto, form of houtos"),
+    ("G5125", "G3778", "toutois, form of houtos"),
+    ("G5127", "G3778", "toutou, form of houtos"),
+    ("G5128", "G3778", "toutous, form of houtos"),
+    ("G5129", "G3778", "touto (dative), form of houtos"),
+    ("G5130", "G3778", "touton, form of houtos"),
+    # Compounds of function words, tagged as separate words in the Septuagint.
+    ("G3364", "G3756", "ou me 'never', compound of ou and me"),
+    ("G3363", "G2443", "hina me 'lest', compound of hina and me"),
+    # mia 'one' (feminine), numbered apart from heis.
+    ("G3391", "G1520", "mia, feminine of heis 'one'"),
+]
+
 # Each range: (book_num, chapter_start, verse_start, chapter_end, verse_end)
 EXAMPLE_PASSAGES = [
     (
@@ -374,6 +432,15 @@ class MetadataDatabase:
         self.conn.commit()
         return self._count("corpora") - before
 
+    def seed_equivalents(self) -> int:
+        """Add missing root-equivalent rows. Returns how many were added."""
+        before = self._count("root_equivalents")
+        self.conn.executemany(
+            "INSERT OR IGNORE INTO root_equivalents (root, group_root, source_note) VALUES (?, ?, ?)",
+            EQUIVALENT_SEED)
+        self.conn.commit()
+        return self._count("root_equivalents") - before
+
     def check_group_sizes(self) -> list[str]:
         """Return warnings for any baseline group that is too small to use."""
         warnings = []
@@ -413,12 +480,14 @@ def main() -> None:
         passages_added = db.seed_example_passages()
         map_added = db.seed_lxx_map()
         corpora_added = db.seed_corpora()
+        equivalents_added = db.seed_equivalents()
 
         print(f"Database: {args.db}")
         print(f"Books added: {books_added} (existing rows left untouched)")
         print(f"Example passages added: {passages_added}")
         print(f"Septuagint chapter-map rows added: {map_added}")
         print(f"Corpora added: {corpora_added}")
+        print(f"Root equivalents added: {equivalents_added}")
 
         for warning in db.check_group_sizes():
             print("WARNING:", warning)

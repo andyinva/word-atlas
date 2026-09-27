@@ -21,3 +21,7 @@ metadata.db
 metadata.db.before-restore-*
 *.db.restoring
 *.sql.tmp
+
+# The Septuagint layer (Rahlfs, CC BY-NC-SA): built locally, never committed
+lxx.db
+lxx.db.building

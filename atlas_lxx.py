@@ -19,6 +19,11 @@ Usage:
     python atlas_lxx.py versification set "Jer 49:34" --absent
     python atlas_lxx.py versification unset "Jer 49:1"
 
+    python atlas_lxx.py equivalents list        numbers counted as one when texts mix
+    python atlas_lxx.py equivalents add G3708 G1492 --note "horao / eidon"
+    python atlas_lxx.py equivalents remove G3708
+    python atlas_lxx.py tags check              look for further tagging splits
+
 The verse map is built from STEPBible's TVTMS file, which you download
 once (it is not copied into this project; its licence asks that it be
 fetched from STEPBible):
@@ -44,7 +49,7 @@ from pathlib import Path
 
 from atlas_backup import MetadataBackup
 from atlas_metadata import (Corpora, LxxBookTable, LxxResolver, LxxVerseMapStore,
-                            MetadataStore, ReferenceParser)
+                            MetadataStore, ReferenceParser, RootEquivalents)
 
 # Folder this script lives in, so it works the same on Ubuntu and Windows.
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -311,6 +316,82 @@ class LxxTool:
         else:
             print(f"No hand-made mapping for {text}.")
 
+    # ------------------------------------------------------------------
+    # Root equivalents and the tagging check
+    # ------------------------------------------------------------------
+    def equivalents_list(self) -> None:
+        rows = RootEquivalents(self.metadata).rows()
+        if not rows:
+            print("No root equivalents yet.")
+            return
+        for root, group, note in rows:
+            print(f"{root:<8} counts as {group:<8} {note}")
+
+    def equivalents_add(self, root: str, group: str, note: str) -> None:
+        RootEquivalents(self.metadata).add(root.upper(), group.upper(), note or "entered by hand")
+        print(f"{root.upper()} now counts as {group.upper()} when texts are mixed.")
+        self.refresh_backup()
+
+    def equivalents_remove(self, root: str) -> None:
+        if RootEquivalents(self.metadata).remove(root.upper()):
+            print(f"Removed {root.upper()}.")
+            self.refresh_backup()
+        else:
+            print(f"{root.upper()} is not in the table.")
+
+    def tags_check(self, lxx: Path, atlas: Path, minimum: int, ratio: float) -> None:
+        """
+        Common Greek words whose rate differs wildly between the KJV New
+        Testament and the Septuagint. A word the Septuagint almost never
+        uses but the New Testament often does (or the reverse) is often a
+        tagging split, the same word filed under two numbers; sometimes it
+        is a genuine difference in vocabulary. Check before adding.
+        """
+        for path in (lxx, atlas):
+            if not path.exists():
+                raise SystemExit(f"Not found: {path}")
+        conn = sqlite3.connect(lxx)
+        try:
+            conn.execute(f"ATTACH DATABASE '{atlas}' AS atlas")
+            lxx_counts = dict(conn.execute(
+                "SELECT root, COUNT(*) FROM tokens WHERE root GLOB 'G[0-9]*' GROUP BY root"))
+            # GLOB, not LIKE: LIKE ignores case, so English stems such as
+            # "go" would slip in with the Greek numbers.
+            nt_counts = dict(conn.execute(
+                "SELECT root, COUNT(*) FROM atlas.tokens WHERE root GLOB 'G[0-9]*' GROUP BY root"))
+            glosses = dict(conn.execute(
+                "SELECT root, form FROM atlas.words WHERE root GLOB 'G[0-9]*'"))
+            stop = {r for (r,) in conn.execute("SELECT DISTINCT root FROM tokens WHERE is_stop = 1")}
+        finally:
+            conn.close()
+        known = RootEquivalents(self.metadata).mapping()
+        lxx_total, nt_total = sum(lxx_counts.values()), sum(nt_counts.values())
+        rows = []
+        for root in set(lxx_counts) | set(nt_counts):
+            if root in stop:
+                continue
+            l, n = lxx_counts.get(root, 0), nt_counts.get(root, 0)
+            if max(l, n) < minimum:
+                continue
+            # Rates per million words, with a floor of 1 so zero never divides.
+            rl = max(l, 1) / lxx_total * 1e6
+            rn = max(n, 1) / nt_total * 1e6
+            r = max(rl / rn, rn / rl)
+            if r >= ratio:
+                rows.append((r, root, l, n, "LXX" if rl > rn else "NT"))
+        rows.sort(reverse=True)
+        print(f"Greek words at least {ratio:g} times more frequent in one text "
+              f"(at least {minimum} uses somewhere):\n")
+        print(f"{'root':<8}{'gloss':<18}{'Septuagint':>11}{'KJV NT':>9}{'ratio':>8}  more in  note")
+        print("-" * 78)
+        for r, root, l, n, where in rows[:60]:
+            note = (f"counts as {known[root]}" if root in known else
+                    "group root" if root in known.values() else "")
+            print(f"{root:<8}{glosses.get(root, '')[:17]:<18}{l:>11,}{n:>9,}{r:>8.0f}  {where:<7}  {note}")
+        print("\nMany of these are real differences (the Septuagint has more words about "
+              "sacrifice, the NT about faith). A split shows as a pair: one number common "
+              "in each text for the same meaning.")
+
     def corpora(self) -> None:
         """The text sources and their languages."""
         conn = sqlite3.connect(self.metadata.path)
@@ -361,8 +442,37 @@ def main() -> None:
     unset = vc.add_parser("unset", help="remove a hand-made mapping")
     unset.add_argument("verse")
 
+    equiv = commands.add_parser("equivalents", help="numbers counted as one when texts mix")
+    ec = equiv.add_subparsers(dest="equiv_command", required=True)
+    ec.add_parser("list")
+    eadd = ec.add_parser("add")
+    eadd.add_argument("root")
+    eadd.add_argument("group_root")
+    eadd.add_argument("--note", default="")
+    erem = ec.add_parser("remove")
+    erem.add_argument("root")
+
+    tags = commands.add_parser("tags", help="check the two taggings against each other")
+    tc = tags.add_subparsers(dest="tags_command", required=True)
+    tcheck = tc.add_parser("check")
+    tcheck.add_argument("--lxx", type=Path, default=SCRIPT_DIR / "lxx.db")
+    tcheck.add_argument("--atlas", type=Path, default=SCRIPT_DIR / "atlas.db")
+    tcheck.add_argument("--minimum", type=int, default=100)
+    tcheck.add_argument("--ratio", type=float, default=15)
+
     args = parser.parse_args()
     tool = LxxTool(args.metadata)
+    if args.command == "equivalents":
+        if args.equiv_command == "list":
+            tool.equivalents_list()
+        elif args.equiv_command == "add":
+            tool.equivalents_add(args.root, args.group_root, args.note)
+        else:
+            tool.equivalents_remove(args.root)
+        return
+    if args.command == "tags":
+        tool.tags_check(args.lxx, args.atlas, args.minimum, args.ratio)
+        return
     if args.command == "corpora":
         tool.corpora()
     elif args.command == "versification":
