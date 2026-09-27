@@ -13,6 +13,8 @@ Classes:
     Passage          a named passage made of one or more VerseRanges
     PassageStore     list, read, add and remove passages in metadata.db
     LxxChapterMap    English chapter -> Septuagint (Rahlfs) chapter
+    Corpora          the text sources and their languages (the language rule)
+    LxxBookTable     the Septuagint's own books, scanned from its verse file
 
 This file is a library; atlas_passages.py is the command-line tool that
 uses it.
@@ -35,10 +37,25 @@ def is_strongs(root: str) -> bool:
 
 
 def testament_of_root(root: str) -> str | None:
-    """'OT' for a Hebrew Strong's number, 'NT' for Greek, None for English stems."""
+    """'OT' for a Hebrew Strong's number, 'NT' for Greek, None for English stems.
+    Kept for older scripts; new code should use language_of_root()."""
     if not is_strongs(root):
         return None
     return "OT" if root[0] == "H" else "NT"
+
+
+def language_of_root(root: str) -> str | None:
+    """
+    The language a word belongs to: 'Hebrew' for an H number, 'Greek' for a
+    G number or a Septuagint lemma key ('L:...'), None for English stems.
+    THE LANGUAGE RULE: a word is only ever compared with text of its own
+    language, whichever corpus that text comes from.
+    """
+    if root.startswith("L:"):
+        return "Greek"
+    if not is_strongs(root):
+        return None
+    return "Hebrew" if root[0] == "H" else "Greek"
 
 
 # ===========================================================================
@@ -463,3 +480,219 @@ class LxxChapterMap:
         finally:
             conn.close()
         self.forward.setdefault(book_num, {})[eng_chapter] = lxx_chapter
+
+
+# ===========================================================================
+# Corpora: the text sources and their languages
+# ===========================================================================
+class Corpora:
+    """
+    The text sources the atlas measures (table corpora in metadata.db).
+
+    Today atlas.db holds the KJV only: its Old Testament is keyed by Hebrew
+    Strong's numbers (corpus hebrew-ot) and its New Testament by Greek ones
+    (greek-nt). The Septuagint (greek-lxx) is the next corpus to come in.
+    """
+
+    # Used when an older metadata.db has no corpora table yet.
+    DEFAULT = {"hebrew-ot": "Hebrew", "greek-nt": "Greek", "greek-lxx": "Greek"}
+
+    def __init__(self, metadata: MetadataStore):
+        self.metadata = metadata
+        self.languages = dict(self.DEFAULT)
+        conn = sqlite3.connect(metadata.path)
+        try:
+            for corpus, language in conn.execute("SELECT corpus, language FROM corpora"):
+                self.languages[corpus] = language
+        except sqlite3.OperationalError:
+            pass           # older metadata.db: the defaults above apply
+        finally:
+            conn.close()
+
+    def language_of(self, corpus: str) -> str:
+        return self.languages.get(corpus, "Unknown")
+
+    def kjv_corpus_of_book(self, book_num: int) -> str:
+        """The corpus a KJV book's words belong to in atlas.db."""
+        return "hebrew-ot" if self.metadata.testament_of(book_num) == "OT" else "greek-nt"
+
+    def kjv_language_of_book(self, book_num: int) -> str:
+        """The language a KJV book is measured in (Hebrew for OT, Greek for NT)."""
+        return self.language_of(self.kjv_corpus_of_book(book_num))
+
+
+# ===========================================================================
+# The Septuagint's own books
+# ===========================================================================
+# Codes whose English book and text variant are known. Every other code
+# found by a scan is listed with book_num empty, for review.
+KNOWN_LXX_CODES = {
+    code: (book_num, "") for book_num, codes in RAHLFS_CODES.items() for code in codes
+}
+KNOWN_LXX_CODES.update({
+    "DanTh": (27, "Theodotion"), "DanOG": (27, "Old Greek"),
+    "JoshA": (6, "A text"), "JoshB": (6, "B text"),
+    "JudgA": (7, "A text"), "JudgB": (7, "B text"),
+    "2Esdr": (15, "Ezra-Nehemiah in one book (Nehemiah = chapters 11-23)"),
+})
+
+# Readable names for books outside the 66 (by code prefix, longest first).
+LXX_NAMES = [
+    ("1Esdr", "1 Esdras"), ("2Esdr", "2 Esdras (Ezra-Nehemiah)"),
+    ("1Mac", "1 Maccabees"), ("2Mac", "2 Maccabees"), ("3Mac", "3 Maccabees"),
+    ("4Mac", "4 Maccabees"), ("TobBA", "Tobit (BA text)"), ("TobS", "Tobit (Sinaiticus text)"),
+    ("Tob", "Tobit"), ("Jdt", "Judith"), ("Wis", "Wisdom of Solomon"),
+    ("Sir", "Sirach"), ("EpJer", "Letter of Jeremiah"), ("Bar", "Baruch"),
+    ("PsSol", "Psalms of Solomon"), ("Odes", "Odes"),
+    ("SusOG", "Susanna (Old Greek)"), ("SusTh", "Susanna (Theodotion)"),
+    ("BelOG", "Bel and the Dragon (Old Greek)"), ("BelTh", "Bel and the Dragon (Theodotion)"),
+]
+
+
+class LxxBookTable:
+    """
+    Reads, scans and edits the lxx_books table.
+
+    scan() reads the Septuagint's verse file (the one the bridge uses) and
+    records every book code in it, in the file's own order, with chapter
+    and verse counts. Rows you have edited keep their names, links and
+    preferred choice; a rescan only refreshes the counts and the order.
+    """
+
+    REF = re.compile(r"^(?P<code>[^.]+)\.(?P<ch>\d+)\.(?P<v>[^.]+)$")
+
+    def __init__(self, metadata: MetadataStore):
+        self.metadata = metadata
+
+    def _connect(self) -> sqlite3.Connection:
+        return sqlite3.connect(self.metadata.path)
+
+    def has_table(self) -> bool:
+        conn = self._connect()
+        try:
+            conn.execute("SELECT 1 FROM lxx_books LIMIT 1")
+            return True
+        except sqlite3.OperationalError:
+            return False
+        finally:
+            conn.close()
+
+    def rows(self) -> list[tuple]:
+        """(code, name, book_num, variant, preferred, chapters, verses) in canon order."""
+        if not self.has_table():
+            return []
+        conn = self._connect()
+        try:
+            return conn.execute(
+                """SELECT code, name, book_num, variant, preferred, chapters, verses
+                   FROM lxx_books ORDER BY canon_order"""
+            ).fetchall()
+        finally:
+            conn.close()
+
+    def codes_by_book(self) -> dict[int, list[str]]:
+        """
+        {English book_num: [Rahlfs codes, preferred first]}, from the table.
+        Falls back to the built-in RAHLFS_CODES before the first scan.
+        """
+        rows = self.rows()
+        if not rows:
+            return {k: list(v) for k, v in RAHLFS_CODES.items()}
+        result: dict[int, list[str]] = {}
+        # Preferred codes first, then the others in canon order.
+        for code, _name, book_num, _variant, preferred, *_ in sorted(
+                rows, key=lambda r: -r[4]):
+            if book_num is not None:
+                result.setdefault(book_num, []).append(code)
+        return result
+
+    @staticmethod
+    def _name_for(code: str, book_num, metadata: MetadataStore) -> str:
+        """A readable name for a code."""
+        for prefix, name in LXX_NAMES:
+            if code.startswith(prefix):
+                return name
+        if book_num is not None:
+            return metadata.name_of(book_num)
+        return code
+
+    def scan(self, verse_file: Path) -> dict[str, list]:
+        """
+        Read the Septuagint verse file (ref <tab> word id) and return
+        {code: [order, chapters set, verse count]} in the file's order.
+        """
+        found: dict[str, list] = {}
+        with open(verse_file, encoding="utf8") as fh:
+            for line in fh:
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) != 2:
+                    continue
+                m = self.REF.match(parts[0])
+                if not m:
+                    continue
+                entry = found.setdefault(m["code"], [len(found) + 1, set(), 0])
+                entry[1].add(m["ch"])
+                entry[2] += 1
+        return found
+
+    def save_scan(self, found: dict[str, list]) -> tuple[int, int]:
+        """
+        Store a scan. New codes are added with their known link (or none);
+        existing rows only get fresh counts and order. Then each English
+        book gets exactly one preferred code, unless you already chose one.
+        Returns (codes added, codes refreshed).
+        """
+        added = refreshed = 0
+        conn = self._connect()
+        try:
+            for code, (order, chapters, verses) in found.items():
+                book_num, variant = KNOWN_LXX_CODES.get(code, (None, ""))
+                name = self._name_for(code, book_num, self.metadata)
+                cursor = conn.execute(
+                    """INSERT OR IGNORE INTO lxx_books
+                       (code, name, book_num, variant, preferred, canon_order,
+                        chapters, verses, source_note)
+                       VALUES (?, ?, ?, ?, 0, ?, ?, ?, 'scanned')""",
+                    (code, name, book_num, variant, order, len(chapters), verses),
+                )
+                if cursor.rowcount:
+                    added += 1
+                else:
+                    conn.execute(
+                        """UPDATE lxx_books SET canon_order = ?, chapters = ?, verses = ?
+                           WHERE code = ?""", (order, len(chapters), verses, code))
+                    refreshed += 1
+
+            # One preferred code per English book, following RAHLFS_CODES'
+            # order of preference, but only where none is chosen yet.
+            for book_num, candidates in RAHLFS_CODES.items():
+                chosen = conn.execute(
+                    "SELECT 1 FROM lxx_books WHERE book_num = ? AND preferred = 1",
+                    (book_num,)).fetchone()
+                if chosen:
+                    continue
+                for code in candidates:
+                    if code in found:
+                        conn.execute("UPDATE lxx_books SET preferred = 1 WHERE code = ?", (code,))
+                        break
+            conn.commit()
+        finally:
+            conn.close()
+        return added, refreshed
+
+    def prefer(self, code: str) -> str:
+        """Make a code the preferred text for its English book. Returns the book name."""
+        conn = self._connect()
+        try:
+            row = conn.execute("SELECT book_num FROM lxx_books WHERE code = ?", (code,)).fetchone()
+            if row is None:
+                sys.exit(f"No Septuagint book with code '{code}'. Run a scan first, "
+                         "or check the code with: python atlas_lxx.py books list")
+            if row[0] is None:
+                sys.exit(f"'{code}' is not linked to an English book, so it cannot be preferred.")
+            conn.execute("UPDATE lxx_books SET preferred = 0 WHERE book_num = ?", (row[0],))
+            conn.execute("UPDATE lxx_books SET preferred = 1 WHERE code = ?", (code,))
+            conn.commit()
+            return self.metadata.name_of(row[0])
+        finally:
+            conn.close()

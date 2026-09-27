@@ -968,7 +968,7 @@ def main():
     passage, source_passages, metadata = None, [], None
     if args.passage or args.sources:
         try:
-            from atlas_metadata import (RAHLFS_CODES, LxxChapterMap,
+            from atlas_metadata import (LxxBookTable, LxxChapterMap,
                                         MetadataStore, PassageStore)
         except ImportError:
             sys.exit("Named passages need atlas_metadata.py in the same folder.")
@@ -1007,8 +1007,10 @@ def main():
     # The named Septuagint sources for section 4.
     sources, warnings = [], []
     if source_passages:
+        # Book codes from the lxx_books table (atlas_lxx.py books scan),
+        # or the built-in list before the first scan.
         finder_passages = SeptuagintPassages(lxx, metadata, LxxChapterMap(metadata),
-                                             RAHLFS_CODES)
+                                             LxxBookTable(metadata).codes_by_book())
         for sp in source_passages:
             refs, notes = finder_passages.refs_for(sp)
             warnings += notes

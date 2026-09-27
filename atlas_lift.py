@@ -24,11 +24,15 @@ The baseline is "leave-one-out": the book being measured is left out of
 its own baseline, so a big book like Psalms or Isaiah cannot drown out
 the comparison.
 
-Peers always come from the book's OWN testament, the same rule
-build_atlas.py uses for keyness: a Hebrew Strong's number can never occur
-in a Greek book, so mixing testaments would make every word look unique.
-If a book's group has too few books in its testament (Revelation), the
-whole testament becomes its baseline.
+THE LANGUAGE RULE: a word is only compared with text of its own language
+(the corpora table in metadata.db). A Hebrew Strong's number can never
+occur in Greek text, so mixing languages would make every word look
+unique. In atlas.db today the KJV Old Testament is Hebrew and its New
+Testament Greek, so a book's peers come from its own testament, the same
+rule build_atlas.py uses for keyness. If a book's group has too few books
+in its language (Revelation), the whole testament becomes its baseline.
+The Septuagint, when it arrives, is Greek text in Old Testament books; the
+language rule is what will let it be compared with the New Testament.
 
 Untagged English words (KJV words with no Strong's number behind them,
 such as the translators' "let") are left out by default, because they
@@ -68,8 +72,8 @@ from dataclasses import dataclass
 from math import log
 from pathlib import Path
 
-from atlas_metadata import (MetadataStore, Passage, PassageStore, is_strongs,
-                            testament_of_root)
+from atlas_metadata import (Corpora, MetadataStore, Passage, PassageStore, is_strongs,
+                            language_of_root)
 
 # Use the atlas's own log-likelihood function when possible, so passage
 # keyness is computed exactly the way build_atlas.py computes it.
@@ -314,6 +318,8 @@ class LiftCalculator:
         self.counts = counts
         self.totals = totals
         self.metadata = metadata
+        # Text sources and their languages, for the language rule.
+        self.corpora = Corpora(metadata)
         self.cushion = cushion
         self.min_count = min_count
         # Optional {(book_num, word): keyness} from atlas.db.
@@ -341,16 +347,18 @@ class LiftCalculator:
         md = self.metadata
         group = md.group_of(book_num)
         testament = md.testament_of(book_num)
+        # The language rule: peers must be measured in the same language.
+        language = self.corpora.kjv_language_of_book(book_num)
 
         # Only books that actually have counts can serve as peers.
-        others = [b for b in self.totals if b != book_num]
+        others = [b for b in self.totals if b != book_num
+                  and self.corpora.kjv_language_of_book(b) == language]
 
-        peers = [b for b in others
-                 if md.group_of(b) == group and md.testament_of(b) == testament]
+        peers = [b for b in others if md.group_of(b) == group]
         basis = f"{group} ({testament})"
 
         if len(peers) < self.MIN_PEERS:
-            peers = [b for b in others if md.testament_of(b) == testament]
+            peers = list(others)
             basis = f"all other {testament} books ({group} has too few {testament} books)"
 
         if len(peers) < self.MIN_PEERS:
@@ -488,6 +496,8 @@ class VerseIndex:
         if not atlas_path.exists():
             sys.exit(f"atlas.db not found at {atlas_path}")
         self.metadata = metadata
+        # Text sources and their languages, for the language rule.
+        self.corpora = Corpora(metadata)
         self.location: dict[int, tuple[int, int, int]] = {}   # verse_id -> (book, chapter, verse)
         self.words: dict[int, Counter] = defaultdict(Counter) # verse_id -> root counts
         self.size: Counter = Counter()                        # verse_id -> tokens
@@ -522,6 +532,11 @@ class VerseIndex:
 
     def testament_of_verse(self, verse_id: int) -> str:
         return self.metadata.testament_of(self.location[verse_id][0])
+
+    def language_of_verse(self, verse_id: int) -> str:
+        """The language a verse's words are keyed in (atlas.db holds the KJV:
+        Hebrew Strong's numbers in the OT, Greek in the NT)."""
+        return self.corpora.kjv_language_of_book(self.location[verse_id][0])
 
 
 class BaselineBuilder:
@@ -580,10 +595,11 @@ class PassageLiftCalculator:
     """
     Lift and keyness for a passage against a baseline set of verses.
 
-    Hebrew words are compared only with the Old Testament part of each
-    side and Greek words only with the New Testament part, the same
-    testament rule used everywhere else in the atlas. That is what makes
-    a passage spanning Ezekiel and Revelation measurable.
+    THE LANGUAGE RULE: each side's size is counted per language, and a
+    word is compared only with text of its own language (Hebrew words with
+    the Hebrew part of each side, Greek words with the Greek part). That
+    is what makes a passage spanning Ezekiel and Revelation measurable,
+    and later a Greek passage against a Septuagint baseline.
     """
 
     SORT_KEYS = {
@@ -615,20 +631,20 @@ class PassageLiftCalculator:
         self.base_counts, self.base_size = self._tally(baseline)
 
     def _tally(self, verses: set[int]) -> tuple[Counter, Counter]:
-        """Total word counts, and total size per testament, for a set of verses."""
+        """Total word counts, and total size per language, for a set of verses."""
         counts: Counter = Counter()
         size: Counter = Counter()
         for vid in verses:
             counts.update(self.index.words.get(vid, Counter()))
-            size[self.index.testament_of_verse(vid)] += self.index.size[vid]
+            size[self.index.language_of_verse(vid)] += self.index.size[vid]
         return counts, size
 
     def _sizes_for(self, word: str) -> tuple[int, int]:
-        """Inside and outside sizes to use for a word: its testament, or everything for English."""
-        testament = testament_of_root(word)
-        if testament is None:
+        """Inside and outside sizes for a word: text of its language, or everything for English."""
+        language = language_of_root(word)
+        if language is None:
             return sum(self.target_size.values()), sum(self.base_size.values())
-        return self.target_size[testament], self.base_size[testament]
+        return self.target_size[language], self.base_size[language]
 
     def rows(self) -> list[LiftRow]:
         """One LiftRow per word that passes the filters."""

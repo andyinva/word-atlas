@@ -126,6 +126,8 @@ class MetadataBackup:
             parts = []
             for table, label in (("books", "books"), ("passages", "passages"),
                                  ("lxx_chapter_map", "chapter-map rows"),
+                                 ("lxx_books", "Septuagint books"),
+                                 ("corpora", "corpora"),
                                  ("verse_tags", "verse tags")):
                 try:
                     n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]

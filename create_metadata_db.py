@@ -22,7 +22,7 @@ from pathlib import Path
 
 # Version number of the table layout. It is stored inside the database so
 # later scripts can check which layout they are reading.
-SCHEMA_VERSION = "2"   # 2 = adds lxx_chapter_map
+SCHEMA_VERSION = "3"   # 2 = adds lxx_chapter_map; 3 = adds corpora and lxx_books
 
 # ---------------------------------------------------------------------------
 # Table layout
@@ -94,6 +94,37 @@ CREATE TABLE IF NOT EXISTS lxx_chapter_map (
     lxx_chapter INTEGER NOT NULL,
     source_note TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (book_num, eng_chapter)
+);
+
+-- The text sources the atlas can measure, each with its language.
+-- Words are compared only with words of the same language: a Hebrew
+-- Strong's number with Hebrew text, a Greek one with Greek text (from the
+-- New Testament, the Septuagint, or both).
+CREATE TABLE IF NOT EXISTS corpora (
+    corpus      TEXT PRIMARY KEY,
+    language    TEXT NOT NULL CHECK (language IN ('Hebrew', 'Greek')),
+    description TEXT NOT NULL DEFAULT '',
+    source_note TEXT NOT NULL DEFAULT ''
+);
+
+-- The books of Rahlfs' Septuagint, as its own verse file names them.
+-- Filled by "python atlas_lxx.py books scan"; rescans only refresh the
+-- counts, never the names, links or choices you have edited.
+--   book_num  = the English book it corresponds to (NULL for books
+--               outside the 66, such as Tobit or Sirach)
+--   variant   = which Greek text, where Rahlfs prints two
+--               (Daniel: Theodotion / Old Greek; Joshua, Judges: A / B)
+--   preferred = 1 for the text used when a passage names the English book
+CREATE TABLE IF NOT EXISTS lxx_books (
+    code        TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    book_num    INTEGER REFERENCES books(book_num),
+    variant     TEXT NOT NULL DEFAULT '',
+    preferred   INTEGER NOT NULL DEFAULT 0 CHECK (preferred IN (0, 1)),
+    canon_order INTEGER NOT NULL DEFAULT 0,
+    chapters    INTEGER NOT NULL DEFAULT 0,
+    verses      INTEGER NOT NULL DEFAULT 0,
+    source_note TEXT NOT NULL DEFAULT ''
 );
 
 -- Speeds up "give me every verse with this tag" lookups.
@@ -204,6 +235,17 @@ LXX_MAP_SEED = [
     (24, 51, 28, "Babylon oracle; confirmed in septuagint_bridge.py"),
 ]
 
+# ---------------------------------------------------------------------------
+# Seed rows for the corpora
+# ---------------------------------------------------------------------------
+# Each tuple: (corpus, language, description)
+CORPUS_SEED = [
+    ("hebrew-ot", "Hebrew", "KJV Old Testament keyed by Hebrew Strong's numbers (atlas.db)"),
+    ("greek-nt", "Greek", "KJV New Testament keyed by Greek Strong's numbers (atlas.db)"),
+    ("greek-lxx", "Greek", "Rahlfs 1935 Septuagint keyed by Strong's numbers or lemmas "
+                           "(read by septuagint_bridge.py; not yet in atlas.db)"),
+]
+
 # Each range: (book_num, chapter_start, verse_start, chapter_end, verse_end)
 EXAMPLE_PASSAGES = [
     (
@@ -293,6 +335,17 @@ class MetadataDatabase:
         self.conn.commit()
         return self._count("lxx_chapter_map") - before
 
+    def seed_corpora(self) -> int:
+        """Add missing corpus rows. Returns how many were added."""
+        before = self._count("corpora")
+        self.conn.executemany(
+            """INSERT OR IGNORE INTO corpora (corpus, language, description, source_note)
+               VALUES (?, ?, ?, 'seed')""",
+            CORPUS_SEED,
+        )
+        self.conn.commit()
+        return self._count("corpora") - before
+
     def check_group_sizes(self) -> list[str]:
         """Return warnings for any baseline group that is too small to use."""
         warnings = []
@@ -331,11 +384,13 @@ def main() -> None:
         books_added = db.seed_books()
         passages_added = db.seed_example_passages()
         map_added = db.seed_lxx_map()
+        corpora_added = db.seed_corpora()
 
         print(f"Database: {args.db}")
         print(f"Books added: {books_added} (existing rows left untouched)")
         print(f"Example passages added: {passages_added}")
         print(f"Septuagint chapter-map rows added: {map_added}")
+        print(f"Corpora added: {corpora_added}")
 
         for warning in db.check_group_sizes():
             print("WARNING:", warning)
