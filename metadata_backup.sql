@@ -1,5 +1,5 @@
 -- Word Atlas metadata.db backup (plain SQL; restore with atlas_backup.py)
--- written: 2026-09-27 16:07
+-- written: 2026-09-27 16:48
 BEGIN TRANSACTION;
 CREATE TABLE books (
     book_num       INTEGER PRIMARY KEY,     -- 1 = Genesis ... 66 = Revelation
@@ -4559,8 +4559,8 @@ CREATE TABLE meta_info (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
-INSERT INTO "meta_info" VALUES('schema_version','4');
 INSERT INTO "meta_info" VALUES('lxx_verse_map_source','Verse map built from TVTMS by STEPBible.org, based on work at Tyndale House, Cambridge; CC BY 4.0; https://github.com/STEPBible/STEPBible-Data');
+INSERT INTO "meta_info" VALUES('schema_version','5');
 CREATE TABLE passage_ranges (
     passage_id    INTEGER NOT NULL REFERENCES passages(passage_id) ON DELETE CASCADE,
     book_num      INTEGER NOT NULL REFERENCES books(book_num),
@@ -4611,6 +4611,43 @@ INSERT INTO "passages" VALUES(7,'Babylon oracles','Babylon','entered with atlas_
 INSERT INTO "passages" VALUES(8,'Nineveh oracle','Nineveh','entered with atlas_passages.py');
 INSERT INTO "passages" VALUES(9,'Gentile cities','Oracles against Tyre, Babylon and Nineveh','entered with atlas_passages.py');
 INSERT INTO "passages" VALUES(10,'Israel harlot','Israel, Judah and Jerusalem as harlots','entered with atlas_passages.py');
+CREATE TABLE root_equivalents (
+    root        TEXT PRIMARY KEY,
+    group_root  TEXT NOT NULL,
+    source_note TEXT NOT NULL DEFAULT ''
+);
+INSERT INTO "root_equivalents" VALUES('G3708','G1492','horao ''see'': the Septuagint tags eidon here, the KJV NT under G1492 (counts checked: G3708 LXX 1,437 / NT 64; G1492 LXX 105 / NT 679)');
+INSERT INTO "root_equivalents" VALUES('G3700','G1492','optanomai/opsomai, future forms of ''see''');
+INSERT INTO "root_equivalents" VALUES('G2036','G3004','eipon ''said'', aorist of lego');
+INSERT INTO "root_equivalents" VALUES('G2046','G3004','ereo, future of lego');
+INSERT INTO "root_equivalents" VALUES('G4483','G3004','rheo/errethe, passive of lego');
+INSERT INTO "root_equivalents" VALUES('G5315','G2068','phago/ephagon ''ate'', aorist of esthio');
+INSERT INTO "root_equivalents" VALUES('G1488','G1510','ei ''art'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G1498','G1510','eien, form of eimi');
+INSERT INTO "root_equivalents" VALUES('G1511','G1510','einai ''to be'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G1526','G1510','eisi ''are'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G2070','G1510','esmen ''we are'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G2071','G1510','esomai ''will be'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G2075','G1510','este ''you are'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G2076','G1510','esti ''is'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G2077','G1510','esto ''let be'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G2258','G1510','en ''was'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G2468','G1510','isthi ''be'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G5600','G1510','o, subjunctive of eimi');
+INSERT INTO "root_equivalents" VALUES('G5607','G1510','on ''being'', form of eimi');
+INSERT INTO "root_equivalents" VALUES('G5023','G3778','tauta, form of houtos');
+INSERT INTO "root_equivalents" VALUES('G5024','G3778','tauta (the same), form of houtos');
+INSERT INTO "root_equivalents" VALUES('G5025','G3778','tautais/tautas, form of houtos');
+INSERT INTO "root_equivalents" VALUES('G5026','G3778','taute/tauten/tautes, form of houtos');
+INSERT INTO "root_equivalents" VALUES('G5124','G3778','touto, form of houtos');
+INSERT INTO "root_equivalents" VALUES('G5125','G3778','toutois, form of houtos');
+INSERT INTO "root_equivalents" VALUES('G5127','G3778','toutou, form of houtos');
+INSERT INTO "root_equivalents" VALUES('G5128','G3778','toutous, form of houtos');
+INSERT INTO "root_equivalents" VALUES('G5129','G3778','touto (dative), form of houtos');
+INSERT INTO "root_equivalents" VALUES('G5130','G3778','touton, form of houtos');
+INSERT INTO "root_equivalents" VALUES('G3364','G3756','ou me ''never'', compound of ou and me');
+INSERT INTO "root_equivalents" VALUES('G3363','G2443','hina me ''lest'', compound of hina and me');
+INSERT INTO "root_equivalents" VALUES('G3391','G1520','mia, feminine of heis ''one''');
 CREATE TABLE verse_tags (
     book_num    INTEGER NOT NULL REFERENCES books(book_num),
     chapter     INTEGER NOT NULL,

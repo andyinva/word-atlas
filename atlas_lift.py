@@ -66,8 +66,24 @@ so when a report uses both, two rules make them comparable:
       both sides, whichever English word the KJV used for it
     * root equivalents (metadata.db, atlas_lxx.py equivalents): numbers
       the two taggings use for the same word are counted as one
-      (the KJV's "saw" G1492 and the Septuagint's G3708, for example)
+      (the KJV's "saw" G1492 and the Septuagint's G3708, for example);
+      a group root of "-" marks a function word, left out on both sides
 Reports on one text alone are not changed by either rule.
+SIDE BY SIDE: --compare A B measures the passage against two sources at
+once and shows, word by word, which source it sits closer to. The side
+is decided by comparing A with B directly (log-likelihood): positive
+means A uses the word more than B does. "*" marks differences strong
+enough to trust (p < 0.05, value 3.84 or more); "**" very strong
+(p < 0.001, 10.83 or more).
+ABSENCE: --absence A [B] asks what the passage does with each source's
+characteristic words. A source's characteristic words are those it uses
+far more than the rest of its text (keyness 10.83 or more against every
+other Old Testament verse of that text). For each, the report shows how
+often the passage would use it at the source's rate, how often at the
+text's ordinary rate, and how often it does. A word used less than the
+ordinary rate would predict is being avoided, not just left unstressed.
+Words keyed only by Septuagint lemma are left out: the passage's side
+(the KJV's Strong's numbers) cannot show them.
 Keyness for a passage is computed against that same baseline, using
 log_likelihood from atlas_text.py when it can be imported, so it means
 exactly what it means everywhere else in the atlas.
@@ -79,6 +95,8 @@ Usage:
     python atlas_lift.py --passage "Isaiah 40-66" --against "Isaiah 1-39"
     python atlas_lift.py --passage "Harlot city"
     python atlas_lift.py --passage "Revelation harlot" --against "Gentile cities" --against-text lxx
+    python atlas_lift.py --passage "Revelation harlot" --compare "Gentile cities" "Israel harlot" --against-text lxx
+    python atlas_lift.py --passage "Revelation harlot" --absence "Ezekiel harlot" "Gentile cities" --against-text lxx
 """
 
 import argparse
@@ -554,7 +572,7 @@ class VerseIndex:
                 for verse_id, root, is_stop, count in conn.execute(self.WORDS_ALL_SQL):
                     if root.startswith("G"):
                         key = self.equivalents.get(root, root)
-                        if key not in self.greek_stop and root not in self.greek_stop:
+                        if key != "-" and key not in self.greek_stop and root not in self.greek_stop:
                             self.words[verse_id][key] += int(count)
                     elif not is_stop:
                         self.words[verse_id][root] += int(count)
@@ -591,8 +609,9 @@ class VerseIndex:
             for vid, root, count in conn.execute(
                     "SELECT verse_id, root, COUNT(*) FROM tokens WHERE is_stop = 0 "
                     "GROUP BY verse_id, root"):
-                if vid + off in self.location:
-                    self.words[vid + off][self.equivalents.get(root, root)] += int(count)
+                key = self.equivalents.get(root, root)
+                if vid + off in self.location and key != "-":
+                    self.words[vid + off][key] += int(count)
             for vid, count in conn.execute("SELECT verse_id, COUNT(*) FROM tokens GROUP BY verse_id"):
                 if vid + off in self.location:
                     self.size[vid + off] = int(count)
@@ -825,6 +844,241 @@ class PassageLiftCalculator:
 
 
 # ===========================================================================
+# Side by side: one passage against two sources
+# ===========================================================================
+@dataclass
+class CompareRow:
+    """One word of the side-by-side report."""
+    word: str
+    gloss: str
+    count: int           # uses in the passage
+    rate_a: float        # uses per 1,000 words of source A
+    rate_b: float        # uses per 1,000 words of source B
+    lift_a: float        # the passage's lift against A
+    lift_b: float        # the passage's lift against B
+    a_vs_b: float        # log-likelihood of A against B: + means A uses it more
+
+
+class CompareCalculator:
+    """
+    Compares one passage with two sources, word by word.
+
+    Both sources are measured exactly as a normal passage report would
+    measure them (same text, same mixed-text rules), so each lift here is
+    the lift the ordinary report would show against that source.
+    """
+
+    STRONG, VERY_STRONG = 3.84, 10.83     # p < 0.05 and p < 0.001
+
+    def __init__(self, calc_a: "PassageLiftCalculator", calc_b: "PassageLiftCalculator"):
+        self.a, self.b = calc_a, calc_b
+
+    def rows(self) -> list[CompareRow]:
+        ll = ATLAS_LOG_LIKELIHOOD or signed_log_likelihood
+        result = []
+        for word, count in self.a.target_counts.items():
+            if not self.a.include_english and language_of_root(word) is None:
+                continue
+            if count < self.a.min_count:
+                continue
+            n_in, n_a = self.a._sizes_for(word)
+            _n, n_b = self.b._sizes_for(word)
+            c_a, c_b = self.a.base_counts[word], self.b.base_counts[word]
+            if not n_a or not n_b or (c_a + c_b) < 2:
+                continue          # neither source says anything about this word
+            cushion = self.a.cushion
+            lift_a = (count + cushion) / (c_a / n_a * n_in + cushion)
+            lift_b = (count + cushion) / (c_b / n_b * n_in + cushion)
+            result.append(CompareRow(
+                word=word, gloss=self.a.index.glosses.get(word, ""), count=count,
+                rate_a=1000 * c_a / n_a, rate_b=1000 * c_b / n_b,
+                lift_a=lift_a, lift_b=lift_b, a_vs_b=ll(c_a, c_b, n_a, n_b)))
+        return result
+
+
+class CompareReport:
+    """Plain-text side-by-side report."""
+
+    def __init__(self, title: str, lines: list[str], rows: list[CompareRow],
+                 name_a: str, name_b: str):
+        self.title, self.lines, self.rows = title, lines, rows
+        self.name_a, self.name_b = name_a, name_b
+
+    @staticmethod
+    def _mark(value: float) -> str:
+        v = abs(value)
+        return "**" if v >= CompareCalculator.VERY_STRONG else "*" if v >= CompareCalculator.STRONG else ""
+
+    def _table(self, rows: list[CompareRow], top: int) -> list[str]:
+        header = (f"{'word':<10}{'gloss':<18}{'count':>6}{'A per 1k':>10}{'B per 1k':>10}"
+                  f"{'lift A':>8}{'lift B':>8}{'A vs B':>9}")
+        out = [header, "-" * len(header)]
+        for r in rows[:top]:
+            out.append(f"{r.word[:9]:<10}{r.gloss[:17]:<18}{r.count:>6}{r.rate_a:>10.2f}"
+                       f"{r.rate_b:>10.2f}{r.lift_a:>8.2f}{r.lift_b:>8.2f}"
+                       f"{r.a_vs_b:>7.1f}{self._mark(r.a_vs_b):<2}")
+        if not rows:
+            out.append("(none)")
+        return out
+
+    def render(self, top: int) -> str:
+        closer_a = sorted((r for r in self.rows if r.a_vs_b > 0), key=lambda r: -r.a_vs_b)
+        closer_b = sorted((r for r in self.rows if r.a_vs_b < 0), key=lambda r: r.a_vs_b)
+
+        def tally(rows):
+            strong = [r for r in rows if abs(r.a_vs_b) >= CompareCalculator.STRONG]
+            return len(rows), len(strong), sum(r.count for r in strong)
+
+        na, sa, oa = tally(closer_a)
+        nb, sb, ob = tally(closer_b)
+        out = [self.title] + self.lines + [
+            "",
+            f"Words closer to A: {na} ({sa} marked *, used {oa} times in the passage)",
+            f"Words closer to B: {nb} ({sb} marked *, used {ob} times in the passage)",
+            "",
+            f"CLOSER TO A: {self.name_a}",
+        ]
+        out += self._table(closer_a, top)
+        out += ["", f"CLOSER TO B: {self.name_b}"]
+        out += self._table(closer_b, top)
+        out += ["", "A vs B: + means A uses the word more than B. * p < 0.05, ** p < 0.001.",
+                "Words the two sources together use fewer than twice are left out.",
+                "Counts are small: read the marked rows, and check a surprising word in the texts."]
+        return "\n".join(out)
+
+
+# ===========================================================================
+# Absence: what the passage does with a source's characteristic words
+# ===========================================================================
+@dataclass
+class AbsenceRow:
+    """One characteristic word of the source."""
+    word: str
+    gloss: str
+    source_count: int      # uses in the source
+    source_keyness: float  # how characteristic of the source (vs the rest of its text)
+    expected_source: float # uses in the passage at the source's rate
+    expected_general: float# uses in the passage at the text's ordinary rate
+    observed: int          # uses in the passage
+    vs_source: float       # log-likelihood passage vs source: - means the passage uses it less
+
+
+@dataclass
+class AbsenceSummary:
+    """Totals over the listed words, for one source."""
+    name: str
+    words: int
+    observed: int
+    expected_source: float
+    expected_general: float
+    unused: int            # words expected 3+ times at the source's rate, used 0 times
+    below_general: int     # words clearly avoided: the ordinary rate predicts 2+ uses
+                           # and the passage uses fewer than half of that
+
+
+class AbsenceCalculator:
+    """
+    Characteristic words of one source, and what the passage does with them.
+
+    Built from two ordinary calculators, so every count follows the same
+    rules as the other reports (language rule, mixed-text rules):
+        source_vs_rest : the source against the rest of its text
+        passage_vs_src : the passage against the source
+    """
+
+    # A word counts as avoided only if ordinary Greek would use it at least
+    # this often in the passage and the passage uses fewer than half of that.
+    AVOIDED_MIN = 2.0
+
+    def __init__(self, source_vs_rest: "PassageLiftCalculator",
+                 passage_vs_src: "PassageLiftCalculator", min_keyness: float):
+        self.sr, self.ps = source_vs_rest, passage_vs_src
+        self.min_keyness = min_keyness
+
+    def rows(self) -> list[AbsenceRow]:
+        ll = ATLAS_LOG_LIKELIHOOD or signed_log_likelihood
+        out = []
+        for word, c_src in self.sr.target_counts.items():
+            # Only words both sides can show: Strong's numbers, not lemma keys.
+            if not is_strongs(word) or c_src < self.sr.min_count:
+                continue
+            n_src, n_rest = self.sr._sizes_for(word)
+            key = ll(c_src, self.sr.base_counts[word], n_src, n_rest)
+            if key < self.min_keyness:
+                continue                     # not characteristic of the source
+            n_pass, _n = self.ps._sizes_for(word)
+            if not n_pass:
+                continue
+            observed = self.ps.target_counts.get(word, 0)
+            out.append(AbsenceRow(
+                word=word, gloss=self.sr.index.glosses.get(word, ""),
+                source_count=c_src, source_keyness=key,
+                expected_source=c_src / n_src * n_pass,
+                expected_general=self.sr.base_counts[word] / n_rest * n_pass if n_rest else 0.0,
+                observed=observed,
+                vs_source=ll(observed, c_src, n_pass, n_src)))
+        out.sort(key=lambda r: -r.source_keyness)
+        return out
+
+    @staticmethod
+    def summarize(name: str, rows: list[AbsenceRow]) -> AbsenceSummary:
+        return AbsenceSummary(
+            name=name, words=len(rows),
+            observed=sum(r.observed for r in rows),
+            expected_source=sum(r.expected_source for r in rows),
+            expected_general=sum(r.expected_general for r in rows),
+            unused=sum(1 for r in rows if r.observed == 0 and r.expected_source >= 3),
+            # Only words with a real ordinary expectation count as avoided:
+            # "used 0 where 0.3 was expected" says nothing.
+            below_general=sum(1 for r in rows if r.expected_general >= AbsenceCalculator.AVOIDED_MIN
+                              and r.observed < r.expected_general / 2))
+
+
+class AbsenceReport:
+    """Plain-text absence report for one or two sources."""
+
+    def __init__(self, title: str, lines: list[str], sections: list):
+        # sections: [(name, description, rows, summary)]
+        self.title, self.lines, self.sections = title, lines, sections
+
+    @staticmethod
+    def _mark(value: float) -> str:
+        v = -value      # only "uses less" is marked
+        return "**" if v >= 10.83 else "*" if v >= 3.84 else ""
+
+    def render(self, top: int) -> str:
+        out = [self.title] + self.lines + ["", "SUMMARY (the listed words of each source, taken together)"]
+        for _name, _d, _rows, sm in self.sections:
+            share = 100 * sm.observed / sm.expected_source if sm.expected_source else 0
+            out.append(
+                f"  {sm.name}: {sm.words} characteristic words. The passage uses them "
+                f"{sm.observed} times; at the source's rate {sm.expected_source:.0f}, at the "
+                f"ordinary rate {sm.expected_general:.0f} ({share:.0f}% of the source's rate). "
+                f"Unused though expected 3+ times: {sm.unused}. "
+                f"Clearly avoided (ordinary rate predicts 2+, used under half): {sm.below_general}.")
+        for name, description, rows, _sm in self.sections:
+            out += ["", f"CHARACTERISTIC WORDS OF: {name}  [{description}]"]
+            header = (f"{'word':<10}{'gloss':<18}{'in source':>10}{'keyness':>9}"
+                      f"{'expect(src)':>12}{'expect(ord)':>12}{'used':>6}{'vs src':>9}")
+            out += [header, "-" * len(header)]
+            for r in rows[:top]:
+                out.append(f"{r.word[:9]:<10}{r.gloss[:17]:<18}{r.source_count:>10}"
+                           f"{r.source_keyness:>9.1f}{r.expected_source:>12.1f}"
+                           f"{r.expected_general:>12.1f}{r.observed:>6}"
+                           f"{r.vs_source:>7.1f}{self._mark(r.vs_source):<2}")
+            if not rows:
+                out.append("(no characteristic words found)")
+        out += ["",
+                "expect(src): uses in the passage at the source's rate.  expect(ord): at the "
+                "ordinary rate of the rest of the text.",
+                "vs src: - means the passage uses it less than the source; * p < 0.05, ** p < 0.001.",
+                "A word near expect(ord) is ordinary Greek, not emphasized; it is avoided only when",
+                "expect(ord) is 2 or more and the passage uses fewer than half of that.",
+                "Words keyed only by Septuagint lemma are left out (the passage's side cannot show them)."]
+        return "\n".join(out)
+
+
+# ===========================================================================
 # Report output
 # ===========================================================================
 class LiftReport:
@@ -942,6 +1196,10 @@ def main() -> None:
                         help="where the baseline's words come from (default: same as --text)")
     parser.add_argument("--lxx", type=Path, default=SCRIPT_DIR / "lxx.db",
                         help="the Septuagint database built by build_lxx.py")
+    parser.add_argument("--compare", nargs=2, metavar=("A", "B"), default=None,
+                        help="side by side: the passage against two named passages")
+    parser.add_argument("--absence", nargs="+", metavar="SOURCE", default=None,
+                        help="what the passage does with one or two sources' characteristic words")
     parser.add_argument("--atlas", type=Path, default=SCRIPT_DIR / "atlas.db")
     parser.add_argument("--metadata", type=Path, default=SCRIPT_DIR / "metadata.db")
     parser.add_argument("--top", type=int, default=25, help="how many words to show")
@@ -1015,6 +1273,13 @@ def run_passage_report(args, metadata: MetadataStore) -> None:
         passage, target, args.against, against_text)
     label = {"kjv": "KJV", "lxx": "Septuagint"}
 
+    if args.compare:
+        run_compare_report(args, metadata, store, passage, index, target, against_text)
+        return
+    if args.absence:
+        run_absence_report(args, metadata, store, passage, index, target, against_text)
+        return
+
     calc = PassageLiftCalculator(index, target, baseline,
                                  cushion=args.cushion, min_count=args.min_count,
                                  min_keyness=args.min_keyness, sort=args.sort,
@@ -1026,6 +1291,59 @@ def run_passage_report(args, metadata: MetadataStore) -> None:
                          f"{len(index.equivalents)} root equivalents (atlas_lxx.py equivalents)")
     report = LiftReport(summary, calc.rows(), calc)
     print(report.render(args.top))
+
+
+def run_compare_report(args, metadata, store, passage, index, target, against_text) -> None:
+    """Side by side: the passage against two named sources."""
+    label = {"kjv": "KJV", "lxx": "Septuagint"}
+    builder = BaselineBuilder(index, metadata, store)
+    calcs, lines = [], []
+    for letter, name in zip("AB", args.compare):
+        verses, text = builder.build(passage, target, name, against_text)
+        calc = PassageLiftCalculator(index, target, verses, cushion=args.cushion,
+                                     min_count=args.min_count, include_english=args.include_english)
+        calcs.append(calc)
+        lines.append(f"{letter}: {text}  [{label[against_text]}, "
+                     f"{sum(calc.base_size.values()):,} words]")
+    title = (f"Side by side: {passage.name}  [{passage.describe(metadata)}]  "
+             f"[{label[args.text]}, {sum(calcs[0].target_size.values()):,} words]")
+    lines.append(f"Minimum count in the passage: {args.min_count}   Cushion: {args.cushion}")
+    if index.mixed:
+        lines.append(f"Mixed-text rules: Greek stop rule; {len(index.equivalents)} root equivalents")
+    rows = CompareCalculator(*calcs).rows()
+    print(CompareReport(title, lines, rows, *args.compare).render(args.top))
+
+
+def run_absence_report(args, metadata, store, passage, index, target, source_text) -> None:
+    """What the passage does with each source's characteristic words."""
+    if len(args.absence) > 2:
+        sys.exit("--absence takes one or two sources.")
+    label = {"kjv": "KJV", "lxx": "Septuagint"}
+    # "The rest of the text": every Old Testament verse of the source text.
+    old_testament = index.verses_in_books(range(1, 40), source_text)
+    sections, lines = [], []
+    for name in args.absence:
+        source = store.require(name)
+        src_verses = index.verses_in_passage(source, source_text)
+        if not src_verses:
+            sys.exit(f"'{name}' has no verses in the {label[source_text]}.")
+        rest = old_testament - src_verses - target
+        source_vs_rest = PassageLiftCalculator(index, src_verses, rest, cushion=args.cushion,
+                                               min_count=args.min_count)
+        passage_vs_src = PassageLiftCalculator(index, target, src_verses - target,
+                                               cushion=args.cushion, min_count=1)
+        calc = AbsenceCalculator(source_vs_rest, passage_vs_src, args.min_keyness)
+        rows = calc.rows()
+        sections.append((name, source.describe(metadata), rows,
+                         AbsenceCalculator.summarize(name, rows)))
+        lines.append(f"Source: {name}  [{label[source_text]}, "
+                     f"{sum(source_vs_rest.target_size.values()):,} words; characteristic = keyness "
+                     f"{args.min_keyness} or more against the rest of the Old Testament]")
+    title = (f"Absence report: {passage.name}  [{passage.describe(metadata)}]  "
+             f"[{label[args.text]}, {sum(passage_vs_src.target_size.values()):,} words]")
+    if index.mixed:
+        lines.append(f"Mixed-text rules: Greek stop rule; {len(index.equivalents)} root equivalents")
+    print(AbsenceReport(title, lines, sections).render(args.top))
 
 
 if __name__ == "__main__":

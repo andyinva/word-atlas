@@ -21,6 +21,7 @@ Usage:
 
     python atlas_lxx.py equivalents list        numbers counted as one when texts mix
     python atlas_lxx.py equivalents add G3708 G1492 --note "horao / eidon"
+    python atlas_lxx.py equivalents add G4675 -  --note "sou, a pronoun form"   ("-" = function word)
     python atlas_lxx.py equivalents remove G3708
     python atlas_lxx.py tags check              look for further tagging splits
 
@@ -325,11 +326,15 @@ class LxxTool:
             print("No root equivalents yet.")
             return
         for root, group, note in rows:
-            print(f"{root:<8} counts as {group:<8} {note}")
+            what = "function word" if group == "-" else f"counts as {group}"
+            print(f"{root:<8} {what:<18} {note}")
 
     def equivalents_add(self, root: str, group: str, note: str) -> None:
         RootEquivalents(self.metadata).add(root.upper(), group.upper(), note or "entered by hand")
-        print(f"{root.upper()} now counts as {group.upper()} when texts are mixed.")
+        if group == "-":
+            print(f"{root.upper()} is now a function word, left out when texts are mixed.")
+        else:
+            print(f"{root.upper()} now counts as {group.upper()} when texts are mixed.")
         self.refresh_backup()
 
     def equivalents_remove(self, root: str) -> None:
@@ -385,7 +390,8 @@ class LxxTool:
         print(f"{'root':<8}{'gloss':<18}{'Septuagint':>11}{'KJV NT':>9}{'ratio':>8}  more in  note")
         print("-" * 78)
         for r, root, l, n, where in rows[:60]:
-            note = (f"counts as {known[root]}" if root in known else
+            note = ("function word, left out" if known.get(root) == "-" else
+                    f"counts as {known[root]}" if root in known else
                     "group root" if root in known.values() else "")
             print(f"{root:<8}{glosses.get(root, '')[:17]:<18}{l:>11,}{n:>9,}{r:>8.0f}  {where:<7}  {note}")
         print("\nMany of these are real differences (the Septuagint has more words about "

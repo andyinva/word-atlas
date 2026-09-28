@@ -121,8 +121,9 @@ CREATE TABLE IF NOT EXISTS lxx_verse_map (
 -- New Testament and the Septuagint were tagged by different projects:
 -- the KJV tags "saw" (eidon) as G1492, the Septuagint files it under
 -- horao, G3708. When a report mixes the two texts, each root listed here
--- is counted as its group_root on both sides. Reports on one text alone
--- are not affected.
+-- is counted as its group_root on both sides. A group_root of "-" marks a
+-- function word (such as a pronoun form), left out on both sides.
+-- Reports on one text alone are not affected.
 CREATE TABLE IF NOT EXISTS root_equivalents (
     root        TEXT PRIMARY KEY,
     group_root  TEXT NOT NULL,
@@ -330,6 +331,18 @@ EQUIVALENT_SEED = [
     ("G3363", "G2443", "hina me 'lest', compound of hina and me"),
     # mia 'one' (feminine), numbered apart from heis.
     ("G3391", "G1520", "mia, feminine of heis 'one'"),
+    # Personal pronouns and their forms: function words ("-" = left out on
+    # both sides when texts are mixed). The KJV numbers the forms apart.
+    ("G1473", "-", "ego 'I'"), ("G1691", "-", "eme, form of ego"),
+    ("G1698", "-", "emoi, form of ego"), ("G1700", "-", "emou, form of ego"),
+    ("G3165", "-", "me, form of ego"), ("G3427", "-", "moi, form of ego"),
+    ("G3450", "-", "mou, form of ego"),
+    ("G2249", "-", "hemeis 'we'"), ("G2248", "-", "hemas, form of hemeis"),
+    ("G2254", "-", "hemin, form of hemeis"), ("G2257", "-", "hemon, form of hemeis"),
+    ("G4771", "-", "su 'you'"), ("G4571", "-", "se, form of su"),
+    ("G4671", "-", "soi, form of su"), ("G4675", "-", "sou, form of su"),
+    ("G5210", "-", "humeis 'you' (plural)"), ("G5209", "-", "humas, form of humeis"),
+    ("G5213", "-", "humin, form of humeis"), ("G5216", "-", "humon, form of humeis"),
 ]
 
 # Each range: (book_num, chapter_start, verse_start, chapter_end, verse_end)
