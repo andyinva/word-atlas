@@ -1018,6 +1018,38 @@ build's rules back over the working `atlas_text.py` (saving the current
 rules first under builds/ with a time stamp); a rebuild then returns
 the working atlas to that state. The `builds/` folder is not in git.
 
+## The metadata database
+
+Some of what the atlas needs to know is not in any text: which books
+belong together, which verses make up a passage worth studying, how the
+Septuagint numbers its verses, which Strong's numbers two taggings use
+for the same word. That knowledge lives in `metadata.db`, the one
+database that is never rebuilt, because nothing else contains it.
+`atlas.db` and `lxx.db` are computed and can be remade at any time;
+`metadata.db` is decided or checked by hand, and a rebuild must never
+touch it.
+
+It gives each book a genre and a baseline group, so that a book is
+measured against its peers (Joel against the other prophets, with Joel
+itself left out) rather than against the whole Bible. It holds named
+passages, any set of verse ranges in any books, so that a study such
+as Isaiah 1-39 against 40-66, or the harlot city of Ezekiel and
+Revelation, is defined once and can be rerun and checked. It carries
+the language rule (a word is compared only with text of its own
+language), the Septuagint's own list of books, the verse map that
+places each Septuagint verse at its English equivalent (98.6% of
+English Old Testament verses), and the root equivalents that make the
+KJV and the Septuagint comparable despite their different taggings.
+
+It is kept safe as text: `atlas_backup.py` writes it to
+`metadata_backup.sql`, which is committed with the code, and the
+backup refreshes itself after every change and when the window closes.
+The reports that use it are in `atlas_lift.py`: lift against a
+baseline, passages, side-by-side comparison with two sources, and the
+absence report. `METADATA_IN_WORD_ATLAS.md` describes the database in
+full: its tables, what they make possible, how it is protected, and
+its limits.
+
 ## Other languages
 
 The atlas is built for one translation at a time (`build_atlas.py
@@ -1030,6 +1062,12 @@ language rules chosen by translation. Strong's numbers already give
 the roots behind the KJV (phase 5); a Hebrew or Greek text would bring
 its own lemmas. Each language
 gets its own atlas file, and the Build box is where it is chosen.
+
+The Greek Old Testament now has a layer of its own: `lxx.db`, built by
+`build_lxx.py` from the Rahlfs Septuagint, with each verse placed at
+its English equivalent through the verse map in `metadata.db`. Passage
+reports can take either side from either text (see
+`METADATA_IN_WORD_ATLAS.md`).
 
 ## What to do with the output
 
@@ -1052,3 +1090,13 @@ Bible Search Lite layout (books, verses, translations, verse_texts) and
 a `verse_strongs` table (verse_id, word_position, strongs_number,
 morphology, word_text); `inspect_strongs.py` reports whether a
 database has what is needed.
+
+The Septuagint layer is built from the LXX-Rahlfs-1935 files by Eliran
+Wong (CC BY-NC-SA 4.0, derived from the CCAT data, whose user
+declaration applies), read from the scripture-motifs project. Because
+that licence is non-commercial and share-alike, `lxx.db` is built
+locally and kept out of the repository. The Septuagint verse map in
+`metadata.db` is built from TVTMS by STEPBible.org, based on work at
+Tyndale House, Cambridge (CC BY 4.0); the TVTMS file itself is
+downloaded from STEPBible and not copied here, and the rows derived
+from it carry that credit in `metadata_backup.sql`.

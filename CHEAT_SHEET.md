@@ -256,10 +256,18 @@ time and need no rebuild; just restart the program.
 | `atlas_help.py` | The help mode texts and the pointer that shows them |
 | `atlas_query.py` | Command-line version: `python atlas_query.py book Joel` |
 | `atlas.db` | The working atlas (made by build_atlas.py) |
+| `metadata.db` | What the atlas knows: book groups, named passages, Septuagint maps, equivalents. Never rebuilt |
+| `metadata_backup.sql` | The text backup of metadata.db, kept in git |
+| `lxx.db` | The Septuagint layer (made by build_lxx.py). Kept out of git |
+| `atlas_lift.py` | Lift, passage, side-by-side and absence reports |
+| `atlas_passages.py` | Named passages: list, add, remove |
+| `atlas_lxx.py` | Septuagint books, verse map and root equivalents |
+| `atlas_backup.py` | Back up or restore metadata.db |
 | `builds/` | Kept builds and their rules |
 | `reports/` | Pages saved as text |
 | `README.md` | The full description, vocabulary and notation |
 | `HOW_WORD_ATLAS_GREW.md` | The story of how the program was built |
+| `METADATA_IN_WORD_ATLAS.md` | What metadata.db is for, and how it is kept safe |
 
 ## 9. Command line, without the window
 
@@ -277,6 +285,18 @@ python atlas_query.py dossier Ezekiel --brief
 python atlas_query.py ask "'day' + 'night' [Ezekiel]"
 ```
 
+Reports that use `metadata.db` (see `METADATA_IN_WORD_ATLAS.md`):
+
+```
+python atlas_lift.py --book Joel
+python atlas_passages.py add "Isaiah 40-66" "Isa 40-66"
+python atlas_lift.py --passage "Isaiah 40-66" --against "Isaiah 1-39"
+python atlas_lift.py --passage "Revelation harlot" --compare "Gentile cities" "Israel harlot" --against-text lxx
+python atlas_lift.py --passage "Revelation harlot" --absence "Ezekiel harlot" "Gentile cities" --against-text lxx
+python atlas_lxx.py versification show "Jer 31:31"
+python atlas_backup.py status
+```
+
 ## 10. Things to know
 
 The atlas is built on the King James text with its Strong's tagging,
@@ -287,3 +307,8 @@ wording, so a paraphrase of the same event may not be caught; that is a
 known limit, and Strong's numbers in a later phase are meant to lift
 it. Every number on every page can be traced to verses with one click,
 so when a figure looks odd, click it and read what produced it.
+
+`metadata.db` is the one file that cannot be rebuilt, since it holds
+your own passages and corrections. The Metadata backup button shows an
+asterisk when a backup is due, and the backup is refreshed when Word
+Atlas closes; commit `metadata_backup.sql` along with the code.
