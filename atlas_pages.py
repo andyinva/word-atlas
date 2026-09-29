@@ -45,7 +45,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.5"   # the program version; the window title and every report print it
+VERSION = "0.10.7"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -84,6 +84,8 @@ INTERJECTIONS = {"oh", "o", "ah", "alas", "behold", "lo", "yea", "nay", "amen", 
 RATIO_MIN_ECHOES = 20           # obs/exp on fewer echoes is marked 'few'
 QUOTE_MIN_WORDS = 5             # an echo this long in exactly two verses is quotation grade
 PARALLEL_MIN_APPLIES = 0.05     # 4d is left out when fewer verses than this share have a parallel
+DIVINE_ROOTS = {"H3068", "H3069", "H136", "H430", "H410", "H433", "H3050", "H7706",   # names of God, not of the cast
+                "G2962", "G2316", "G2424", "G5547"}                                    # ... and Jesus, Christ
 NARROW_PARTNER_SHARE = 0.8      # a partner with this share of its echo weight in five chapters is too narrow for 4d
 WHO_READS_N = 3                 # rarest echoes cited per partner in the who-reads-whom table
 
@@ -577,6 +579,18 @@ class Atlas:
         rows.sort(key=lambda r: -r["pull"])
         return rows[:limit]
 
+    def ref_key(self, reference):
+        """
+        A sort key that puts references in canonical order: book as the
+        canon has it, then chapter, then verse.  Used to break ties, so
+        two builds of the same text give the same tables (a Python set
+        or dict would otherwise decide, and its order changes from run
+        to run).
+        """
+        book, rest = reference.rsplit(" ", 1)
+        ch, _, v = rest.partition(":")
+        return (self.books.index(book) if book in self.books else 99, int(ch), int(v or 0))
+
     def build_line(self):
         """
         One line saying which program and which build made a report:
@@ -586,8 +600,11 @@ class Atlas:
         """
         label = self.settings.get("label") or "unlabelled"
         roots = "Strong's numbers" if self.roots_mode == "strongs" else "English stems"
+        gloss = self.settings.get("tags_absorbed_by_gloss")
+        rules = (f"gloss rule on ({gloss} absorbed)" if gloss else
+                 "built before the gloss rule of 0.9.7: rebuild with build_atlas.py")
         return (f"Word Atlas {VERSION}; build '{label}' made {self.settings.get('built', '?')}, "
-                f"roots {roots}, window {self.window}, {self.settings.get('translation', '')}.")
+                f"roots {roots}, {rules}, window {self.window}, {self.settings.get('translation', '')}.")
 
     def english_stems(self):
         """
@@ -901,7 +918,12 @@ def _parallels_overlap(atlas, book, partner, share):
             if in_order >= PARALLEL_MIN_SHARED and in_order / min(len(roots), len(other)) >= share:
                 best[pref] = in_order
         if best:
-            matches[ref] = best
+            # Rebuilt in canonical order among equal scores, so a later
+            # "closest first, at most four" cut is the same on every run
+            ordered = Counter()
+            for pref, score in sorted(best.items(), key=lambda kv: (-kv[1], atlas.ref_key(kv[0]))):
+                ordered[pref] = score
+            matches[ref] = ordered
     return matches
 
 
@@ -1683,7 +1705,7 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
                      f"books the question is parallel, not allusion).  Words in more than "
                      f"{PARALLEL_COMMON_SHARE:.0%} of {book}'s verses are set aside first, so its own "
                      f"formulas do not count as parallels"
-                     + (f" (here: {', '.join(atlas.form(r) for r in common)})" if common else "")
+                     + (f" (here: {', '.join(atlas.form(r) for r in sorted(common))})" if common else "")
                      + f".  A verse carrying a quotation-grade echo with a partner (see 4a2) counts as "
                      f"a parallel too.  The two partners are the heaviest whose echoes are spread through "
                      f"{book}: a partner with more than {NARROW_PARTNER_SHARE:.0%} of its echo weight in "
@@ -2081,7 +2103,7 @@ def drop_pieces(kept):
     phrases of their own.  Returns the set of keys to leave out.
     """
     groups = {}
-    for key, (chapters, display) in kept.items():
+    for key, (chapters, display) in sorted(kept.items()):
         vs = frozenset(r for refs in chapters.values() for r in refs)
         groups.setdefault(vs, []).append(key)
     pieces = set()
@@ -2158,7 +2180,7 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
     # piece of it.  Only phrases with the same verse set can nest, so
     # they are grouped by verse set first.
     groups = {}
-    for key, (chapters, display) in kept.items():
+    for key, (chapters, display) in sorted(kept.items()):
         vs = frozenset(r for refs in chapters.values() for r in refs)
         groups.setdefault(vs, []).append(key)
     pieces = set()
@@ -2183,7 +2205,7 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
     cell_refs = {}
     cell_best = {}                    # (a, b) -> (weight, display)
     cell_count = Counter()            # (a, b) -> shared phrases
-    for key, (chapters, display) in kept.items():
+    for key, (chapters, display) in sorted(kept.items()):
         if key in pieces or key in refrains:
             continue
         weight = sum(atlas.rarity(u) for u in atlas.content_units(key)) if by_roots else \
@@ -2274,8 +2296,9 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
                  "rarest first: the book's own refrains, set aside from the map above so they do "
                  "not inflate many cells at once.  Forms that differ only by stop words are one "
                  "refrain, shown in the form with the most verses.  'names' marks a refrain most of "
-                 "whose content words are proper names (Baruch the son of Neriah), a cast list rather "
-                 "than a formula.  (The Compare page's maps use a "
+                 "whose content words are names of people or places (Baruch the son of Neriah), a cast "
+                 "list rather than a formula; the names of God do not count, so 'ah Lord GOD' stays a "
+                 "formula.  (The Compare page's maps use a "
                  "stricter rule between books, three chapters and four verses, so a refrain here may "
                  "still count there.)  Click for the verses."
                  + ("  'at the seams' counts the refrain's chapters that close or open a section of "
@@ -2308,8 +2331,12 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
                 tuple(atlas.root_of(w) for w in key.split() if w not in STOPLIST)
             # "names" when more than half the content words are proper names:
             # "baruch the son of neriah" (son is content) is a cast-list entry
-            n_names = sum(1 for u in content if atlas.is_name(u))
-            mostly_names = bool(content) and n_names * 2 > len(content)
+            # The divine names are proper nouns to the text but formulas to
+            # the reader ("ah Lord GOD", "the LORD God of hosts"), so they
+            # do not count toward the cast list
+            people = [u for u in content if u not in DIVINE_ROOTS]
+            n_names = sum(1 for u in people if atlas.is_name(u))
+            mostly_names = bool(people) and n_names * 2 > len(people)
             row = [display, chs, n, "names" if mostly_names else ""]
             if has_seams:
                 chapters_of = [int(c) for c in chs.split(", ")]
@@ -2799,7 +2826,7 @@ def compare_page(atlas, a_name, b_name):
     # cap counted over both books together it slipped under and made
     # Daniel 4 the closest chapter of four Revelation chapters
     refrains = {}                     # key -> the book it is a refrain of
-    for key, (chapters, display) in kept.items():
+    for key, (chapters, display) in sorted(kept.items()):
         if key in pieces:
             continue
         # Between books the refrain must also fill CROSS_REFRAIN_MIN_VERSES
@@ -2829,7 +2856,7 @@ def compare_page(atlas, a_name, b_name):
                 break
 
     cell_weight, cell_count, cell_refs, cell_best = Counter(), Counter(), {}, {}
-    for key, (chapters, display) in kept.items():
+    for key, (chapters, display) in sorted(kept.items()):
         if key in pieces or key in refrains:
             continue
         weight = phrase_weight(atlas, key, column)
@@ -3105,7 +3132,7 @@ def kin_page(atlas, book_name, chapter):
 
     chapter_score, chapter_best, chapter_refs = Counter(), {}, {}
     found_by = {}                     # (book, chapter) -> "roots" or "English"
-    for (s_id, t_id), shared in pairs.items():
+    for (s_id, t_id), shared in sorted(pairs.items(), key=lambda kv: (kv[0][0], atlas.ref_key(meta[kv[0][1]][2]))):
         if len(shared) < KIN_MIN_SHARED:
             continue
         target_order = [r[0] for r in atlas.db.execute(
@@ -3157,7 +3184,7 @@ def kin_page(atlas, book_name, chapter):
                     if en_meta[t_id] is None:
                         continue
                     en_pairs.setdefault((s_id, t_id), set()).add(stem)
-        for (s_id, t_id), shared in en_pairs.items():
+        for (s_id, t_id), shared in sorted(en_pairs.items(), key=lambda kv: (kv[0][0], atlas.ref_key(en_meta[kv[0][1]][2]))):
             if len(shared) < KIN_MIN_SHARED:
                 continue
             target_order = [surfaces.get(r[0].lower()) or atlas.stemmer.root(r[0].lower())
@@ -3190,7 +3217,9 @@ def kin_page(atlas, book_name, chapter):
                 "root never matches a Greek one, by the English stems of the words instead ('found "
                 "by' says which), so a cross-testament row rests on the translators' wording."
                 if strongs else ""))
-    for (b, c), total in chapter_score.most_common(KIN_N):
+    ranked = sorted(chapter_score.items(),
+                    key=lambda kv: (-kv[1], atlas.books.index(kv[0][0]) if kv[0][0] in atlas.books else 99, kv[0][1]))
+    for (b, c), total in ranked[:KIN_N]:
         score, s_id, ref, shared, order, seq = chapter_best[(b, c)]
         by = found_by[(b, c)]
         words = ", ".join((r if by == "English" else atlas.form(r))

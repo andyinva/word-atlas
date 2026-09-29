@@ -885,6 +885,38 @@ its rest row: Mowinckel's is now "Not assigned (30-31, 33, 46-52)",
 written in atlas_sections.py as {"sections": [...], "rest": "..."},
 so the leftovers are not taken for a fourth source.
 
+One more from the same read (0.10.6): the names mark was catching
+"ah Lord GOD" and "the LORD God of hosts", because the divine names
+are proper nouns to the text; they no longer count toward the cast
+list (DIVINE_ROOTS), so the formulas stay on the formulas' side of
+the line and only people and places are marked.
+
+The 0.10.7 round is about the dossier being the record. Three things
+were found by comparing two dossiers of the same book. First, the
+"absorbed word" entries of the local renderings line were missing
+from a dossier while the same page in the workspace showed them; the
+cause was not two code paths but a stale atlas: the dossier had been
+written from an atlas built before the gloss rule of 0.9.7, so no
+absorptions existed to list. The build line now says which it is,
+"gloss rule on (14580 absorbed)" or "built before the gloss rule of
+0.9.7: rebuild with build_atlas.py", so a stale atlas is visible at
+the top of every report. Second, the section pages, and with them
+the dating footer, had never been in a dossier; a dossier now carries
+the page of every section of the book's main division and of any
+section with its own date (Second and Third Isaiah), after the
+Compare pages, trimmed in the brief form to signature words, formulas
+and the echo tables, so "Jeremiah earlier, Psalms later" for Second
+Isaiah is in the record. Third, the verse-level tallies of the
+Compare page changed between two builds with no rule change: ties
+among equally scored parallels were being broken by the order Python
+happened to iterate a set, which changes from run to run. Every place
+a tie could decide a printed figure now breaks it in canonical order
+(book, chapter, verse): the parallels table, the kin pairs and their
+ranking, the strongest shared phrase of a cell, and the list of a
+book's formulaic words; two runs under different hash seeds now give
+the same text. Jesus G2424, Christ G5547 and Shaddai H7706 joined
+the names of God that do not count toward a cast-list refrain.
+
 ## Reading the section tables: Isaiah as the worked example
 
 The Psalter showed that the section layer could find a structure

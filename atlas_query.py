@@ -32,6 +32,7 @@ import sys
 from atlas_ask import AskError, parse
 from atlas_pages import (Atlas, book_page, chapter_page, chief_partners, compare_page, kin_page,
                          section_page, testament_page, word_page)
+from atlas_sections import divisions_of, section_date
 
 
 def render(report, atlas=None):
@@ -192,8 +193,13 @@ def dossier(atlas, book_name, brief=False):
     head = [f"WORD ATLAS  -  Dossier [{book}]" + (" (brief)" if brief else "")]
     head.append("#" * len(head[0]))
     head.append(atlas.build_line())
+    n_sections = sum(1 for d_index, (division, secs) in enumerate(divisions_of(book, n_chapters))
+                     for name, chapters, is_rest in secs
+                     if not is_rest and (d_index == 0 or section_date(book, name) is not None))
     head.append(f"Contents: the book page; the {book} rows of its testament page; the Compare page "
-                f"against {' and '.join(partners)}; the {n_chapters} chapter pages"
+                f"against {' and '.join(partners)}"
+                + (f"; {n_sections} section pages" if n_sections else "")
+                + f"; the {n_chapters} chapter pages"
                 + (" (trimmed to leading words, signature words, formulas, synopsis and kin)" if brief else "")
                 + "; the word pages of the ten most key signature words.")
     parts = ["\n".join(head)]
@@ -206,6 +212,24 @@ def dossier(atlas, book_name, brief=False):
     # chapter: the companion to 4b and the synopsis
     for partner in partners:
         parts.append(render(compare_page(atlas, book, partner)))
+    # The section pages: every section of the main division, and any
+    # section of another division that carries its own date (Second
+    # Isaiah), whose dating footer is the most citable thing the layer
+    # produces; the rest-of-book rows are left out
+    section_names = []
+    for d_index, (division, secs) in enumerate(divisions_of(book, n_chapters)):
+        for name, chapters, is_rest in secs:
+            if is_rest or name in section_names:
+                continue
+            if d_index == 0 or section_date(book, name) is not None:
+                section_names.append(name)
+    for name in section_names:
+        section_report = section_page(atlas, book, name)
+        if brief:
+            keep = ("1.", "1a", "2.", "4")
+            section_report.sections = [sec for sec in section_report.sections
+                                       if sec.title.startswith(keep)]
+        parts.append(render(section_report))
     top_words = [r["root"] for r in atlas.db.execute(
         "SELECT root FROM word_book WHERE book = ? AND weight >= 3 ORDER BY keyness DESC LIMIT 10", (book,))]
     for chapter in range(1, atlas.book_info[book]["chapters"] + 1):
