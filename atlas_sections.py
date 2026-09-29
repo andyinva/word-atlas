@@ -20,7 +20,9 @@ last) run: ("Asaph", [50, (73, 83)]).  Sections of a division need not
 cover the book (the collections leave gaps): the chapters left out
 become a "Rest of the book" section on the pages, so the Elohistic
 Psalter is set against the rest of the Psalter and Psalm 119 is not
-lost from the collections' reach.  The first division is the book's
+lost from the collections' reach; a division may name that row itself
+by being written as {"sections": [...], "rest": "Not assigned"}, which
+suits a source analysis whose leftovers are not a further source.  The first division is the book's
 main one and is what a page means by "sections"; the others follow
 it.  A book not listed here has no sections and its pages are
 unchanged.
@@ -101,11 +103,17 @@ SECTIONS = {
         # prose sermons.  B and C overlap in the handbooks (34, 35, 44 are
         # sermons set in narrative); they are given to C here.  The rest
         # of the book (30 to 31, 33, 46 to 52) falls to the rest row.
-        "Mowinckel A, B, C": [
-            ("A: poetic oracles", [(1, 6), (8, 10), (12, 17), (22, 24)]),
-            ("B: Baruch narrative", [(19, 20), (26, 29), (36, 43), 45]),
-            ("C: prose sermons", [7, 11, 18, 21, 25, 32, 34, 35, 44]),
-        ],
+        # A division that is a source analysis rather than a partition
+        # names its rest row itself, so a reader does not take the
+        # leftovers for a fourth source
+        "Mowinckel A, B, C": {
+            "sections": [
+                ("A: poetic oracles", [(1, 6), (8, 10), (12, 17), (22, 24)]),
+                ("B: Baruch narrative", [(19, 20), (26, 29), (36, 43), 45]),
+                ("C: prose sermons", [7, 11, 18, 21, 25, 32, 34, 35, 44]),
+            ],
+            "rest": "Not assigned (30-31, 33, 46-52)",
+        },
     },
     "Daniel": {
         "Parts": [
@@ -205,12 +213,16 @@ def divisions_of(book, n_chapters=None):
         table = {"Sections": table}
     out = []
     for division, specs in table.items():
+        rest_name = f"{REST_PREFIX} {book}"
+        if isinstance(specs, dict):            # {"sections": [...], "rest": "Not assigned"}
+            rest_name = specs.get("rest", rest_name)
+            specs = specs["sections"]
         secs = [(spec[0], _chapters(spec), False) for spec in specs]
         if n_chapters:
             covered = {c for name, chs, rest in secs for c in chs}
             left = [c for c in range(1, n_chapters + 1) if c not in covered]
             if left:
-                secs.append((f"{REST_PREFIX} {book}", left, True))
+                secs.append((rest_name, left, True))
         out.append((division, secs))
     return out
 

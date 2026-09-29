@@ -45,7 +45,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.4"   # the program version; the window title and every report print it
+VERSION = "0.10.5"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -338,6 +338,41 @@ class Atlas:
         word, kjv_def, strongs_def = entry
         text = clean_gloss(kjv_def or strongs_def, 80)
         return f"{word}: {text}" if word else text
+
+    def local_renderings(self, book, limit=12):
+        """
+        Every form a book owns, by the rule of local_rendering(), over
+        all its roots at once (two grouped queries rather than two per
+        root): [(root, form, n_here, n_all, kind)], most held first.
+        Lists the idioms the formulas cannot form ("rising up early" is
+        one root), under section 1 of the book page.
+        """
+        here = {}
+        for root, absorbed, surface, n in self.db.execute(
+                "SELECT t.root, t.is_stop, LOWER(t.surface), COUNT(*) FROM tokens t JOIN verses v "
+                "USING (verse_id) WHERE v.book = ? AND t.root LIKE '_%' AND (t.root LIKE 'H%' OR t.root LIKE 'G%') "
+                "GROUP BY 1, 2, 3", (book,)):
+            here.setdefault((root, absorbed), []).append((surface, n))
+        if not hasattr(self, "_forms_everywhere"):
+            everywhere = {}
+            for root, absorbed, surface, n in self.db.execute(
+                    "SELECT root, is_stop, LOWER(surface), COUNT(*) FROM tokens "
+                    "WHERE root LIKE 'H%' OR root LIKE 'G%' GROUP BY 1, 2, 3"):
+                everywhere.setdefault((root, absorbed), {})[surface] = n
+            self._forms_everywhere = everywhere
+        everywhere = self._forms_everywhere
+        out = []
+        for (root, absorbed), forms in here.items():
+            if not is_strongs(root):
+                continue
+            form, n_here = max(forms, key=lambda fn: fn[1])
+            all_forms = everywhere.get((root, absorbed), {})
+            n_all = all_forms.get(form, n_here)
+            total_forms = sum(all_forms.values()) or 1
+            if n_here >= 3 and n_here >= LOCAL_RENDERING_SHARE * n_all and n_all / total_forms < 0.5:
+                out.append((root, form, n_here, n_all, "absorbed word" if absorbed else "spelling"))
+        out.sort(key=lambda t: (-t[2], t[0]))
+        return out[:limit]
 
     def local_rendering(self, root, book, chapter=None):
         """
@@ -1006,6 +1041,15 @@ def signature_words_section(atlas, report, title, rows, n_scope, scope_label,
         spread_rows.sort(key=lambda r: -r[1])
         sec.footer.append("By spread-weighted keyness: "
                           + ", ".join(atlas.form(r) for r, sp, share in spread_rows[:10]) + ".")
+        # The forms this book owns, over every root and not only the top
+        # 25: the idioms a formula cannot form because they are one root
+        if book and chapter is None and atlas.roots_mode == "strongs":
+            owned = atlas.local_renderings(book)
+            if owned:
+                sec.footer.append("Local renderings (forms this book owns, over every root): " + "; ".join(
+                    f"'{form}' for {atlas.form(root)} ({n_here} of the Bible's {n_all}"
+                    + (", absorbed word" if kind == "absorbed word" else "") + ")"
+                    for root, form, n_here, n_all, kind in owned) + ".")
     lexicon_section(atlas, report, title, top, book, chapter, scope_label)
     return top
 
@@ -2229,8 +2273,8 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
             note="Phrases of three or more words that recur in three or more chapters of the book, "
                  "rarest first: the book's own refrains, set aside from the map above so they do "
                  "not inflate many cells at once.  Forms that differ only by stop words are one "
-                 "refrain, shown in the form with the most verses.  'names' marks a refrain whose "
-                 "content words are all proper names (Baruch the son of Neriah), a cast list rather "
+                 "refrain, shown in the form with the most verses.  'names' marks a refrain most of "
+                 "whose content words are proper names (Baruch the son of Neriah), a cast list rather "
                  "than a formula.  (The Compare page's maps use a "
                  "stricter rule between books, three chapters and four verses, so a refrain here may "
                  "still count there.)  Click for the verses."
@@ -2262,8 +2306,11 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
         for weight, display, chs, n, refs, key in rows[:TOP_N]:
             content = atlas.content_units(key) if by_roots else \
                 tuple(atlas.root_of(w) for w in key.split() if w not in STOPLIST)
-            all_names = bool(content) and all(atlas.is_name(u) for u in content)
-            row = [display, chs, n, "names" if all_names else ""]
+            # "names" when more than half the content words are proper names:
+            # "baruch the son of neriah" (son is content) is a cast-list entry
+            n_names = sum(1 for u in content if atlas.is_name(u))
+            mostly_names = bool(content) and n_names * 2 > len(content)
+            row = [display, chs, n, "names" if mostly_names else ""]
             if has_seams:
                 chapters_of = [int(c) for c in chs.split(", ")]
                 closes = [c for c in chapters_of if c in closing]

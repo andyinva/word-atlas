@@ -867,6 +867,24 @@ from the formulas. The spellings tables no longer count absorbed
 words as spellings of the root they were absorbed into ("thus" is not
 a spelling of H559).
 
+The second Jeremiah read (0.10.5) closed three gaps. The "names"
+mark in 6b never fired, because "son" is a content word and the rule
+wanted every content word to be a name; it now marks a refrain when
+more than half of its content words are names, so "Baruch the son of
+Neriah" and "Zephaniah the son of Maaseiah" carry it and "the house
+of Israel" does not. The local rendering note was attached to the
+top 25 rows only, so it could not catch "rising" for H7925, which is
+not a top-25 word; section 1 now ends with a "Local renderings" line
+computed over every root of the book, which on Jeremiah reads
+captive H1540 (17 of 25), captain H7227, punish H6485, spoiled,
+"rising" for early H7925 (11 of 14, absorbed word), astonishment,
+figs, "pieces" for H5310, "confounded" for H3001, "inclined" for
+H5186 and "pluck" for H5428, the idioms a formula cannot form. And a
+division that is a source analysis rather than a partition may name
+its rest row: Mowinckel's is now "Not assigned (30-31, 33, 46-52)",
+written in atlas_sections.py as {"sections": [...], "rest": "..."},
+so the leftovers are not taken for a fourth source.
+
 ## Reading the section tables: Isaiah as the worked example
 
 The Psalter showed that the section layer could find a structure
