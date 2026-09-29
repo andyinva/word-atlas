@@ -1947,7 +1947,12 @@ def sections_section(atlas, report, title, book, info):
                      f"of the book and that partner, per 1,000 words of the part, so a long section does "
                      f"not outweigh a short one.  A section under {SMALL_WORDS} words is marked 'small': "
                      f"the scaling magnifies whatever it touches, so read its row lightly.  Double-click a "
-                     f"row for the section's first chapter.",
+                     f"row for the section's first chapter."
+                     + ("  On a Gospel, a row where Matthew and Mark run level is the triple tradition and "
+                        "says nothing about which is the source; the row where Matthew stands high and "
+                        "Mark low is the double tradition (Q), and it is the diagnostic one.  The Compare "
+                        "page's order lines and Mark's sharing table carry the argument for Mark's priority."
+                        if book in GOSPELS else ""),
                 kind="heatmap")
             heat.value_label = "echo weight per 1000 words"
             for name, chs, is_rest in secs:

@@ -190,6 +190,30 @@ SECTIONS = {
             ("Resurrection", 24, 24),
         ],
     },
+    "John": {
+        "Parts": [
+            ("Prologue and the book of signs", 1, 12),
+            ("The farewell discourses", 13, 17),
+            ("Passion and resurrection", 18, 21),
+        ],
+    },
+    "Acts": {
+        "Parts": [
+            ("Jerusalem", 1, 7),
+            ("Judea, Samaria and Antioch", 8, 12),
+            ("Paul's missions", 13, 20),
+            ("Paul's arrest and trials", 21, 28),
+        ],
+        # The 'we' passages (16:10-17, 20:5-15, 21:1-18, 27:1-28:16) at
+        # chapter grain, against the rest: the vocabulary test of the
+        # travel diary
+        "The we passages": {
+            "sections": [
+                ("The we passages", [16, 20, 21, 27, 28]),
+            ],
+            "rest": "The rest of Acts",
+        },
+    },
     "Matthew": {
         "Parts": [
             ("Birth and beginnings", 1, 4),

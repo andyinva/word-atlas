@@ -1015,7 +1015,83 @@ it was there. The same row then leads on 2 Kings (the Elisha cycle's
 idiom), Genesis, 1 Samuel and Judges, the old narrative style of
 those chapters against the annalistic style around them. A row of
 low numbers where the neighbours are high is a partner's silence, and
-worth asking why.
+worth asking why. The converse holds too: on 1 Chronicles the temple
+preparations (22 to 29) draw on 2 Samuel at 149 where the David
+section draws 1546, and lead instead on 2 Chronicles, Numbers and 1
+Kings; a section with no narrative source is the author's own
+composition, shown as an absence.
+
+The 2 Kings read (0.10.11) asked for the Compare pages to follow the
+sections: the dossier's Compare pages were the book's two chief
+partners by weight, so the Manasseh section's partner, Jeremiah (2
+Kings 25 against Jeremiah 52, the third synoptic block of the book),
+had no page. A dossier now takes the book's two chief partners and
+then, for each section of the main division, the section's own first
+partner not already listed, up to five pages (MAX_COMPARE_PAGES).
+2 Kings gets 2 Chronicles, Isaiah, 1 Kings and Jeremiah; Ezekiel gets
+Jeremiah, Leviticus, Isaiah and Exodus; Psalms 2 Samuel, Isaiah,
+Jeremiah and 1 Chronicles. chief_partners() takes a chapter list for
+this, the same count of distinct echoes at section scale.
+
+## The Synoptic Gospels as tables
+
+Three dossiers, Mark, Matthew and Luke, and the chapter tables in
+atlas_sections.py (0.10.12) reproduce the standard findings about
+the Synoptic Gospels without any of them being entered. Read them in
+this order.
+
+Mark's sharing table (4d) is the four-way classification of the
+Synoptic problem, verse by verse: of Mark's 678 verses, 262 have a
+parallel in both Matthew and Luke (the triple tradition), 174 in
+Matthew only, 61 in Luke only, 181 in neither. Chapter 7 reads 6 both,
+14 Matthew only, 5 Luke only: Luke's great omission (Mark 6:45 to
+8:26), which shows in Mark's 4b as well, where chapter 6 draws on Luke
+at 773, chapter 7 drops to 186 and chapter 8 recovers to 1231 the
+moment Luke rejoins at Caesarea Philippi. Chapter 16 reads 1 both and
+14 neither of 20 verses: the longer ending standing apart. The
+coverage figures (64 percent of Mark in Matthew, 48 in Luke) are lower
+than the handbooks' 90 and 55 because the handbooks count content and
+4d counts three shared words in order; the 40 and 50 percent lines
+under the table show how fast verbal agreement thins.
+
+Luke's order line under 4b lists his non-Markan blocks by leaving
+them out: "Follows the order of Mark from chapter 3 to 23, passing
+over 7, 10 to 16", the little interpolation (6:20 to 8:3) and the
+great interpolation (9:51 to 18:14). Inside those chapters 4b says
+where the material comes from: 10 to 13 and 16 point to Matthew (720
+to 1257) with Mark at 150 to 265, the double tradition; 15 points to
+nobody, the lost sheep, coin and son, Luke's own; 1 and 2 point to
+Acts above Matthew, the infancy narrative's kinship with the same
+author's second volume; 24 points to John 20.
+
+Luke's Sources division makes the same picture four rows of 7a.
+Infancy (1 to 2) draws on Acts at 267 ahead of Matthew 146; the
+Markan blocks (3 to 6, 8 to 9, 18 to 23) on Mark 993 and Matthew 910;
+the two interpolations (7, 10 to 17) on Matthew 951 against Mark 197,
+which is Q as a row; Resurrection on John 222 ahead of Matthew and
+Mark at 194 and 193. The interpolations' leading words are Luke's
+special vocabulary as Hawkins listed it (repent, friends G5384,
+lawyers G3544, "take no thought" G3309), and 7b puts the Markan blocks
+and the interpolations at 52, which is where Luke's doublets live, the
+sayings he has once from Mark and once from Q. Matthew's Parts split
+the same way without being drawn for it: Galilee (5 to 13) draws on
+Luke at 1290 against Mark 628, the Sermon and chapters 10 to 12 being
+double tradition; Toward Jerusalem (14 to 20) reverses it, Mark 1289
+against Luke 623.
+
+One caution the pages now print: on a Gospel, a 7a row where Matthew
+and Mark run level is the triple tradition and says nothing about
+which is the source; the diagnostic row is the one where Matthew
+stands high and Mark low. The argument for Mark's priority is carried
+by the Compare pages' order lines and by Mark's 4d, not by 7a. And
+the Synoptic traditions interleave within chapters, so a triple,
+double, special division cannot be drawn at chapter grain the way
+Mowinckel's could for Jeremiah; the verse-level 4d is the right
+instrument for the Gospels, and the chapter lists are right for Luke,
+whose insertions fall on chapter boundaries. John and Acts have
+sections now for the two remaining questions, Acts against Luke and
+John against the three, with the "we" passages of Acts as a second
+division at chapter grain.
 
 ## Reading the section tables: Isaiah as the worked example
 
