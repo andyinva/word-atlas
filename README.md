@@ -917,6 +917,14 @@ book's formulaic words; two runs under different hash seeds now give
 the same text. Jesus G2424, Christ G5547 and Shaddai H7706 joined
 the names of God that do not count toward a cast-list refrain.
 
+On a section page (0.10.8) the partner table prints only the
+partners above the "few" line, plus any with a quotation-grade echo,
+and counts the rest in a footer, since a 10,000-word section produces
+under twenty echoes with most books and the table read as a list of
+caveats; Second Isaiah's has thirteen rows instead of twenty-five,
+the seven "few" survivors each holding a quotation-grade echo (Nahum
+1:15 under 52:7).
+
 ## Reading the section tables: Isaiah as the worked example
 
 The Psalter showed that the section layer could find a structure

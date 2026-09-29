@@ -150,6 +150,9 @@ SECTIONS = {
 # book's date.
 SECTION_DATES = {
     "Isaiah": {
+        # 540 for the whole of 40 to 66 is the midpoint of its two parts
+        # (Second Isaiah in the last years of the exile, Third after the
+        # return), not a third opinion; change either and the other should move
         "Isaiah 40 to 66": -540,
         "Second Isaiah": -545,
         "Third Isaiah": -515,

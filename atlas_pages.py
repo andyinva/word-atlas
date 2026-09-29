@@ -45,7 +45,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.7"   # the program version; the window title and every report print it
+VERSION = "0.10.8"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -1416,7 +1416,20 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
                              round(len(keys) / expected, 2) if expected else 0,
                              round(1000 * len(keys) / words, 2), relation_in_time(book, pb, date)))
     partner_rows.sort(key=lambda r: -r[2])
-    for row in partner_rows[:TOP_N]:
+    # On a section page a 10,000-word text produces under twenty echoes
+    # with most books, so the table would be a list of 'few' caveats:
+    # only the partners above the 'few' line are printed, plus any with
+    # a quotation-grade echo, and the rest are counted in a footer
+    shown_rows = partner_rows[:TOP_N]
+    if is_range:
+        shown_rows = [row for row in partner_rows[:TOP_N]
+                      if row[1] >= RATIO_MIN_ECHOES
+                      or any(e[2] == 2 for e in partner_echoes.get(row[0], []))]
+        left_out = len(partner_rows[:TOP_N]) - len(shown_rows)
+        if left_out:
+            tally.footer.append(f"{left_out} partners with fewer than {RATIO_MIN_ECHOES} echoes and no "
+                                f"quotation-grade echo are not listed; 4a2 and the map count them.")
+    for row in shown_rows:
         shown = list(row)
         # A ratio built on a handful of echoes is not worth its decimals:
         # a small book with a few shared idioms always posts a high one
