@@ -32,7 +32,8 @@ screens and this file.
 | Formula | A fixed run of two or more words used as a set phrase; on a Strong's build a run of roots, found however its words are spelled, shown in its commonest English wording |
 | Echo | A formula that occurs in two or more separate books |
 | Echo partners | The books a text shares echoes with, counted over every echo |
-| Kin | Two verses sharing three or more rare words in any order; dependence through imagery rather than wording. Found by Strong's roots within a testament and by English stems across the testaments |
+| Kin | Two verses sharing three or more rare words in any order; dependence through imagery rather than wording. Found by Strong's roots within a testament and by English stems across the testaments. Within a book, a word set behind three or more chapter pairs is a kin refrain (the regnal frame of Kings) and is set aside |
+| Shared vocabulary | Two chapters of one book drawing on the same uncommon words anywhere in them (words in at most five chapters of the book), the sign of a story told twice or a source with a vocabulary of its own; section 6d |
 | Window | How many words either side count as "near" (5, inside the verse) |
 | Root | The base form that several spellings are gathered under: a Strong's number (H3068, G3056) where the text is tagged, otherwise an English stem |
 | Keyness | How much more often a word (or formula) occurs here than the rest of its testament or the Bible would predict; log-likelihood, so 10.8 is one chance in a thousand |
@@ -924,6 +925,97 @@ under twenty echoes with most books and the table read as a list of
 caveats; Second Isaiah's has thirteen rows instead of twenty-five,
 the seven "few" survivors each holding a quotation-grade echo (Nahum
 1:15 under 52:7).
+
+The Genesis read (0.10.9) said what the phrase map is and is not:
+it catches verbatim repetition, which in Genesis is the priestly
+formulas (the toledot genealogies of 5 and 11, "be fruitful and
+multiply" in 1 and 9, the doubled flood, the Machpelah burial formula
+in 23, 49 and 50), and it cannot catch a story retold in other words.
+Two tables were added for that. 6c, Kin within the book, is the Kin
+test run between the chapters of one book: verse pairs of different
+chapters sharing three or more rare words in any order, summed by
+chapter pair; on Genesis it finds the flood against creation (1 and
+7, "fowl, cattle, creeping thing"), Machpelah (23 with 25, 49 and
+50), Joseph's dreams (40 and 41), Jacob's flocks (30 and 31) and the
+two Bethel blessings (28 and 35, "God Almighty, fruitful, multiply").
+6d, Shared vocabulary, asks less: chapter pairs drawing on the same
+uncommon words (in at most five chapters of the book, not common in
+the Bible, names kept, untagged stems left out), which is how a story
+told at length in two places shows: the two Beersheba namings (21 and
+26: well, digged, feast, Abimelech, Phichol), Bethel (28 and 31), the
+sons of Jacob (30, 35, 46, 49). What neither finds, and the notes say
+so, is the wife-sister story of 12, 20 and 26 or Hagar's two
+expulsions: those share sister, wife and took, which every chapter
+has, and a theme told in common words needs a reader. The renderings
+line stopped listing a placed tag on a pronoun ("me" under H6440,
+"before me") as an absorbed word: a placed tag on a stop word is
+neither a spelling nor an absorption.
+
+## Three kinds of repetition: the book against itself
+
+A book repeats itself in three ways, and from 0.10.10 the book page
+has one table for each, read on 1 Kings, which has all three.
+
+Section 6, the phrase map, is the same words in the same order: a
+description copied (the temple and the palace in 6 and 7, "a row of
+cedar beams"), an oracle template (the dynastic judgments against
+Jeroboam, Baasha and Ahab in 14, 16 and 21, "him that dieth in the
+city shall the dogs eat", which 6b lists as a refrain in exactly those
+three chapters), a regnal notice (15 and 16, "the sin wherewith he
+made Israel to sin"). In Genesis it is the priestly formulas.
+
+Section 6c, Kin within the book, is the same rare words in one pair of
+verses, in any order: a formula with a name in the middle, or a verse
+reworked. The regnal frame of Kings ("the rest of the acts of X, are
+they not written in the book of the chronicles") is one formula to a
+reader and several to the phrase map, because the king's name sits
+inside it; the kin test sees it because it ignores order. Since such
+a frame would fill the table, a word set that stands behind three or
+more chapter pairs is a kin refrain, set aside and named in a footer
+("{rest, written, book} in chapters 11, 14, 15, 16, 22"), and what is
+left is the story-level kin: 16 and 21 (Jeroboam, Nebat, sin,
+provoke, the oracle against Ahab reusing the one against Baasha), 5
+and 9 (Hiram, cedar, fir), 1 and 8 (offered, sheep, abundance,
+Adonijah's sacrifice and Solomon's), 20 and 22 (Syria, chariots,
+fight).
+
+Section 6d, Shared vocabulary, is two chapters drawing on the same
+uncommon words anywhere in them: a story told twice, or a source
+with a vocabulary of its own. On 1 Kings it finds the Aramean war
+narratives (18 and 20: noon, array, girded, escapeth; 20 and 22:
+disguised, harness, chamber, messengers), the Elijah cycle (17, 18
+and 19: rain, barrel, brook, cave, Jezebel, Baal), and the
+Deuteronomist's Solomon speeches (2, 3 and 8: glory, righteousness,
+judge, statutes, Moses, tabernacle, ark), a theological vocabulary no
+other chapter of the book uses. One of its pairs is an observation
+that is in the critical literature: 20 and 22 share their war
+vocabulary across the Naboth chapter, and the Septuagint places
+chapter 21 before 20, so that in the Greek order 20 and 22 stand
+together. The table has, in effect, voted for the Greek order.
+
+Both 6c and 6d print one row per chapter with its closest partner, as
+6a does, so a chapter with no kin shows as a dash, and the strongest
+pairs in a footer. What none of the three finds is a story retold in
+common words (the wife-sister story of Genesis 12, 20 and 26 shares
+sister, wife and took, which every chapter has); that needs a reader,
+and the notes on the tables say so. 1 Kings has its sections now
+(Solomon 1 to 11, the divided kingdom 12 to 16, Elijah 17 to 19, the
+Aramean wars 20 to 22, with the end of the Succession Narrative, 1
+to 2, as a second division).
+
+A source's silence as a row of numbers. One reading from the 1 Kings
+sections belongs in the manual because it is the kind of result the
+layer produces with no hypothesis in the table. On 7a, Solomon, the
+divided kingdom and the Aramean wars draw on 2 Chronicles at 1241,
+1042 and 931 per thousand words; Elijah draws on it at 115. That is
+the Chronicler's omission of the northern prophets as a number: 2
+Chronicles retells 1 Kings 1 to 16 and 22 and passes over 17 to 21
+almost entirely, and the Elijah row shows the gap without being told
+it was there. The same row then leads on 2 Kings (the Elisha cycle's
+idiom), Genesis, 1 Samuel and Judges, the old narrative style of
+those chapters against the annalistic style around them. A row of
+low numbers where the neighbours are high is a partner's silence, and
+worth asking why.
 
 ## Reading the section tables: Isaiah as the worked example
 

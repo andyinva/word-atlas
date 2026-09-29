@@ -115,6 +115,26 @@ SECTIONS = {
             "rest": "Not assigned (30-31, 33, 46-52)",
         },
     },
+    "1 Kings": {
+        "Parts": [
+            ("Solomon", 1, 11),
+            ("The divided kingdom", 12, 16),
+            ("Elijah", 17, 19),
+            ("The Aramean wars", 20, 22),
+        ],
+        "Succession Narrative": [
+            ("End of the Succession Narrative", 1, 2),
+        ],
+    },
+    "2 Kings": {
+        "Parts": [
+            ("Elijah's end and the Elisha cycle", [1, (2, 8), 13]),
+            ("The Jehu revolution", 9, 10),
+            ("Athaliah to the fall of Samaria", [(11, 12), (14, 17)]),
+            ("Hezekiah", 18, 20),
+            ("Manasseh to the fall of Jerusalem", 21, 25),
+        ],
+    },
     "Daniel": {
         "Parts": [
             ("The court tales", 1, 6),
