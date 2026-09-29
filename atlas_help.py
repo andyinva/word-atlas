@@ -231,6 +231,9 @@ COLUMN_HELP = {
     "gap": "How many chapters apart the chapter and its partner are.  Neighbours share phrasing "
            "because the story continues; a wide gap means the author came back to the same "
            "wording later.",
+    "note": "On a refrains table: 'names' when every content word of the refrain is a proper name "
+            "(Baruch the son of Neriah), a cast list rather than a formula.  On a signature words "
+            "table the note column carries 'local', the renderings count and 'local rendering'.",
     "depth/1000": "The section depth (keyness) per 1,000 words of the section: the same figure with "
                   "the section's size removed, so a large part does not win by being large.",
     "deepest/1000 at": "The section where the word is thickest for the section's length.",

@@ -38,11 +38,12 @@ screens and this file.
 | Keyness | How much more often a word (or formula) occurs here than the rest of its testament or the Bible would predict; log-likelihood, so 10.8 is one chance in a thousand |
 | Normalization | Dividing a raw count by the size of the thing it was counted in, so parts of different sizes can be compared: per 1,000 words (section 1, 4a, 7a, 7b), or as a share of a total (the concentration rule in 4d, the home map's percentages). Keyness takes the idea one step further and asks how surprising the difference from the expected count is |
 | Log-likelihood | The test behind keyness: how surprising a word's count here is, given its count in the comparison text and the sizes of both. Above 3.8 the difference is unlikely to be chance (one in twenty), above 6.6 one in a hundred, above 10.8 one in a thousand; the sign goes negative when the word is rarer here than expected. See Dunning's G squared |
-| Dunning's G squared | The formula the log-likelihood uses, from Ted Dunning's 1993 paper on the statistics of surprise. Take the word's count here and in the comparison text; work out what each count would be if the word were spread over both texts evenly, in proportion to their sizes (the expected counts); then for each of the four cells (the word here, the word there, all other words here, all other words there) multiply the observed count by the logarithm of observed over expected, add the four up, and double the sum. The atlas's code (log_likelihood in atlas_text.py) computes only the first two cells, the word here and the word there; on texts the size of Bible books the two cells for all other words cancel almost exactly, so the result agrees with the full four-cell sum to the first decimal place (selah in the Psalter: 350.3 against 350.4). A word spread evenly scores near zero; a word piled up on one side scores high. It is preferred to the older chi-squared test because it stays honest for rare words and small texts, where chi-squared exaggerates, and corpus linguists have used it for keywords since Dunning proposed it |
+| Dunning's G squared | The formula the log-likelihood uses, from Ted Dunning's 1993 paper on the statistics of surprise. Take the word's count here and in the comparison text; work out what each count would be if the word were spread over both texts evenly, in proportion to their sizes (the expected counts); then for each of the four cells (the word here, the word there, all other words here, all other words there) multiply the observed count by the logarithm of observed over expected, add the four up, and double the sum. A word spread evenly scores near zero; a word piled up on one side scores high. It is preferred to the older chi-squared test because it stays honest for rare words and small texts, where chi-squared exaggerates, and corpus linguists have used it for keywords since Dunning proposed it |
 | Rarity | How rare a word is, as the negative logarithm of its share of all words in its testament; one in a thousand scores about 7, one in a hundred thousand about 11.5 |
 | Single-word formula | A formula that has lost all but one word to tidying, as "and joseph" loses its conjunction; a name after "and" is not a set phrase, so such rows are passed over rather than printed |
 | Run | Words standing one after another: a formula is a run of two to five, an echo a shared run grown to its full length. Also chapters in a row whose pointers never go backwards, the evidence that a book follows another's order |
 | Rendering | An English word the translators used for one root: leave, forgive, let and suffer are four renderings of G863 |
+| Local rendering | A form of a root that one text owns: its commonest spelling there, or the word absorbed into it there, when that text holds at least half of the form's uses in the Bible and the form is not the root's usual one elsewhere ("rising up early" in Jeremiah, 11 of 14) |
 | Spelling | One English form of a root as the text prints it: day, days and day's |
 | Parallel | Two verses that share at least three content roots in the same order making up at least 30 percent of the shorter verse, or that share a quotation-grade echo; the unit of the sharing table (4d) and the synopsis |
 | Quotation grade | An echo of five or more words found in exactly two verses of the whole Bible, one here and one there: the strongest evidence of one text reading another |
@@ -838,6 +839,34 @@ deepest by keyness in 1 to 24 and deepest for its length in
 Restoration, while the temple vision's cubits and side are deepest
 on both measures.
 
+The Jeremiah read (0.10.4) gave the book its sections and asked for
+three smaller things. Jeremiah's entry in atlas_sections.py carries
+three divisions: the standard blocks (1 to 25, 26 to 45, 46 to 51,
+52), the Book of Consolation (30 to 33) as a block against the rest,
+and Mowinckel's sources as chapter lists, A the poetic oracles, B the
+Baruch narrative, C the Deuteronomistic prose sermons (7, 11, 18, 21,
+25, 32, 34, 35, 44). The C row leads with incense, provoke to anger,
+fathers, "rising up early" (H7925), handmaid, the vocabulary of the
+prose sermons, and draws on Deuteronomy at 138 per thousand where A
+draws 74 and B 78; B leads with Jeremiah, son, king, Gedaliah and
+Ishmael and draws on 2 Kings; A with burden, wilderness, backsliding
+and treacherously. A source analysis nobody typed in, reproduced from
+counts. The three smaller things: a "local rendering" note in section
+1 for a form of a root that this text owns, its commonest spelling
+here or the word absorbed into it here, when the text holds at least
+half of that form's Bible-wide uses and the form is not the root's
+usual one elsewhere ("rising" absorbed into H7925 "early", 11 of the
+Bible's 14, on Jeremiah's C page; "astonishment" for H8047, 10 of
+13; "straightway" for G2112 in Mark, 19 of 32); a second totals line
+under 4a giving the earlier, contemporary and later counts by the
+critical dates beside the conventional ones, so the two datings can
+be compared in numbers; and a "names" mark on the refrains table for
+a refrain whose content words are all proper names, so the cast list
+(Baruch the son of Neriah, Johanan the son of Kareah) can be told
+from the formulas. The spellings tables no longer count absorbed
+words as spellings of the root they were absorbed into ("thus" is not
+a spelling of H559).
+
 ## Reading the section tables: Isaiah as the worked example
 
 The Psalter showed that the section layer could find a structure
@@ -1018,38 +1047,6 @@ build's rules back over the working `atlas_text.py` (saving the current
 rules first under builds/ with a time stamp); a rebuild then returns
 the working atlas to that state. The `builds/` folder is not in git.
 
-## The metadata database
-
-Some of what the atlas needs to know is not in any text: which books
-belong together, which verses make up a passage worth studying, how the
-Septuagint numbers its verses, which Strong's numbers two taggings use
-for the same word. That knowledge lives in `metadata.db`, the one
-database that is never rebuilt, because nothing else contains it.
-`atlas.db` and `lxx.db` are computed and can be remade at any time;
-`metadata.db` is decided or checked by hand, and a rebuild must never
-touch it.
-
-It gives each book a genre and a baseline group, so that a book is
-measured against its peers (Joel against the other prophets, with Joel
-itself left out) rather than against the whole Bible. It holds named
-passages, any set of verse ranges in any books, so that a study such
-as Isaiah 1-39 against 40-66, or the harlot city of Ezekiel and
-Revelation, is defined once and can be rerun and checked. It carries
-the language rule (a word is compared only with text of its own
-language), the Septuagint's own list of books, the verse map that
-places each Septuagint verse at its English equivalent (98.6% of
-English Old Testament verses), and the root equivalents that make the
-KJV and the Septuagint comparable despite their different taggings.
-
-It is kept safe as text: `atlas_backup.py` writes it to
-`metadata_backup.sql`, which is committed with the code, and the
-backup refreshes itself after every change and when the window closes.
-The reports that use it are in `atlas_lift.py`: lift against a
-baseline, passages, side-by-side comparison with two sources, and the
-absence report. `METADATA_IN_WORD_ATLAS.md` describes the database in
-full: its tables, what they make possible, how it is protected, and
-its limits.
-
 ## Other languages
 
 The atlas is built for one translation at a time (`build_atlas.py
@@ -1062,12 +1059,6 @@ language rules chosen by translation. Strong's numbers already give
 the roots behind the KJV (phase 5); a Hebrew or Greek text would bring
 its own lemmas. Each language
 gets its own atlas file, and the Build box is where it is chosen.
-
-The Greek Old Testament now has a layer of its own: `lxx.db`, built by
-`build_lxx.py` from the Rahlfs Septuagint, with each verse placed at
-its English equivalent through the verse map in `metadata.db`. Passage
-reports can take either side from either text (see
-`METADATA_IN_WORD_ATLAS.md`).
 
 ## What to do with the output
 
@@ -1090,13 +1081,3 @@ Bible Search Lite layout (books, verses, translations, verse_texts) and
 a `verse_strongs` table (verse_id, word_position, strongs_number,
 morphology, word_text); `inspect_strongs.py` reports whether a
 database has what is needed.
-
-The Septuagint layer is built from the LXX-Rahlfs-1935 files by Eliran
-Wong (CC BY-NC-SA 4.0, derived from the CCAT data, whose user
-declaration applies), read from the scripture-motifs project. Because
-that licence is non-commercial and share-alike, `lxx.db` is built
-locally and kept out of the repository. The Septuagint verse map in
-`metadata.db` is built from TVTMS by STEPBible.org, based on work at
-Tyndale House, Cambridge (CC BY 4.0); the TVTMS file itself is
-downloaded from STEPBible and not copied here, and the rows derived
-from it carry that credit in `metadata_backup.sql`.

@@ -45,7 +45,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.3"   # the program version; the window title and every report print it
+VERSION = "0.10.4"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -54,6 +54,7 @@ KIN_N = 25          # kin chapters shown
 KIN_CHAPTER_N = 8   # kin chapters at the foot of a chapter page
 KIN_MIN_SHARED = 3  # rare words two verses must share to count as kin
 LOCAL_SHARE = 0.2   # a signature word is "local" below this share of chapters
+LOCAL_RENDERING_SHARE = 0.5   # a rendering is this text's own when it holds this share of the Bible's uses
 NEST_COVER = 0.8    # a shorter formula folds into a longer one covering this share of its verses
 FOCUS_WORDS = ["day", "LORD"]   # always shown on a book page, plus top signature words
 HOME_PER_BOOK = 2               # roots per book on the testament home map
@@ -338,15 +339,50 @@ class Atlas:
         text = clean_gloss(kjv_def or strongs_def, 80)
         return f"{word}: {text}" if word else text
 
+    def local_rendering(self, root, book, chapter=None):
+        """
+        A rendering this text owns: the commonest spelling of the root
+        here, or the commonest word absorbed into it here ("rising" into
+        H7925 "early"), when this text holds at least half of that
+        form's occurrences in the Bible and the form is not the root's
+        usual one everywhere (under half of its Bible-wide forms).
+        "Rising up early" is Jeremiah's idiom (11 of the Bible's 14),
+        though the root H7925 is common and cannot be a formula.
+        Returns a note string or None.
+        """
+        for absorbed in (0, 1):
+            sql = ("SELECT LOWER(t.surface), COUNT(*) FROM tokens t JOIN verses v USING (verse_id) "
+                   "WHERE t.root = ? AND t.is_stop = ? AND v.book = ?")
+            params = [root, absorbed, book]
+            if chapter is not None:
+                sql += " AND v.chapter = ?"
+                params.append(chapter)
+            sql += " GROUP BY 1 ORDER BY 2 DESC LIMIT 1"
+            here = self.db.execute(sql, params).fetchone()
+            if not here:
+                continue
+            form, n_here = here[0], here[1]
+            everywhere = dict(self.db.execute(
+                "SELECT LOWER(surface), COUNT(*) FROM tokens WHERE root = ? AND is_stop = ? GROUP BY 1",
+                (root, absorbed)).fetchall())
+            n_all = everywhere.get(form, n_here)
+            total_forms = sum(everywhere.values()) or 1
+            if n_here >= LOCAL_RENDERING_SHARE * n_all and n_all / total_forms < 0.5 and n_here >= 3:
+                what = "absorbed word" if absorbed else "spelling"
+                return f"local rendering: '{form}' ({n_here} of the Bible's {n_all}, {what})"
+        return None
+
     def spellings(self, root, limit=6, book=None, chapter=None):
         """How the text spells a root, commonest first: [(surface, count)],
         across the Bible or within one book or chapter."""
+        # Absorbed words ("thus" folded into H559, "burnt" into H5930) are
+        # stop tokens carrying the root and are not spellings of it
         if book is None:
             return [(r[0], r[1]) for r in self.db.execute(
-                "SELECT surface, COUNT(*) FROM tokens WHERE root = ? GROUP BY surface "
+                "SELECT surface, COUNT(*) FROM tokens WHERE root = ? AND is_stop = 0 GROUP BY surface "
                 "ORDER BY COUNT(*) DESC LIMIT ?", (root, limit))]
         sql = ("SELECT t.surface, COUNT(*) FROM tokens t JOIN verses v USING (verse_id) "
-               "WHERE t.root = ? AND v.book = ?")
+               "WHERE t.root = ? AND t.is_stop = 0 AND v.book = ?")
         params = [root, book]
         if chapter is not None:
             sql += " AND v.chapter = ?"
@@ -899,7 +935,12 @@ def signature_words_section(atlas, report, title, rows, n_scope, scope_label,
             "when it is a Strong's number (H with the Old Testament, G with the New), and with "
             "the rest of the Bible when it is an English stem; a Greek word cannot occur in the "
             "Old Testament, so the Bible as a whole would make every Greek word look key.  "
-            "'N renderings' means the text gives the root that many different English words.")
+            "'N renderings' means the text gives the root that many different English words; "
+            "'local rendering' that a form of the root belongs to this text: its commonest spelling "
+            "here, or the word absorbed into it here ('rising' into H7925 'early', Jeremiah's "
+            "'rising up early', 11 of the Bible's 14), when this text holds at least half of that "
+            "form's uses and the form is not the root's usual one elsewhere.  The idiom is this "
+            "text's own even where the root is not.")
     if atlas.roots_mode != "strongs":
         note = ""
     sec = report.section(title, columns, note=note)
@@ -926,6 +967,15 @@ def signature_words_section(atlas, report, title, rows, n_scope, scope_label,
         renderings = atlas.renderings(root)
         if renderings > 1:
             notes.append(f"{renderings} renderings")
+        # A local rendering: the root's commonest spelling here is not
+        # its commonest across the Bible.  "Rising up early" (H7925) is
+        # Jeremiah's idiom, but the root is one word and cannot be a
+        # formula, and Genesis's "rose up early" dilutes it as a word;
+        # the spelling is what marks it as this book's own
+        if is_strongs(root) and book:
+            local = atlas.local_rendering(root, book, chapter)
+            if local:
+                notes.append(local)
         row.append(", ".join(notes))
         sec.add(row, refs=None, link={"word": root, "book": book, "chapter": chapter})
         top.append(root)
@@ -1330,6 +1380,19 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
           "books are who could have read it; the table cannot tell direction for contemporaries.  "
           "Earlier is not the same as source: an earlier partner may share idiom with this text "
           "without either having read the other.")
+    # The same totals under the critical dates, so the two datings can be
+    # compared in numbers and not only by reading the disputed partners
+    crit_time, crit_weight = Counter(), Counter()
+    for pb, n, w, ratio, rate, rel in partner_rows:
+        d = dating_dispute(book, pb, date)
+        crit_rel = d[1][2] if d else rel.replace(" (disputed)", "")
+        crit_time[crit_rel] += n
+        crit_weight[crit_rel] += w
+    if crit_time != by_time:
+        tally.footer.append(
+            "By the critical dating (CRITICAL_DATES): echoes with "
+            + ", ".join(f"{rel} books {crit_time[rel]} (weight {crit_weight[rel]})"
+                        for rel in ("earlier", "contemporary", "later") if crit_time[rel]) + ".")
     # Where the critical dates put a partner on the other side of this
     # text, say so once, with both datings, for every such partner shown
     disputes = []
@@ -2162,11 +2225,13 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
         has_seams = bool(closing)
         ref_sec = report.section(
             title.split(".")[0] + f"b. Refrains [{book}]: phrases in {REFRAIN_MIN_CHAPTERS} or more chapters",
-            ["refrain", "chapters", "verses"] + (["at the seams", "sections"] if has_seams else []),
+            ["refrain", "chapters", "verses", "note"] + (["at the seams", "sections"] if has_seams else []),
             note="Phrases of three or more words that recur in three or more chapters of the book, "
                  "rarest first: the book's own refrains, set aside from the map above so they do "
                  "not inflate many cells at once.  Forms that differ only by stop words are one "
-                 "refrain, shown in the form with the most verses.  (The Compare page's maps use a "
+                 "refrain, shown in the form with the most verses.  'names' marks a refrain whose "
+                 "content words are all proper names (Baruch the son of Neriah), a cast list rather "
+                 "than a formula.  (The Compare page's maps use a "
                  "stricter rule between books, three chapters and four verses, so a refrain here may "
                  "still count there.)  Click for the verses."
                  + ("  'at the seams' counts the refrain's chapters that close or open a section of "
@@ -2195,7 +2260,10 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
             rows.append((weight, display, ", ".join(str(c) for c in sorted(chapters)), len(refs), refs, key))
         rows.sort(key=lambda r: -r[0])
         for weight, display, chs, n, refs, key in rows[:TOP_N]:
-            row = [display, chs, n]
+            content = atlas.content_units(key) if by_roots else \
+                tuple(atlas.root_of(w) for w in key.split() if w not in STOPLIST)
+            all_names = bool(content) and all(atlas.is_name(u) for u in content)
+            row = [display, chs, n, "names" if all_names else ""]
             if has_seams:
                 chapters_of = [int(c) for c in chs.split(", ")]
                 closes = [c for c in chapters_of if c in closing]

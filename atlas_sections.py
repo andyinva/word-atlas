@@ -86,6 +86,27 @@ SECTIONS = {
             ("The temple vision", 40, 48),
         ],
     },
+    "Jeremiah": {
+        "Blocks": [
+            ("Oracles against Judah", 1, 25),
+            ("Narratives and the Book of Consolation", 26, 45),
+            ("Against the nations", 46, 51),
+            ("The fall of Jerusalem", 52, 52),
+        ],
+        "Consolation": [
+            ("Book of Consolation", 30, 33),
+        ],
+        # Mowinckel's three sources (1914): A the poetic oracles, B the
+        # prose narrative about Jeremiah (Baruch's), C the Deuteronomistic
+        # prose sermons.  B and C overlap in the handbooks (34, 35, 44 are
+        # sermons set in narrative); they are given to C here.  The rest
+        # of the book (30 to 31, 33, 46 to 52) falls to the rest row.
+        "Mowinckel A, B, C": [
+            ("A: poetic oracles", [(1, 6), (8, 10), (12, 17), (22, 24)]),
+            ("B: Baruch narrative", [(19, 20), (26, 29), (36, 43), 45]),
+            ("C: prose sermons", [7, 11, 18, 21, 25, 32, 34, 35, 44]),
+        ],
+    },
     "Daniel": {
         "Parts": [
             ("The court tales", 1, 6),
