@@ -135,10 +135,59 @@ SECTIONS = {
             ("Manasseh to the fall of Jerusalem", 21, 25),
         ],
     },
+    "1 Chronicles": {
+        "Parts": [
+            ("Genealogies", 1, 9),
+            ("David: from Saul's death to the census", 10, 21),
+            ("The temple preparations", 22, 29),
+        ],
+    },
+    "2 Chronicles": {
+        "Parts": [
+            ("Solomon", 1, 9),
+            ("The kings of Judah", 10, 36),
+        ],
+        # The last kings as a block of their own, since only there do
+        # Ezra, Jeremiah and 1 Chronicles rise on the echo map
+        "Hezekiah to the exile": [
+            ("Hezekiah to the exile", 29, 36),
+        ],
+        # The Chronicler's own compositions against what he took from
+        # Kings: the chapters the 4b order lines pass over (Abijah's
+        # speech, Jehoshaphat's reforms and judges, Hezekiah's cleansing,
+        # passover and Levites, Josiah's passover), with 14 to 15 (Asa's
+        # reform), 20 (Jehoshaphat's war) and 26 (Uzziah) as the usual
+        # further candidates.  A source division, so the rest row is named
+        "The Chronicler's own": {
+            "sections": [
+                ("The Chronicler's own", [13, (14, 15), 17, 19, 20, 26, (29, 31), 35]),
+            ],
+            "rest": "From Kings",
+        },
+    },
     "Daniel": {
         "Parts": [
             ("The court tales", 1, 6),
             ("The visions", 7, 12),
+        ],
+    },
+    "Mark": {
+        "Parts": [
+            ("Galilee", 1, 8),
+            ("The way to Jerusalem", 9, 10),
+            ("Jerusalem", 11, 13),
+            ("The passion and the ending", 14, 16),
+        ],
+    },
+    "Luke": {
+        # Luke's structure as the handbooks describe it: Markan order
+        # with two insertions, the little interpolation (6:20 to 8:3) and
+        # the great interpolation (9:51 to 18:14), at chapter grain
+        "Sources": [
+            ("Infancy", 1, 2),
+            ("Markan blocks", [(3, 6), (8, 9), (18, 23)]),
+            ("The two interpolations", [7, (10, 17)]),
+            ("Resurrection", 24, 24),
         ],
     },
     "Matthew": {
@@ -192,6 +241,7 @@ def section_date(book, name):
 
 REST_PREFIX = "Rest of"      # the name given to the chapters a division leaves out
 FEW_WORDS = 1000             # a section under this many words is marked 'few'
+SMALL_WORDS = 3000           # ... and under this many 'small' on the echo map, where per-1,000 scaling magnifies
 
 
 def _chapters(spec):
