@@ -180,13 +180,14 @@ numbering, still to be set by hand.
 give the same dossier) and a smoke test of every page kind on a few
 books, run before every commit.
 
-**The repository public.** andyinva/word-atlas, after the test script
-and the manual's review. The catalogue goes as metadata_backup.sql;
-lxx.db never goes.
+**The repository (done 2026-10-03).** andyinva/word-atlas is public,
+with everything through 0.10.37 pushed. The catalogue goes as
+metadata_backup.sql; lxx.db, atlas.db, bibles.db and strongs.csv never
+go, and the README says what a visitor must supply.
 
 ## DONE
 
-0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
+2026-10-03 the repository public with 0.10.37 pushed. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
 words, 3 to 5). 0.10.34 1b stops at a keyness floor (6.63); three occurrences for a
 book under 2,000 words. 0.10.33 small book marked in 1 and 1b. 0.10.32 Job's parts and Elihu. 0.10.31 1b names unmeasured words apart. 0.10.30 a bilingual book measured a language at a time (1b, section
 7); "(small kind)" on 1b. 2026-10-03 the Persian-period baseline group (Ezra, Nehemiah, Esther,
