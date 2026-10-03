@@ -653,7 +653,7 @@ class PageView(QWidget):
 class WordAtlasWindow(QMainWindow):
     """The main window: top bar, page view, verse pane."""
 
-    PAGE_KINDS = ["Book", "Chapter", "Section", "Word", "Kin", "Testament", "Compare"]
+    PAGE_KINDS = ["Book", "Chapter", "Section", "Passage", "Word", "Kin", "Testament", "Compare"]
 
     def __init__(self, atlas):
         super().__init__()
@@ -751,6 +751,17 @@ class WordAtlasWindow(QMainWindow):
         self.section_box.setMinimumWidth(220)
         bar.addWidget(self.section_box)
         self.update_section_list(self.book_box.currentText())
+
+        # The passage, for a Passage page: the named passages of the
+        # catalogue (metadata.db), any verse ranges in any books
+        self.passage_label = QLabel("Passage:")
+        self.passage_label.setProperty("help", "passage_box")
+        bar.addWidget(self.passage_label)
+        self.passage_box = QComboBox()
+        self.passage_box.setProperty("help", "passage_box")
+        self.passage_box.setMinimumWidth(220)
+        bar.addWidget(self.passage_box)
+        self.update_passage_list()
 
         self.chapter_label = QLabel("Chapter:")
         self.chapter_label.setProperty("help", "chapter")
@@ -931,6 +942,18 @@ class WordAtlasWindow(QMainWindow):
         if self.section_box.count() == 0:
             self.section_box.addItem("(no sections in atlas_sections.py)", "")
 
+    def update_passage_list(self):
+        """Fill the Passage box with the catalogue's named passages."""
+        self.passage_box.clear()
+        for name, (desc, ranges) in self.atlas.passages().items():
+            books = []
+            for book, *_ in ranges:
+                if book not in books:
+                    books.append(book)
+            self.passage_box.addItem(f"{name}  ({', '.join(books)})", name)
+        if self.passage_box.count() == 0:
+            self.passage_box.addItem("(no passages: see metadata.db and atlas_passages.py)", "")
+
     def update_controls(self, kind):
         """Show only the controls the chosen page kind needs."""
         chapter = kind in ("Chapter", "Kin")
@@ -942,8 +965,10 @@ class WordAtlasWindow(QMainWindow):
             w.setVisible(kind == "Compare")
         for w in (self.section_label, self.section_box):
             w.setVisible(kind == "Section")
+        for w in (self.passage_label, self.passage_box):
+            w.setVisible(kind == "Passage")
         for w in (self.book_label, self.book_box):
-            w.setVisible(kind != "Testament")
+            w.setVisible(kind not in ("Testament", "Passage"))
         for w in (self.verses_label, self.verses_edit):
             w.setVisible(kind == "Kin")
         for w in (self.word_label, self.word_edit, self.any_book_btn):
@@ -969,6 +994,11 @@ class WordAtlasWindow(QMainWindow):
             if not word:
                 QMessageBox.information(self, "Word Atlas", f"{book} has no sections in atlas_sections.py.")
                 return
+        if kind == "Passage":
+            word = self.passage_box.currentData() or ""   # the passage name rides in the word slot
+            if not word:
+                QMessageBox.information(self, "Word Atlas", "No passages: add them with atlas_passages.py.")
+                return
         self.open_page(kind, book, chapter, word)
 
     # -- opening pages -------------------------------------------------------------------
@@ -989,6 +1019,8 @@ class WordAtlasWindow(QMainWindow):
                 report = atlas_pages.compare_page(self.atlas, book, word)
             elif kind == "Section":
                 report = atlas_pages.section_page(self.atlas, book, word)
+            elif kind == "Passage":
+                report = atlas_pages.passage_page(self.atlas, word)
             else:
                 report = atlas_pages.kin_page(self.atlas, book, chapter)
         except ValueError as e:
@@ -1023,6 +1055,10 @@ class WordAtlasWindow(QMainWindow):
             i = self.section_box.findData(word)
             if i >= 0:
                 self.section_box.setCurrentIndex(i)
+        if kind == "Passage":
+            i = self.passage_box.findData(word)
+            if i >= 0:
+                self.passage_box.setCurrentIndex(i)
 
         if record:
             # Drop any forward history, then add this page
@@ -1081,6 +1117,8 @@ class WordAtlasWindow(QMainWindow):
                                self.atlas.find_book(a["other"]))
             elif kind == "section":
                 self.open_page("Section", self.atlas.find_book(a["book"]), None, a["section"])
+            elif kind == "passage":
+                self.open_page("Passage", self.book_box.currentText(), None, a["passage"])
             elif kind == "chapter":
                 self.open_page("Chapter", self.atlas.find_book(a["book"]), a["chapter"], "")
             elif kind == "kin":

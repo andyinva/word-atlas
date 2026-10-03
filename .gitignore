@@ -25,3 +25,7 @@ metadata.db.before-restore-*
 # The Septuagint layer (Rahlfs, CC BY-NC-SA): built locally, never committed
 lxx.db
 lxx.db.building
+
+# Working material not part of the program
+Claude outputs/
+*.docx

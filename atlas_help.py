@@ -43,7 +43,8 @@ HELP = {
             "neighbors and echoes.  Chapter: the same for one chapter, plus a synopsis "
             "against its two partner books.  Section: one part of a book as atlas_sections.py "
             "divides it (Book II of the Psalter), with the book page's tables run over its "
-            "chapters alone.  Word: one word across the Bible, its shadow "
+            "chapters alone.  Passage: a named passage of the catalogue (metadata.db), any verse "
+            "ranges in any books, measured as one text.  Word: one word across the Bible, its shadow "
             "map and neighbors.  Kin: the chapters elsewhere most related to a passage.  "
             "Testament: where each word of the Old or New Testament is at home.  Compare: two "
             "books chapter against chapter, with each chapter's closest chapter in the other book.",
@@ -53,6 +54,9 @@ HELP = {
     "section_box": "Section pages only: the part of the chosen book to open, as atlas_sections.py "
                    "lists it (Book II of the Psalter, Ezekiel's temple vision), with its chapters and "
                    "the division it belongs to.  Edit that file to add or change sections.",
+    "passage_box": "Passage pages only: a named passage of the catalogue (metadata.db) to open: any "
+                   "set of verse ranges in any books, such as Ezekiel 16 and 23 with Revelation 17 to "
+                   "19, measured as one text.  Add or remove passages with atlas_passages.py.",
     "book2": "The second book of a Compare page: the first book's chapters go down the map, "
              "this book's chapters across.",
     "book": "The book of the Bible the page is about.  For a Word page it is where the "
@@ -129,6 +133,16 @@ COLUMN_HELP = {
     "chapters": "Reach: how many of the book's chapters the word occurs in.",
     "books": "Reach: how many books the word occurs in, out of the books it could reach: "
              "39 for a Hebrew number, 27 for a Greek one, 66 for an English stem.",
+    "keyness (group)": "Keyness measured against the other books of this book's own kind, the "
+                       "baseline group metadata.db gives it (a prophet against the prophets, an "
+                       "epistle against the epistles), with the book left out of its own baseline.  "
+                       "A word merely common in the kind falls; what remains sets the book apart "
+                       "from its peers.  A row is shown only at 6.63 or above, the 1 percent line "
+                       "of the measure, so a short book has a short table rather than rows of "
+                       "words used at the kind's own rate.  Change the group in the books table "
+                       "of metadata.db.",
+    "keyness (testament)": "The same word's keyness against the rest of its testament, section 1's "
+                           "figure, so the two baselines can be read side by side.",
     "keyness": "How much more often the word appears here than the rest of the Bible "
                "would predict (log-likelihood).  Above 10.8 is very unlikely by chance; "
                "a negative value means rarer here than expected.",
@@ -137,7 +151,8 @@ COLUMN_HELP = {
     "note": "Remarks: 'local' marks a word found in under a fifth of the book's chapters; "
             "'N renderings' means the text gives this root that many different English "
             "words (left G863 is also leave, forgive, let), so the one spelling shown "
-            "hides the others.",
+            "hides the others; in 1b, 'new' marks a word that is not among section 1's top "
+            "words, one the group baseline brought out.",
     "per 1000": "Occurrences per 1,000 words of the book, so long and short books compare.",
     "per 100 words": "Echo weight per 100 words of the chapter, so long and short chapters compare.",
     "per 1000 words of partner": "Echo weight per 1,000 words of the partner book.",
@@ -231,6 +246,9 @@ COLUMN_HELP = {
     "gap": "How many chapters apart the chapter and its partner are.  Neighbours share phrasing "
            "because the story continues; a wide gap means the author came back to the same "
            "wording later.",
+    "kin verses": "How many pairs of verses, one in each chapter, share three or more rare words.",
+    "words": "On the shared-vocabulary table: how many uncommon words the two chapters share that "
+             "few chapters of the book use.",
     "note": "On a refrains table: 'names' when every content word of the refrain is a proper name "
             "(Baruch the son of Neriah), a cast list rather than a formula.  On a signature words "
             "table the note column carries 'local', the renderings count and 'local rendering'.",

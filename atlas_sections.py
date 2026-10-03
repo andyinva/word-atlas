@@ -42,6 +42,17 @@ SECTIONS = {
             ("The story: Egypt to Sinai", 1, 24),
             ("The tabernacle", 25, 40),
         ],
+        # The two hands at chapter grain, as in Numbers.  P owns the
+        # tabernacle whole (25 to 31, 35 to 40), the call of Moses in 6:2
+        # to 7:13, the Passover law of 12 and the manna of 16; the plagues
+        # and the sea (7 to 15) are where the hands interleave inside
+        # chapters, and the chapter list cannot divide them (1:1 to 7 is
+        # P too, but seven verses do not carry a chapter).  The verse-level
+        # tables (4d, the synopsis) are the instrument there
+        "Sources": [
+            ("Priestly", [6, 7, 12, 16, (25, 31), (35, 40)]),
+            ("Old narrative", [(1, 5), (8, 11), (13, 15), (17, 24), (32, 34)]),
+        ],
     },
     "Leviticus": {
         "Parts": [
@@ -49,6 +60,99 @@ SECTIONS = {
             ("Clean and unclean", 11, 16),
             ("The Holiness Code", 17, 27),
         ],
+    },
+    "Numbers": {
+        "Places": [
+            ("Sinai", 1, 10),
+            ("The wilderness", 11, 21),
+            ("The plains of Moab", 22, 36),
+        ],
+        # The two hands of the book as chapter lists, the Pentateuchal
+        # counterpart of Mowinckel's sources in Jeremiah: the priestly
+        # material (census, Levites, tabernacle, offerings, the festival
+        # calendar, the second census and the allotment) against the old
+        # narrative (quails and manna, the spies, Edom and Sihon, Balaam,
+        # the Transjordan tribes).  The 4b column drew the line before
+        # the table did: the P chapters point to Exodus, Leviticus and
+        # 1 Chronicles, the narrative ones to Deuteronomy, Judges and Joshua
+        "Sources": [
+            ("Priestly", [(1, 10), 15, (17, 19), (26, 31), (33, 36)]),
+            ("Old narrative", [(11, 14), 16, (20, 25), 32]),
+        ],
+    },
+    "Deuteronomy": {
+        "Addresses": [
+            ("The first address", 1, 4),
+            ("The second address", 5, 11),
+            ("The law code", 12, 26),
+            ("Blessings and curses", 27, 30),
+            ("The appendices", 31, 34),
+        ],
+        # The Urdeuteronomium question as two rows: the code of 12 to 26
+        # against the parenetic frame around it
+        "Code and frame": {
+            "sections": [
+                ("The law code", 12, 26),
+            ],
+            "rest": "The frame",
+        },
+    },
+    "Joshua": {
+        "Parts": [
+            ("The conquest", 1, 12),
+            ("The allotment", 13, 21),
+            ("The conclusion", 22, 24),
+        ],
+        # Noth's Deuteronomistic frame at chapter grain: the chapters that
+        # are frame whole (1, the summary of 12, the farewell of 23).  The
+        # frame also owns 11:16 to 23 and 21:43 to 22:6, which a chapter
+        # list cannot lift out of their chapters
+        "Deuteronomistic frame": {
+            "sections": [
+                ("The frame", [1, 12, 23]),
+            ],
+            "rest": "The rest of Joshua",
+        },
+    },
+    "Judges": {
+        "Parts": [
+            ("The prologue", 1, 2),
+            ("The deliverers", 3, 16),
+            ("The appendices", 17, 21),
+        ],
+        # The Deuteronomist's framework chapters against the old tales,
+        # as C against A in Jeremiah: 2 and 10 are the two theological
+        # prologues and 3 the first cycle told almost entirely in the
+        # framework's formulas
+        "Framework": {
+            "sections": [
+                ("The framework", [2, 3, 10]),
+            ],
+            "rest": "The stories",
+        },
+    },
+    "Job": {
+        # The standard compositional seams.  Chapter 42 goes with the
+        # frame (42:7 to 17 against Job's six verses of reply), since a
+        # chapter list cannot split it
+        "Parts": [
+            ("The prose frame", [(1, 2), 42]),
+            ("The first cycle", 3, 14),
+            ("The second cycle", 15, 21),
+            ("The third cycle", 22, 27),
+            ("The hymn to wisdom", 28, 28),
+            ("Job's closing speeches", 29, 31),
+            ("Elihu", 32, 37),
+            ("The Yahweh speeches", 38, 41),
+        ],
+        # Elihu against the rest: the part most commentators read as a
+        # later insertion, with the most Aramaizing vocabulary in the book
+        "Elihu": {
+            "sections": [
+                ("Elihu", 32, 37),
+            ],
+            "rest": "The rest of Job",
+        },
     },
     "Psalms": {
         "Five books": [
@@ -115,6 +219,29 @@ SECTIONS = {
             "rest": "Not assigned (30-31, 33, 46-52)",
         },
     },
+    "1 Samuel": {
+        "Parts": [
+            ("Samuel and the ark", 1, 7),
+            ("The rise of kingship", 8, 15),
+            ("Saul and David", 16, 31),
+        ],
+        "The Ark Narrative": {
+            "sections": [
+                ("The Ark Narrative", 4, 6),
+            ],
+            "rest": "The rest of 1 Samuel",
+        },
+    },
+    "2 Samuel": {
+        # Rost's division: the Succession Narrative (9 to 20) continues
+        # in 1 Kings 1 to 2, which the layer cannot yet express as one
+        # section across two books; 1 Kings carries its own two chapters
+        "Parts": [
+            ("David's rise", 1, 8),
+            ("The Succession Narrative", 9, 20),
+            ("The appendix", 21, 24),
+        ],
+    },
     "1 Kings": {
         "Parts": [
             ("Solomon", 1, 11),
@@ -165,10 +292,34 @@ SECTIONS = {
             "rest": "From Kings",
         },
     },
+    "Ezra": {
+        "Parts": [
+            ("The return and the temple", 1, 6),
+            ("Ezra's mission", 7, 10),
+        ],
+        # Ezra 4:8 to 6:18 and 7:12 to 7:26 are Aramaic (the letters and
+        # decrees); at chapter grain the four chapters are mixed, so the
+        # section says so in its name.  The Languages line on the book
+        # page gives the share of each chapter that is Aramaic
+        "Language": {
+            "sections": [
+                ("Aramaic in part", [(4, 7)]),
+            ],
+            "rest": "Hebrew",
+        },
+    },
     "Daniel": {
         "Parts": [
             ("The court tales", 1, 6),
             ("The visions", 7, 12),
+        ],
+        # Two languages cutting across the two genres: 2:4 to 7:28 is
+        # Aramaic, so chapter 7, a vision, stands with the court tales by
+        # language.  7a and 7b under this division set the two structures
+        # against each other
+        "Language": [
+            ("Hebrew", [1, (8, 12)]),
+            ("Aramaic", 2, 7),
         ],
     },
     "Mark": {
@@ -213,6 +364,37 @@ SECTIONS = {
             ],
             "rest": "The rest of Acts",
         },
+    },
+    # The two long letters divide as their commentaries divide them.
+    # Romans: the gospel for Jew and Gentile (1-4), sin, law and Spirit
+    # (5-8), Israel (9-11, the densest run of citation in the New
+    # Testament), the ethics (12-15) and the greetings (16).  The
+    # expectation is that 9-11 alone has Old Testament echo partners
+    # (Isaiah, Hosea, Deuteronomy, Psalms) and that 16 pairs with
+    # 1 Corinthians 16 and Colossians 4 on 'salute'
+    "Romans": {
+        "Parts": [
+            ("The gospel for Jew and Gentile", 1, 4),
+            ("Sin, law and Spirit", 5, 8),
+            ("Israel", 9, 11),
+            ("The ethics", 12, 15),
+            ("The greetings", 16, 16),
+        ],
+    },
+    # 1 Corinthians on its own seams, the questions the Corinthians
+    # asked: divisions and wisdom (1-4), discipline and marriage (5-7),
+    # idol food (8-10), the assembly (11-14), the resurrection (15), the
+    # collection and greetings (16).  Chapter 15 as a section of one
+    # should find Romans and 1 Thessalonians 4 on 'raised' and 'dead'
+    "1 Corinthians": {
+        "Parts": [
+            ("Divisions and wisdom", 1, 4),
+            ("Discipline and marriage", 5, 7),
+            ("Idol food and freedom", 8, 10),
+            ("The assembly", 11, 14),
+            ("The resurrection", 15, 15),
+            ("The collection and greetings", 16, 16),
+        ],
     },
     "Matthew": {
         "Parts": [

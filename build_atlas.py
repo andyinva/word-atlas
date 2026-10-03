@@ -76,7 +76,7 @@ CREATE TABLE books         (book TEXT PRIMARY KEY, order_index INTEGER, testamen
                             chapters INTEGER, verses INTEGER, words INTEGER);
 CREATE TABLE verses        (verse_id INTEGER PRIMARY KEY, book TEXT, chapter INTEGER,
                             verse INTEGER, reference TEXT, text TEXT, word_string TEXT,
-                            phrase_string TEXT);
+                            phrase_string TEXT, language TEXT);
 CREATE TABLE tokens        (verse_id INTEGER, position INTEGER, surface TEXT, root TEXT,
                             is_stop INTEGER, strongs TEXT, morph TEXT);
 CREATE TABLE lexicon       (number TEXT PRIMARY KEY, word TEXT, kjv_def TEXT, strongs_def TEXT,
@@ -181,6 +181,7 @@ class AtlasBuilder:
             ("tags_inferred", str(self.bible.tags_inferred)),
             ("tags_absorbed", str(self.bible.tags_absorbed)),
             ("tags_absorbed_by_gloss", str(getattr(self.bible, "tags_absorbed_by_gloss", 0))),
+            ("verses_aramaic", str(getattr(self.bible, "verses_aramaic", 0))),
             ("untagged_content", str(self.bible.untagged_content())),
             ("window", str(WINDOW)),
             ("formula_lengths", ",".join(str(n) for n in FORMULA_LENGTHS)),
@@ -210,9 +211,13 @@ class AtlasBuilder:
             # a phrase can be found as ' phrase ' without re-tokenizing
             word_string = " " + " ".join(t.surface for t in v.tokens) + " "
             phrase_string = " " + " ".join(self.units(v)) + " "
+            # language: Hebrew, Aramaic or Greek, read off the verse's placed
+            # tags in atlas_text; the pages bridge two languages by English
+            # wording as they bridge the testaments
             verse_rows.append((verse_id, v.book, v.chapter, v.number, v.reference,
-                               v.text, word_string, phrase_string))
-        self.db.executemany("INSERT INTO verses VALUES (?,?,?,?,?,?,?,?)", verse_rows)
+                               v.text, word_string, phrase_string,
+                               v.language or ("New" if self.bible.testament_of(v.book) == "New" else "Hebrew")))
+        self.db.executemany("INSERT INTO verses VALUES (?,?,?,?,?,?,?,?,?)", verse_rows)
 
         book_rows = []
         for order, book in enumerate(self.bible.books, start=1):
@@ -489,17 +494,21 @@ class AtlasBuilder:
 
         wordings = defaultdict(Counter)           # phrase -> English wording -> count
         # English wording counts as well, for echoes across the
-        # testaments: a Hebrew root and a Greek root never match, so
-        # "full of eyes" (Ezekiel 1:18, Revelation 4:6) can only be
-        # found in the translation
+        # languages: a Hebrew root never matches a Greek one, nor an
+        # Aramaic one, so "full of eyes" (Ezekiel 1:18, Revelation 4:6)
+        # and "the four winds of heaven" (Daniel 7:2 in Aramaic, Daniel
+        # 8:8 and Zechariah 2:6 in Hebrew) can only be found in the
+        # translation.  Before 0.10.15 the bridge ran between the
+        # testaments only, and Daniel's Aramaic chapters had no Old
+        # Testament partner but Ezra
         en_total = Counter()                      # wording -> distinct verses
-        en_testaments = defaultdict(set)          # wording -> {Old, New}
+        en_languages = defaultdict(set)           # wording -> {Hebrew, Aramaic, Greek}
         en_books = defaultdict(set)
 
         for verse_id, v in enumerate(self.bible.verses):
             words = [t.surface for t in v.tokens]
             keys = self.units(v)
-            testament = self.bible.testament_of(v.book)
+            language = v.language or self.bible.testament_of(v.book)
             # Function words by the stop list itself, not the token flag:
             # a word absorbed into its tagged neighbour ("burnt" in "burnt
             # offering") is flagged like a stop word for the counts, but
@@ -524,7 +533,7 @@ class AtlasBuilder:
                         if en_key not in seen_here:
                             seen_here.add(en_key)
                             en_total[wording] += 1
-                            en_testaments[wording].add(testament)
+                            en_languages[wording].add(language)
                             en_books[wording].add(v.book)
 
         self.log(f"  {len(verses_total)} distinct formulas; keeping those in 2+ verses")
@@ -551,12 +560,12 @@ class AtlasBuilder:
             phrase for phrase, total in verses_total.items()
             if 2 <= total <= ECHO_MAX_TOTAL and len(books_of[phrase]) >= 2
             and phrase.count(" ") + 1 >= 3 and has_substance(self.display[phrase])}
-        # Cross-testament echoes by English wording: rare, in both
-        # testaments, with substance.  Stored with an "en:" key and the
+        # Cross-language echoes by English wording: rare, in two or more
+        # languages, with substance.  Stored with an "en:" key and the
         # wording as display; the pages treat them like the others.
         en_echoes = {
             w for w, total in en_total.items()
-            if 2 <= total <= ECHO_MAX_TOTAL and len(en_testaments[w]) == 2
+            if 2 <= total <= ECHO_MAX_TOTAL and len(en_languages[w]) >= 2
             and len(en_books[w]) >= 2 and has_substance(w)}
         echo_rows = []
         for verse_id, v in enumerate(self.bible.verses):
@@ -577,8 +586,8 @@ class AtlasBuilder:
                         echo_rows.append(("en:" + wording, n, verse_id, v.book, v.reference, wording))
         self.db.executemany("INSERT INTO echoes VALUES (?,?,?,?,?,?)", echo_rows)
         self.db.commit()
-        self.log(f"  {len(echo_phrases)} echo formulas and {len(en_echoes)} across the testaments "
-                 f"by wording, {len(echo_rows)} locations")
+        self.log(f"  {len(echo_phrases)} echo formulas and {len(en_echoes)} across the languages "
+                 f"(Hebrew, Aramaic, Greek) by wording, {len(echo_rows)} locations")
 
     # -- shadow ----------------------------------------------------------------------
 
@@ -626,7 +635,8 @@ def main(argv):
     if bible.tags_total:
         print(f"  {bible.tags_placed} of {bible.tags_total} Strong's tags placed on their words")
         print(f"  {bible.tags_absorbed_by_gloss} untagged words absorbed by their neighbour's gloss, "
-              f"{bible.tags_absorbed} by company, {bible.tags_inferred} inferred from spelling")
+              f"{bible.tags_absorbed} by company, {bible.tags_inferred} inferred from spelling; "
+              f"{bible.verses_aramaic} verses judged Aramaic by their tags, inferred within their own language")
         n_content, n_untagged = bible.content_counts()
         print(f"  {n_untagged} of {n_content} content words are left without a number "
               f"({100 * n_untagged / n_content:.1f}%)")

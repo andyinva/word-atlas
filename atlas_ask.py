@@ -87,6 +87,11 @@ def parse(line):
     if not text:
         raise AskError("Type something to ask, for example 'day' [Joel].")
 
+    # A named passage of the catalogue (metadata.db): [Passage: Harlot city]
+    pm = re.match(r"^\s*\[\s*passage\s*:\s*([^\]]+)\]\s*$", text, re.IGNORECASE)
+    if pm:
+        return {"action": "passage", "passage": pm.group(1).strip()}
+
     # A section of a book: [Psalms: Book II], [Ezekiel: The temple vision]
     sm = re.match(r"^\s*\[([^\]:]+):\s*([^\]]+)\]\s*$", text)
     if sm:
@@ -158,6 +163,8 @@ def describe(line):
     """A one-line plain-English reading of an ask line, for the status bar."""
     a = parse(line)
     kind = a["action"]
+    if kind == "passage":
+        return f"the passage page for {a['passage']}"
     if kind == "section":
         return f"the section page for {a['book']}: {a['section']}"
     if kind == "compare":

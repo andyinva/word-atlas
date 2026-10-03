@@ -362,7 +362,7 @@ class Token:
 class Verse:
     """One verse of one book, with its tokens in order."""
 
-    __slots__ = ("book", "chapter", "number", "text", "tokens")
+    __slots__ = ("book", "chapter", "number", "text", "tokens", "language")
 
     def __init__(self, book, chapter, number, text, tokens):
         self.book = book
@@ -370,6 +370,7 @@ class Verse:
         self.number = number
         self.text = text
         self.tokens = tokens
+        self.language = None        # Hebrew, Aramaic or Greek, read off the tags (see _verse_language)
 
     @property
     def reference(self):
@@ -424,6 +425,7 @@ class BibleText:
         self.tags_inferred = 0      # untagged words given their usual number
         self.tags_absorbed = 0      # untagged words folded into a tagged neighbour
         self.tags_absorbed_by_gloss = 0   # ... because the neighbour's gloss names them
+        self.verses_aramaic = 0     # Old Testament verses whose placed tags are mostly Aramaic
         self._load()
         if self.roots == "strongs":
             self._attach_strongs()
@@ -575,6 +577,40 @@ class BibleText:
                 words[r["lemma"]] = set(re.findall(r"[a-z]+", gloss))
         return words
 
+    def _aramaic_numbers(self):
+        """
+        The Strong's numbers the dictionary marks as Aramaic: the entries
+        whose derivation opens "(Aramaic)" (or "(Chaldee)" in older
+        printings), about 675 of them, H4430 "king" beside the Hebrew
+        H4428.  Empty when no copy of strongs.csv is found.
+        """
+        path = next((p for p in LEXICON_CANDIDATES if os.path.exists(p)), None)
+        numbers = set()
+        if path is None:
+            return numbers
+        import csv
+        with open(path, encoding="utf-8", newline="") as f:
+            for r in csv.DictReader(f):
+                derivation = (r.get("derivation") or "").lstrip()
+                if derivation.startswith("(Aramaic)") or derivation.startswith("(Chaldee)"):
+                    numbers.add(r["lemma"])
+        return numbers
+
+    def _verse_language(self, v, aramaic):
+        """
+        The language of a verse, read off its placed tags: "Greek" in the
+        New Testament; in the Old, "Aramaic" when more than half of the
+        placed numbers are Aramaic ones (Daniel 2:4 to 7:28, Ezra 4:8 to
+        6:18 and 7:12 to 7:26, Jeremiah 10:11), otherwise "Hebrew".  A
+        verse with no placed tag is Hebrew.
+        """
+        if self.testament_of(v.book) == "New":
+            return "Greek"
+        placed = [t.root for t in v.tokens if t.strongs and t.strongs[0] not in "~="]
+        if placed and sum(r in aramaic for r in placed) * 2 > len(placed):
+            return "Aramaic"
+        return "Hebrew"
+
     def _absorb_by_gloss(self):
         """
         Absorb an untagged word into a tagged neighbour whose own gloss
@@ -628,28 +664,41 @@ class BibleText:
         # Before anything else: the words the dictionary itself assigns
         self._absorb_by_gloss()
 
+        # The scope of every rule below is the language of the verse, not
+        # its testament: Hebrew, Aramaic or Greek, read off the placed
+        # tags.  Before this the Old Testament was one scope, and a Hebrew
+        # word in Daniel 1 or Genesis 20 could be given an Aramaic number
+        # because Daniel's Aramaic chapters held most of its tagged
+        # spellings ("sawest" ~H2370, "whomsoever" ~H4479).  A number is
+        # now inferred only from verses in the word's own language.
+        aramaic = self._aramaic_numbers()
+        language = {}
+        for v in self.verses:
+            v.language = language[id(v)] = self._verse_language(v, aramaic)
+        self.verses_aramaic = sum(1 for lang in language.values() if lang == "Aramaic")
+
         # First pass: absorb an untagged word into the tagged word it
         # nearly always travels with ("chief" into "priests" G749, "father"
         # into "law" H2859).  Before inference, or "father" would be given
         # H1 by its spelling before absorption could reach it
-        beside = defaultdict(Counter)       # (testament, surface) -> neighbour number -> count
-        seen = Counter()                    # (testament, surface) -> occurrences
+        beside = defaultdict(Counter)       # (language, surface) -> neighbour number -> count
+        seen = Counter()                    # (language, surface) -> occurrences
         for v in self.verses:
-            testament = self.testament_of(v.book)
+            lang = language[id(v)]
             toks = v.tokens
             for i, t in enumerate(toks):
                 if t.strongs or t.is_stop:
                     continue
-                seen[(testament, t.surface)] += 1
+                seen[(lang, t.surface)] += 1
                 for j in self.neighbours(toks, i):
-                    beside[(testament, t.surface)][toks[j].root] += 1
+                    beside[(lang, t.surface)][toks[j].root] += 1
         self.tags_absorbed = 0
         for v in self.verses:
-            testament = self.testament_of(v.book)
+            lang = language[id(v)]
             for t in v.tokens:
                 if t.strongs or t.is_stop:
                     continue
-                key = (testament, t.surface)
+                key = (lang, t.surface)
                 if seen[key] < ABSORB_MIN or not beside[key]:
                     continue
                 number, n = beside[key].most_common(1)[0]
@@ -662,11 +711,13 @@ class BibleText:
         # Second pass: infer from the spelling
         # Two scopes: the book first (Ezekiel's "side" is H6285 nearly
         # every time it is tagged, though the Old Testament as a whole
-        # splits the word four ways), then the testament
+        # splits the word four ways), then the language; both carry the
+        # language, so Daniel's Hebrew chapters and its Aramaic ones are
+        # two book scopes
         usual = defaultdict(Counter)        # (scope, surface) -> number -> count
         untagged = Counter()                # (scope, surface) -> untagged count
         for v in self.verses:
-            for scope in (v.book, self.testament_of(v.book)):
+            for scope in ((v.book, language[id(v)]), language[id(v)]):
                 for t in v.tokens:
                     if t.is_stop:
                         continue
@@ -679,7 +730,7 @@ class BibleText:
             for t in v.tokens:
                 if t.strongs or t.is_stop:
                     continue
-                for scope in (v.book, self.testament_of(v.book)):
+                for scope in ((v.book, language[id(v)]), language[id(v)]):
                     counts = usual.get((scope, t.surface))
                     if not counts:
                         continue
@@ -802,7 +853,9 @@ BOOK_DATES = {
     "Esther": -350, "Job": -500, "Psalms": -500, "Proverbs": -500,
     "Ecclesiastes": -250, "Song of Solomon": -300,
     "Isaiah": -700, "Jeremiah": -590, "Lamentations": -580, "Ezekiel": -580,
-    "Daniel": -165, "Hosea": -740, "Joel": -400, "Amos": -750, "Obadiah": -580,
+    # Daniel: 530 is the date of the book's own setting (the traditional
+    # attribution, as Isaiah's 700 is); the critical table has 165
+    "Daniel": -530, "Hosea": -740, "Joel": -400, "Amos": -750, "Obadiah": -580,
     "Jonah": -450, "Micah": -720, "Nahum": -640, "Habakkuk": -600,
     "Zephaniah": -630, "Haggai": -520, "Zechariah": -515, "Malachi": -450,
     "Matthew": 80, "Mark": 70, "Luke": 85, "John": 95, "Acts": 85,

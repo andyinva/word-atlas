@@ -18,6 +18,14 @@ Usage:
     python3 atlas_query.py testament New
     python3 atlas_query.py compare Exodus x Leviticus    two books, chapter against chapter
     python3 atlas_query.py section Psalms: Book II       one section of a book (see atlas_sections.py)
+    python3 atlas_query.py passage Harlot city           a named passage of the catalogue (metadata.db)
+    python3 atlas_query.py dossier Isaiah, Hebrews, Mark  several dossiers, one file each (--brief for the short form; "all" for every book)
+
+Any page can be trimmed for reading at a glance:
+    --top 8            the first 8 rows of every table
+    --only 1,2,4a      only the sections numbered so (1, 1a, 4a2, 6b ...)
+    --quiet            no section notes or footers
+    python3 atlas_query.py book Joel --only 1,2 --top 8 --quiet
     python3 atlas_query.py dossier Ezekiel          everything about one book, one file
     python3 atlas_query.py dossier Ezekiel --brief  the same with chapter pages trimmed
     python3 atlas_query.py ask "'day' + 'night' [Ezekiel]"     (any line of notation)
@@ -31,7 +39,7 @@ import sys
 
 from atlas_ask import AskError, parse
 from atlas_pages import (Atlas, book_page, chapter_page, chief_partners, compare_page, kin_page,
-                         section_page, testament_page, word_page)
+                         passage_page, section_page, testament_page, word_page)
 from atlas_sections import divisions_of, section_date
 
 
@@ -80,6 +88,57 @@ def render(report, atlas=None):
     return "\n".join(lines).rstrip() + "\n"
 
 
+def trim(report, top=None, only=None, quiet=False):
+    """
+    Cut a page down for reading at a glance: --top N keeps the first N
+    rows of every table, --only 1,2,4a keeps only the sections whose
+    number begins so (the number is what stands before the first dot
+    or space in the title: 1, 1a, 4a2, 6b), and --quiet drops the
+    section notes and footers.  The saved file is the trimmed page too.
+    """
+    if only:
+        wanted = [s.strip().lower().rstrip(".") for s in only.split(",") if s.strip()]
+
+        def number_of(title):
+            return title.split(".")[0].split(" ")[0].lower()
+        report.sections = [s for s in report.sections if number_of(s.title) in wanted]
+    for sec in report.sections:
+        if top is not None:
+            sec.rows = sec.rows[:top]
+        if quiet:
+            # A section with no rows is a header with its reason in the
+            # note (Revelation's 1b: the kind is in the other testament),
+            # and the reason is the finding; --quiet keeps it and drops
+            # the rest.  Without this the quiet page showed an empty table
+            if sec.rows:
+                sec.note = ""
+            sec.footer = []
+    if quiet:
+        report.notes = report.notes[:1]
+    return report
+
+
+def trim_options(argv):
+    """Pull --top N, --only LIST and --quiet out of the arguments; return (argv, top, only, quiet)."""
+    top, only, quiet = None, None, False
+    out = []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--top" and i + 1 < len(argv):
+            top = int(argv[i + 1]); i += 2; continue
+        if a.startswith("--top="):
+            top = int(a[6:]); i += 1; continue
+        if a == "--only" and i + 1 < len(argv):
+            only = argv[i + 1]; i += 2; continue
+        if a.startswith("--only="):
+            only = a[7:]; i += 1; continue
+        if a == "--quiet":
+            quiet = True; i += 1; continue
+        out.append(a); i += 1
+    return out, top, only, quiet
+
+
 def save(report, text):
     """Write the page under reports/ beside this script and return the path."""
     out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
@@ -90,15 +149,17 @@ def save(report, text):
     return path
 
 
-def ask(atlas, line):
+def ask(atlas, line, top=None, only=None, quiet=False):
     """Carry out one line of notation on the command line."""
     try:
         a = parse(line)
     except AskError as e:
         raise SystemExit(str(e))
     kind = a["action"]
-    if kind in ("word", "book", "chapter", "kin", "testament", "compare", "section"):
-        if kind == "word":
+    if kind in ("word", "book", "chapter", "kin", "testament", "compare", "section", "passage"):
+        if kind == "passage":
+            report = passage_page(atlas, a["passage"])
+        elif kind == "word":
             report = word_page(atlas, a["word"], a["book"])
         elif kind == "testament":
             report = testament_page(atlas, a["testament"])
@@ -112,7 +173,7 @@ def ask(atlas, line):
             report = chapter_page(atlas, a["book"], a["chapter"])
         else:
             report = kin_page(atlas, a["book"], a["chapter"])
-        text = render(report, atlas)
+        text = render(trim(report, top, only, quiet), atlas)
         print(text)
         print(f"(saved to {save(report, text)})")
         return
@@ -144,6 +205,9 @@ def ask(atlas, line):
         v = atlas.verse_by_reference(r)
         if v:
             print(f"  {r}  {v['text']}")
+
+
+MAX_COMPARE_PAGES = 5     # Compare pages in a dossier: the book's two chief partners plus the sections' own
 
 
 def testament_slice(atlas, book):
@@ -188,8 +252,24 @@ def dossier(atlas, book_name, brief=False):
     book = atlas.find_book(book_name)
     # One build line for the whole file, at the top, with a list of what
     # the file holds; the parts below are rendered without their own
-    partners = chief_partners(atlas, book, 2)
     n_chapters = atlas.book_info[book]["chapters"]
+    # The Compare pages: the book's two chief partners, then each
+    # section's chief partner when the book has sections, so a book
+    # whose parts have different sources (2 Kings: 2 Chronicles, Isaiah
+    # for Hezekiah, Jeremiah for the fall) gets a page for each
+    partners = chief_partners(atlas, book, 2)
+    # Every division's sections in turn, the main one first: a source
+    # division (Numbers' old narrative, Jeremiah's C) can name a partner
+    # the book's places do not (Deuteronomy for Numbers)
+    for division, secs in divisions_of(book, n_chapters):
+        for name, chapters, is_rest in secs:
+            if is_rest:
+                continue
+            # the section's first partner not already listed, one per section
+            for pb in chief_partners(atlas, book, 2, chapters):
+                if pb not in partners and len(partners) < MAX_COMPARE_PAGES:
+                    partners.append(pb)
+                    break
     head = [f"WORD ATLAS  -  Dossier [{book}]" + (" (brief)" if brief else "")]
     head.append("#" * len(head[0]))
     head.append(atlas.build_line())
@@ -197,7 +277,7 @@ def dossier(atlas, book_name, brief=False):
                      for name, chapters, is_rest in secs
                      if not is_rest and (d_index == 0 or section_date(book, name) is not None))
     head.append(f"Contents: the book page; the {book} rows of its testament page; the Compare page "
-                f"against {' and '.join(partners)}"
+                f"against {', '.join(partners[:-1]) + ' and ' + partners[-1] if len(partners) > 1 else partners[0]}"
                 + (f"; {n_sections} section pages" if n_sections else "")
                 + f"; the {n_chapters} chapter pages"
                 + (" (trimmed to leading words, signature words, formulas, synopsis and kin)" if brief else "")
@@ -261,14 +341,31 @@ def main(argv):
         print(__doc__)
         return
     atlas = Atlas()
+    # --top N, --only 1,2,4a and --quiet trim any page for reading at a glance
+    argv, top, only, quiet = trim_options(argv)
     command = argv[1].lower()
     if command == "ask":
-        return ask(atlas, " ".join(argv[2:]))
+        return ask(atlas, " ".join(argv[2:]), top, only, quiet)
     if command == "dossier":
+        # One book, or several separated by commas, each to its own file:
+        #   dossier Isaiah, Hebrews, Mark --brief
+        # "all" writes every book.  A book that fails is reported and the
+        # rest go on
         brief = "--brief" in argv
         words = [a for a in argv[2:] if a != "--brief"]
-        path = dossier(atlas, " ".join(words), brief)
-        print(f"(written to {path}, {os.path.getsize(path) // 1000} KB)")
+        names = [n.strip() for n in " ".join(words).split(",") if n.strip()]
+        if names == ["all"]:
+            names = list(atlas.books)
+        if not names:
+            raise SystemExit("dossier needs a book: dossier Ezekiel, or several: dossier Isaiah, Hebrews, Mark")
+        for i, name in enumerate(names, start=1):
+            try:
+                path = dossier(atlas, name, brief)
+            except (ValueError, SystemExit) as e:
+                print(f"{name}: {e}")
+                continue
+            prefix = f"[{i}/{len(names)}] " if len(names) > 1 else ""
+            print(f"{prefix}(written to {path}, {os.path.getsize(path) // 1000} KB)")
         return
     try:
         if command == "book":
@@ -288,6 +385,9 @@ def main(argv):
                 raise SystemExit("section needs a book and a section name: section Psalms: Book II")
             book_part, sec_part = rest.split(":", 1)
             report = section_page(atlas, book_part.strip(), sec_part.strip())
+        elif command == "passage":
+            # a named passage of the catalogue: passage Harlot city
+            report = passage_page(atlas, " ".join(argv[2:]).strip())
         elif command == "compare":
             # two books, separated by x or a comma: compare Exodus x Leviticus
             rest = " ".join(argv[2:])
@@ -300,7 +400,7 @@ def main(argv):
             return
     except ValueError as e:
         raise SystemExit(str(e))
-    text = render(report, atlas)
+    text = render(trim(report, top, only, quiet), atlas)
     print(text)
     print(f"(saved to {save(report, text)})")
 

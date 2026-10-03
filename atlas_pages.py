@@ -45,7 +45,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.12"   # the program version; the window title and every report print it
+VERSION = "0.10.37"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -62,9 +62,19 @@ FOCUS_WORDS = ["day", "LORD"]   # always shown on a book page, plus top signatur
 HOME_PER_BOOK = 2               # roots per book on the testament home map
 HOME_MIN_WEIGHT = 5             # a root needs this many occurrences to be a home word
 HOME_LIST_N = 150               # roots in the "whose word is this" table
+GROUP_SMALL_WORDS = 30000       # a baseline group (1b) under this many words is marked 'small kind'
+BOOK_SMALL_WORDS = 5000         # a book under this many words is marked 'small book' in 1 and 1b: most rows rest on 5 to 7 uses
+GROUP_KEYNESS_FLOOR = 6.63      # 1b shows a row only above this group keyness: the 1 percent line of a one-degree log-likelihood
+WORDS_PER_OCCURRENCE = 1500     # 1b's occurrence floor scales with the book: one use per this many words ...
+SHORT_BOOK_MIN_WEIGHT = 3       # ... never under this (Nahum's Nineveh, lion and prey have three or four uses each) and never over HOME_MIN_WEIGHT
 REACH_DEPTH_N = 40              # words on the reach-and-depth chart, by keyness
 REACH_DEPTH_DEEP_N = 20         # plus this many by depth, so the local piles are on it
 COMPANION_SHARE = 0.3           # an absorbed word shown with its root when beside this share of it
+# The KJV's hyphenated three-word renderings, joined before the
+# commonest-spelling choice: "law (mother) H2545" reads as "mother-in-law"
+JOINED_RENDERINGS = {("law", "mother"): "mother-in-law", ("law", "father"): "father-in-law",
+                     ("law", "daughter"): "daughter-in-law", ("law", "son"): "son-in-law",
+                     ("law", "brother"): "brother-in-law"}
 CROSS_MIN_PHRASES = 5           # a chapter's closest partner counts toward order only from this many phrases
 CROSS_REFRAIN_MIN_VERSES = 4    # between books a refrain must also fill this many verses of its book
 CROSS_LIST_MIN_PHRASES = 3      # a closest partner is printed from this many shared phrases, or ...
@@ -283,6 +293,9 @@ class Atlas:
             # "offering (burnt) H5930"
             companion = self.companions().get(root)
             if companion:
+                joined = JOINED_RENDERINGS.get((spelling, companion))
+                if joined:
+                    return f"{joined} {root}"
                 return f"{spelling} ({companion}) {root}"
             return f"{spelling} {root}"
         return spelling
@@ -342,6 +355,170 @@ class Atlas:
         word, kjv_def, strongs_def = entry
         text = clean_gloss(kjv_def or strongs_def, 80)
         return f"{word}: {text}" if word else text
+
+    def aramaic_roots(self):
+        """
+        The Strong's numbers the lexicon marks as Aramaic (its derivation
+        opens "(Aramaic)" or, in older printings, "(Chaldee)"): about 675
+        of the Hebrew numbers, H4430 "king" beside the Hebrew H4428.
+        Empty when no lexicon is loaded.  Cached for the session.
+        """
+        if not hasattr(self, "_aramaic"):
+            try:
+                self._aramaic = {r[0] for r in self.db.execute(
+                    "SELECT number FROM lexicon WHERE derivation LIKE '(Aramaic)%' "
+                    "OR derivation LIKE '(Chaldee)%'")}
+            except sqlite3.OperationalError:
+                self._aramaic = set()
+        return self._aramaic
+
+    def language_note(self, book, chapter=None):
+        """
+        One line saying where a book's tagged words are Aramaic rather
+        than Hebrew, chapter by chapter, or None when none are.  The
+        Aramaic of Daniel 2:4 to 7:28 and Ezra 4:8 to 6:18 and 7:12 to
+        7:26 is found through the lexicon's marking of the roots, with
+        no list of passages typed in; the odd Aramaic verse (Jeremiah
+        10:11, the two words of Genesis 31:47) shows as a count with its
+        reference.  With a chapter, the line is for that chapter alone.
+        Only tagged content words count (root H..., not a stop word), so
+        the share is of the words the atlas counts; inferred tags (~) are
+        left out, since inference at book scope can hand a Hebrew word in
+        Daniel 1 or Genesis 20 an Aramaic number ("sawest" ~H2370), and
+        the placed tags are the tagger's own word.
+        """
+        aramaic = self.aramaic_roots()
+        if not aramaic or self.book_info[book]["testament"] != "Old":
+            return None
+        where = "v.book = ?" + (" AND v.chapter = ?" if chapter else "")
+        args = (book, chapter) if chapter else (book,)
+        tagged, found = Counter(), Counter()
+        refs = {}
+        for ch, verse, root in self.db.execute(
+                "SELECT v.chapter, v.verse, t.root FROM tokens t JOIN verses v USING (verse_id) "
+                f"WHERE {where} AND t.root LIKE 'H%' AND t.is_stop = 0 "
+                "AND t.strongs NOT LIKE '~%'", args):
+            tagged[ch] += 1
+            if root in aramaic:
+                found[ch] += 1
+                refs.setdefault(ch, set()).add(verse)
+        if not found:
+            return None
+        parts = []
+        for ch in sorted(found):
+            share = found[ch] / tagged[ch]
+            if share >= 0.05:
+                parts.append(f"{ch} ({share:.0%})")
+            else:
+                verses = sorted(refs[ch])
+                where_ = ", ".join(f"{ch}:{v}" for v in verses[:3]) + (" ..." if len(verses) > 3 else "")
+                parts.append(f"{ch} ({found[ch]} word{'s' if found[ch] != 1 else ''}, {where_})")
+        total = sum(found.values()) / max(1, sum(tagged.values()))
+        head = (f"Languages: Aramaic roots (marked so in Strong's lexicon) carry {total:.0%} of the tagged "
+                f"words of {book}" + (f" {chapter}" if chapter else "") + "; by chapter, the share that is Aramaic: ")
+        return head + "; ".join(parts) + ".  The rest is Hebrew."
+
+    def baseline_groups(self):
+        """
+        book -> its baseline group (Law, History, Poetry, Prophecy, NT
+        Narrative, Epistles) from the books table of metadata.db, the
+        catalogue of decided knowledge kept beside the atlas (see
+        METADATA_IN_WORD_ATLAS.md).  Empty when the file is not there, and
+        the group table (1b) is then left off the page.  Read once.
+        """
+        if not hasattr(self, "_groups"):
+            self._groups = {}
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metadata.db")
+            if os.path.exists(path):
+                try:
+                    meta = sqlite3.connect(path)
+                    self._groups = dict(meta.execute("SELECT name, baseline_group FROM books"))
+                    meta.close()
+                except sqlite3.Error:
+                    self._groups = {}
+        return self._groups
+
+    def passages(self):
+        """
+        The named passages of metadata.db: name -> (description, [(book,
+        chapter_start, verse_start, chapter_end, verse_end)]), a verse_end
+        of 999 meaning the chapter's end.  A passage is any set of verse
+        ranges in any books ("Harlot city": Ezekiel 16 and 23 with
+        Revelation 17 to 19), kept in the catalogue and made to be
+        measured; atlas_passages.py adds and removes them.  Empty when
+        the file is not there.  Read once per session.
+        """
+        if not hasattr(self, "_passages"):
+            self._passages = {}
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metadata.db")
+            if os.path.exists(path):
+                try:
+                    meta = sqlite3.connect(path)
+                    for name, desc, book, c1, v1, c2, v2 in meta.execute(
+                            "SELECT p.name, p.description, b.name, r.chapter_start, r.verse_start, "
+                            "r.chapter_end, r.verse_end FROM passages p JOIN passage_ranges r USING (passage_id) "
+                            "JOIN books b USING (book_num) ORDER BY p.name COLLATE NOCASE, b.book_num, "
+                            "r.chapter_start, r.verse_start"):
+                        self._passages.setdefault(name, (desc, []))[1].append((book, c1, v1, c2, v2))
+                    meta.close()
+                except sqlite3.Error:
+                    self._passages = {}
+        return self._passages
+
+    def passage_verses(self, name):
+        """The verse rows of a named passage, in canonical order; [] when unknown."""
+        entry = self.passages().get(name)
+        if entry is None:
+            for key, value in self.passages().items():
+                if key.lower() == name.lower():
+                    entry = value
+                    break
+        if entry is None:
+            return []
+        out, seen = [], set()
+        for book, c1, v1, c2, v2 in entry[1]:
+            for v in self.verses_of(book):
+                ch, vs = v["chapter"], v["verse"]
+                if (ch, vs) < (c1, v1) or (ch, vs) > (c2, v2):
+                    continue
+                if v["verse_id"] not in seen:
+                    seen.add(v["verse_id"])
+                    out.append(v)
+        return out
+
+    def aramaic_refs(self):
+        """
+        The references of the verses the build judged Aramaic by their
+        placed tags (verses.language, from 0.10.15): Daniel 2:4 to 7:28,
+        Ezra 4:8 to 6:18 and 7:12 to 7:26, Jeremiah 10:11.  Empty on an
+        older build, which then has no bridge inside a testament.
+        """
+        if not hasattr(self, "_aramaic_refs"):
+            try:
+                self._aramaic_refs = {r[0] for r in self.db.execute(
+                    "SELECT reference FROM verses WHERE language = 'Aramaic'")}
+            except sqlite3.OperationalError:
+                self._aramaic_refs = set()
+        return self._aramaic_refs
+
+    def language_of(self, reference, book=None):
+        """
+        "Hebrew", "Aramaic" or "Greek" for a verse.  Two verses in
+        different languages share no root, so the pages bridge them by
+        English wording, as they always did between the testaments.
+        """
+        book = book or reference.rsplit(" ", 1)[0]
+        if self.book_info[book]["testament"] == "New":
+            return "Greek"
+        return "Aramaic" if reference in self.aramaic_refs() else "Hebrew"
+
+    def languages_of(self, book):
+        """The languages a book's verses are in: {"Hebrew", "Aramaic"} for Daniel."""
+        if self.book_info[book]["testament"] == "New":
+            return {"Greek"}
+        prefix = book + " "
+        two = any(r.startswith(prefix) for r in self.aramaic_refs())
+        return {"Hebrew", "Aramaic"} if two else {"Hebrew"}
 
     def local_renderings(self, book, limit=12):
         """
@@ -884,22 +1061,29 @@ def _parallels_overlap(atlas, book, partner, share):
     # are then the stems in more than PARALLEL_COMMON_SHARE of its verses
     cross = (atlas.roots_mode == "strongs"
              and atlas.book_info[book]["testament"] != atlas.book_info[partner]["testament"])
-    if cross:
+    # Within a testament, a book in two languages (Daniel, Ezra) needs the
+    # stems too: a verse pair in different languages (Daniel 7 against
+    # Ezekiel 1) is judged on stems, a pair in one language on roots
+    mixed = (atlas.roots_mode == "strongs" and not cross
+             and len(atlas.languages_of(book) | atlas.languages_of(partner)) > 1)
+    if cross or mixed:
         _, surfaces = atlas.english_stems()
 
-    def content_roots(name):
+    def content_roots(name, stems):
         out = {}
-        column = "surface" if cross else "root"
+        column = "surface" if stems else "root"
+        skip_here = skip_stems if stems else skip
         for ref, unit in atlas.db.execute(
                 f"SELECT v.reference, t.{column} FROM tokens t JOIN verses v USING (verse_id) "
                 "WHERE v.book = ? AND t.is_stop = 0 ORDER BY t.verse_id, t.position", (name,)):
-            if cross:
+            if stems:
                 unit = surfaces.get(unit.lower()) or atlas.stemmer.root(unit.lower())
-            if unit not in skip:
+            if unit not in skip_here:
                 out.setdefault(ref, []).append(unit)
         return out
 
-    if cross:
+    skip_stems = set()
+    if cross or mixed:
         # The formulaic stems of the book, counted by verses reached
         reached = {}
         for ref, unit in atlas.db.execute(
@@ -908,28 +1092,42 @@ def _parallels_overlap(atlas, book, partner, share):
             stem = surfaces.get(unit.lower()) or atlas.stemmer.root(unit.lower())
             reached.setdefault(stem, set()).add(ref)
         limit = PARALLEL_COMMON_SHARE * atlas.book_info[book]["verses"]
-        skip = {stem for stem, refs in reached.items() if len(refs) > limit}
+        skip_stems = {stem for stem, refs in reached.items() if len(refs) > limit}
 
-    mine, theirs = content_roots(book), content_roots(partner)
-    index = {}
-    for ref, roots in theirs.items():
-        for r in set(roots):
-            index.setdefault(r, set()).add(ref)
+    # modes: 0 roots, 1 stems.  Across the testaments only stems; within
+    # one, roots, plus stems for the verse pairs whose languages differ
+    modes = [1] if cross else ([0, 1] if mixed else [0])
+    units = {m: (content_roots(book, m == 1), content_roots(partner, m == 1)) for m in modes}
+    index = {m: {} for m in modes}
+    for m in modes:
+        for ref, roots in units[m][1].items():
+            for r in set(roots):
+                index[m].setdefault(r, set()).add(ref)
     matches = {}
-    for ref, roots in mine.items():
-        # Candidates: partner verses sharing enough distinct roots at all
-        shared_count = Counter()
-        for r in set(roots):
-            for pref in index.get(r, ()):
-                shared_count[pref] += 1
+    refs_all = sorted({ref for m in modes for ref in units[m][0]}, key=atlas.ref_key)
+    for ref in refs_all:
         best = Counter()
-        for pref, n in shared_count.items():
-            if n < PARALLEL_MIN_SHARED:
-                continue
-            other = theirs[pref]
-            in_order = lcs_length(roots, other)
-            if in_order >= PARALLEL_MIN_SHARED and in_order / min(len(roots), len(other)) >= share:
-                best[pref] = in_order
+        for m in modes:
+            roots = units[m][0].get(ref, [])
+            theirs = units[m][1]
+            # Candidates: partner verses sharing enough distinct units at all
+            shared_count = Counter()
+            for r in set(roots):
+                for pref in index[m].get(r, ()):
+                    shared_count[pref] += 1
+            for pref, n in shared_count.items():
+                if n < PARALLEL_MIN_SHARED or pref in best:
+                    continue
+                if mixed:
+                    # stems only where the two verses' languages differ,
+                    # roots only where they agree
+                    differ = atlas.language_of(ref, book) != atlas.language_of(pref, partner)
+                    if differ != (m == 1):
+                        continue
+                other = theirs[pref]
+                in_order = lcs_length(roots, other)
+                if in_order >= PARALLEL_MIN_SHARED and in_order / min(len(roots), len(other)) >= share:
+                    best[pref] = in_order
         if best:
             # Rebuilt in canonical order among equal scores, so a later
             # "closest first, at most four" cut is the same on every run
@@ -1026,6 +1224,12 @@ def signature_words_section(atlas, report, title, rows, n_scope, scope_label,
             "text's own even where the root is not.")
     if atlas.roots_mode != "strongs":
         note = ""
+    # A small book (under BOOK_SMALL_WORDS words) says so in the title
+    # and the note: the lower rows rest on a handful of occurrences
+    if chapter is None and chapters_total is not None and n_scope < BOOK_SMALL_WORDS:
+        title = title + " (small book)"
+        note += (f"  {scope_label} holds {n_scope} words, under {BOOK_SMALL_WORDS}: most rows rest on "
+                 f"five to seven occurrences, and the lower rows are suggestions rather than findings.")
     sec = report.section(title, columns, note=note)
     top, spread_rows = [], []
     for root, weight, chapters, keyness in rows[:TOP_N]:
@@ -1094,10 +1298,20 @@ def signature_words_section(atlas, report, title, rows, n_scope, scope_label,
         if book and chapter is None and atlas.roots_mode == "strongs":
             owned = atlas.local_renderings(book)
             if owned:
+                def owned_entry(root, form, n_here, n_all, kind):
+                    # An absorbed word that makes a hyphenated rendering with
+                    # the root's own spelling is printed joined: 'son-in-law'
+                    # for H2859 in 1 Samuel 18, where the Bible has father-in-law
+                    if kind == "absorbed word":
+                        spelling = atlas.form(root).rsplit(" ", 1)[0].split(" (")[0].split("-")[-1]
+                        joined = JOINED_RENDERINGS.get((spelling, form))
+                        if joined:
+                            return (f"'{joined}' for {root} ({n_here} of the Bible's {n_all}; "
+                                    f"{atlas.form(root).rsplit(' ', 1)[0]} elsewhere)")
+                    return (f"'{form}' for {atlas.form(root)} ({n_here} of the Bible's {n_all}"
+                            + (", absorbed word" if kind == "absorbed word" else "") + ")")
                 sec.footer.append("Local renderings (forms this book owns, over every root): " + "; ".join(
-                    f"'{form}' for {atlas.form(root)} ({n_here} of the Bible's {n_all}"
-                    + (", absorbed word" if kind == "absorbed word" else "") + ")"
-                    for root, form, n_here, n_all, kind in owned) + ".")
+                    owned_entry(*entry) for entry in owned) + ".")
     lexicon_section(atlas, report, title, top, book, chapter, scope_label)
     return top
 
@@ -1111,6 +1325,211 @@ def clean_gloss(text, limit=90):
     """A dictionary gloss without its bracketed marks, cut to a length."""
     text = GLOSS_MARKS.sub("", (text or "").strip())
     return text if len(text) <= limit else text[:limit - 3] + "..."
+
+
+def group_words_section(atlas, report, title, book, testament_top):
+    """
+    Section 1b: the book's signature words measured against the other
+    books of its own kind, the baseline group that metadata.db gives it
+    (Joel against the prophets, Hebrews against the epistles), beside
+    the testament figure of section 1.  Against the whole testament a
+    prophet's list is full of words that are merely common in prophecy;
+    against its peers, Isaiah's leading words become redeemed, created,
+    remnant.  The group is read from the books table (baseline_group)
+    and can be changed there; the book is always left out of its own
+    baseline.  Roots only, at least HOME_MIN_WEIGHT occurrences, so a
+    word used twice cannot claim a large keyness on thin evidence.
+    Returns the roots shown, for the lexicon table.
+    """
+    groups = atlas.baseline_groups()
+    group = groups.get(book)
+    if not group:
+        return []
+    peers = [b for b in atlas.books if groups.get(b) == group and b != book]
+    # A Greek root cannot occur in a Hebrew book, so a baseline from the
+    # other testament would make every word key: Revelation against the
+    # Prophecy group, which is seventeen Old Testament books, came out as
+    # its own frequency list with the group rate 0.0 on every row.  Keep
+    # only peers from the book's own testament, as section 1 does, and
+    # when none remain say so in a note instead of printing a table
+    testament = atlas.book_info[book]["testament"]
+    peers = [b for b in peers if atlas.book_info[b]["testament"] == testament]
+    if not peers:
+        # The header stays, with the reason in place of the table: a
+        # reader who finds no 1b would take it that the catalogue gave
+        # the book no kind, which is the opposite of the truth
+        others = [b for b in atlas.books if groups.get(b) == group and b != book]
+        report.section(
+            title, ["word"],
+            note=f"Not measured.  The catalogue (metadata.db) gives {book} the baseline group '{group}', "
+                 f"which is right as a kind; but its other books ({', '.join(others)}) are all in the "
+                 f"other testament, and a root of one testament never occurs in the other, so a keyness "
+                 f"against them is not a measurement: every word would be key.  The comparison of "
+                 f"{book} with the {'Hebrew prophets' if testament == 'New' else 'Greek books'} by "
+                 f"vocabulary is the Septuagint bridge's work (atlas_lift.py with --text lxx, and the "
+                 f"root equivalents of the catalogue).  Section 1 measures {book} against the rest of "
+                 f"its testament.")
+        return []
+    n_here = atlas.book_info[book]["words"]
+    n_peers = sum(atlas.book_info[b]["words"] for b in peers)
+    marks = ",".join("?" * len(peers))
+    peer_counts = dict(atlas.db.execute(
+        f"SELECT root, SUM(weight) FROM word_book WHERE book IN ({marks}) GROUP BY root", peers))
+    # The same guard a root at a time, inside the testament: an Aramaic
+    # root has no peer in a Hebrew kind (Ezra against History put
+    # eighteen Aramaic rows at a group rate of 0.0; Daniel against the
+    # prophets would do the same), so Aramaic roots are measured only
+    # when the kind holds at least FEW_WORDS words of Aramaic, and are
+    # otherwise left out and counted in a footer.  The Aramaic chapters
+    # have their own place in the Language sections
+    aramaic = atlas.aramaic_roots()
+    peer_aramaic_words = atlas.db.execute(
+        f"SELECT COALESCE(SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) - 1), 0) "
+        f"FROM verses WHERE language = 'Aramaic' AND book IN ({marks})", peers).fetchone()[0] \
+        if aramaic else 0
+    aramaic_measured = peer_aramaic_words >= FEW_WORDS
+    # A book in two languages (Daniel) is measured a language at a time,
+    # each with its own denominators: its Aramaic roots against the
+    # kind's Aramaic words, its Hebrew roots against the kind's Hebrew.
+    # With one denominator for both, an Aramaic root the kind seldom
+    # uses scores nearly its count against 23,000 words while a Hebrew
+    # root of chapter 9 faces 22,000 words of real competition, and the
+    # smaller language wins every row
+    bilingual = len(atlas.languages_of(book)) > 1 and aramaic_measured
+    if bilingual:
+        here_aramaic = atlas.db.execute(
+            "SELECT COALESCE(SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) - 1), 0) "
+            "FROM verses WHERE language = 'Aramaic' AND book = ?", (book,)).fetchone()[0]
+        denominators = {"Aramaic": (here_aramaic, peer_aramaic_words),
+                        "Hebrew": (n_here - here_aramaic, n_peers - peer_aramaic_words)}
+    # HOME_MIN_WEIGHT was set for home words in a testament; on a book of
+    # 1,300 words it shuts out nearly everything that matters (Nahum's
+    # Nineveh, cankerworm, prey and lion all have three or four uses;
+    # five in Hosea's 5,000 words is a word per thousand, five in
+    # Jeremiah's 42,000 one in eight thousand).  So the floor scales
+    # with the book, one occurrence per WORDS_PER_OCCURRENCE words,
+    # never under SHORT_BOOK_MIN_WEIGHT and never over HOME_MIN_WEIGHT:
+    # 3 up to Hosea, 4 for Ecclesiastes to Zechariah, 5 from Hebrews on.
+    # The keyness floor below keeps the two rules honest with each
+    # other: more words are let in, and only the ones that clear it stay
+    min_weight = min(HOME_MIN_WEIGHT, max(SHORT_BOOK_MIN_WEIGHT, round(n_here / WORDS_PER_OCCURRENCE)))
+    left_out = 0
+    scored = []
+    measured = {}                    # every root the table measured, with its group keyness
+    for root, weight, testament_keyness in atlas.db.execute(
+            "SELECT root, weight, keyness FROM word_book WHERE book = ? AND weight >= ?",
+            (book, min_weight)):
+        if not is_strongs(root):
+            continue
+        if root in aramaic and not aramaic_measured:
+            left_out += 1
+            continue
+        b = peer_counts.get(root, 0)
+        n1, n2 = n_here, n_peers
+        if bilingual:
+            n1, n2 = denominators["Aramaic" if root in aramaic else "Hebrew"]
+        keyness = log_likelihood(weight, b, n1, n2) if n1 and n2 else 0
+        measured[root] = keyness
+        # A floor rather than a count: section 1 fills to TOP_N because
+        # its baseline is a whole testament and the 25th row is still
+        # well above it, but a short book against its kind runs out of
+        # evidence first (Habakkuk's last rows were earth 0.5, people
+        # 0.2, come 0.0, a word used at exactly the kind's rate), so a
+        # row is shown only above GROUP_KEYNESS_FLOOR, the 1 percent line
+        if keyness >= GROUP_KEYNESS_FLOOR:
+            scored.append((keyness, root, weight, b, testament_keyness, n1, n2))
+    scored.sort(key=lambda s: (-s[0], s[1]))
+    # A kind under GROUP_SMALL_WORDS words is marked in the title, as a
+    # small section is: the keyness is sound, the bottom rows are not
+    # to be quoted as firmly as Isaiah's
+    small = n_peers < GROUP_SMALL_WORDS
+    if small:
+        title = title + " (small kind)"
+    # ... and a small book the other way round: Lamentations' 3,400 words
+    # put most of its rows on five to seven occurrences, and the last ten
+    # are suggestions rather than findings
+    small_book = n_here < BOOK_SMALL_WORDS
+    if small_book:
+        title = title + " (small book)"
+    sec = report.section(
+        title, ["word", "count", f"{book}/1000", f"{group}/1000", "keyness (group)", "keyness (testament)", "note"],
+        note=f"Section 1 measures each word against the rest of its testament; this table measures it "
+             f"against the other books of its own kind, the baseline group '{group}' that metadata.db "
+             f"gives {book} ({len(peers)} books, {n_peers} words; the book is left out of its own "
+             f"baseline).  A word merely common in the kind falls, and what remains is what sets this "
+             f"book apart from its peers.  'new' marks a word not among section 1's top {TOP_N}.  The "
+             f"group is the baseline_group column of the books table in metadata.db, and can be "
+             f"changed there.  Roots only, at least {min_weight} occurrences"
+             + (f" (the usual {HOME_MIN_WEIGHT} scaled to the book's size, one per {WORDS_PER_OCCURRENCE} "
+                f"words of its {n_here}, never under {SHORT_BOOK_MIN_WEIGHT}; {min_weight} occurrences is "
+                f"the floor these rows stand on)"
+                if min_weight != HOME_MIN_WEIGHT else "")
+             + f".  A row is shown only while its group keyness is at least {GROUP_KEYNESS_FLOOR}, the "
+             f"1 percent line of the measure, and the table stops there rather than filling to {TOP_N}: "
+             f"a keyness near 0 is a word used at exactly the kind's rate.  Click a row for "
+             f"the verses; double-click for the word's page."
+             + (f"  The kind holds {n_peers} words, under {GROUP_SMALL_WORDS}: read the lower rows lightly."
+                if small else "")
+             + (f"  {book} holds {n_here} words, under {BOOK_SMALL_WORDS}: most rows rest on a handful of "
+                f"occurrences, and the lower rows are suggestions rather than findings."
+                if small_book else "")
+             + (f"  {book} is in two languages, so each word is measured in its own: an Aramaic root "
+                f"against the kind's Aramaic ({denominators['Aramaic'][0]} words here, "
+                f"{denominators['Aramaic'][1]} in the kind), a Hebrew root against its Hebrew "
+                f"({denominators['Hebrew'][0]} here, {denominators['Hebrew'][1]} in the kind); the rates "
+                f"are per 1,000 words of that language, and the note says which."
+                if bilingual else ""))
+    shown = []
+    for keyness, root, weight, b, tk, n1, n2 in scored[:TOP_N]:
+        notes = []
+        if root not in testament_top:
+            notes.append("new")
+        if bilingual:
+            notes.append("Aramaic" if root in aramaic else "Hebrew")
+        sec.add([atlas.form(root), weight, per_thousand(weight, n1), per_thousand(b, n2),
+                 round(keyness, 1), round(tk, 1) if tk is not None else "", ", ".join(notes)],
+                refs=atlas.verses_with(root, book), link={"word": root, "book": book})
+        shown.append(root)
+    sec.footer.append(f"The group: " + ", ".join(peers) + ".")
+    if len(scored) < TOP_N:
+        # Say plainly that the table is short because the evidence is,
+        # not because the book has few words worth measuring
+        under = sum(1 for k in measured.values() if k < GROUP_KEYNESS_FLOOR)
+        sec.footer.append(
+            f"{len(scored)} row{'s' if len(scored) != 1 else ''}: of the {len(measured)} roots measured, "
+            f"{under} sit under the keyness floor of {GROUP_KEYNESS_FLOOR} and are not shown.")
+    if left_out:
+        sec.footer.append(
+            f"{left_out} Aramaic root{'s' if left_out != 1 else ''} of {book} left out: the kind holds "
+            f"{peer_aramaic_words} words of Aramaic, under {FEW_WORDS}, so an Aramaic root has no peer "
+            f"there and its keyness would be only its count.  The Aramaic chapters are measured in "
+            f"the Languages line and the Language division (section 7).")
+    # Section 1 words missing here fell for one of two reasons: the kind
+    # shares them (group keyness under the floor), or the list is only
+    # TOP_N long and new entrants pushed them off (group keyness still
+    # above it).  Only the first is a finding about the book, so the two
+    # are named apart, and the line between them is the same floor the
+    # rows were chosen by.  A section 1 word the table never measured
+    # (under min_weight occurrences, an English stem, or an Aramaic root
+    # with no peer) is neither common nor displaced, and is named apart:
+    # the Song's apples and spikenard are nobody's common property
+    shown_set = set(shown)
+    fallen = [r for r in testament_top if r not in shown_set]
+    common = [atlas.form(r) for r in fallen if r in measured and measured[r] < GROUP_KEYNESS_FLOOR]
+    displaced = [atlas.form(r) for r in fallen if r in measured and measured[r] >= GROUP_KEYNESS_FLOOR]
+    unmeasured = [atlas.form(r) for r in fallen if r not in measured]
+    if unmeasured:
+        sec.footer.append(f"Of section 1's words, not measured here (under {min_weight} occurrences, "
+                          f"an English stem, or an Aramaic root with no peer): "
+                          + ", ".join(unmeasured[:12]) + ("..." if len(unmeasured) > 12 else "") + ".")
+    if common:
+        sec.footer.append(f"Of section 1's words, common to the kind (group keyness under "
+                          f"{GROUP_KEYNESS_FLOOR}): " + ", ".join(common[:12])
+                          + ("..." if len(common) > 12 else "") + ".")
+    if displaced:
+        sec.footer.append(f"Of section 1's words, still key against the kind but displaced from the top "
+                          f"{TOP_N}: " + ", ".join(displaced[:12]) + ("..." if len(displaced) > 12 else "") + ".")
+    return shown
 
 
 def lexicon_section(atlas, report, title, roots, book=None, chapter=None, scope_label="Bible"):
@@ -1243,34 +1662,51 @@ def neighbors_section(atlas, report, title, scope, root, word, scope_label):
                 link={"word": l["neighbor"], "book": scope, "pair": root} if l else None)
 
 
-def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, date=None):
+def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, date=None,
+                   verse_ids=None, books=None):
     """
-    Echoes between a book (or chapter, or chapter range) and other
-    books, rarest first.  chapter is None for the whole book, an int for
-    one chapter, or a list of chapters for a section (not always a run:
-    Asaph is Psalm 50 and 73 to 83); scope_name is how a section is
-    called in the titles; date is a section's own conventional date, used
-    in place of the book's for the earlier/contemporary/later labels.
+    Echoes between a book (or chapter, or chapter range, or passage) and
+    other books, rarest first.  chapter is None for the whole book, an
+    int for one chapter, or a list of chapters for a section (not always
+    a run: Asaph is Psalm 50 and 73 to 83); scope_name is how a section
+    is called in the titles; date is a section's own conventional date,
+    used in place of the book's for the earlier/contemporary/later
+    labels.  A passage from metadata.db gives verse_ids, the verses it
+    holds, and books, the books it touches (book is then the first of
+    them, for the labels and dates); its partners are the books outside
+    it, and the chapter tables are drawn only when it lies in one book.
     """
     is_range = isinstance(chapter, (tuple, list, set, frozenset))
-    if is_range:
-        chapter = sorted(chapter)
-        where = " AND verses.chapter IN (" + ",".join("?" * len(chapter)) + ")"
-        params = (book, *chapter)
-    elif chapter:
-        where, params = " AND verses.chapter = ?", (book, chapter)
+    books = list(books) if books else [book]
+    multi = len(books) > 1
+    if verse_ids is not None:
+        ids = sorted(verse_ids)
+        is_range = not multi
+        here_rows = atlas.db.execute(
+            "SELECT echoes.phrase, echoes.reference FROM echoes "
+            "WHERE echoes.verse_id IN (" + ",".join("?" * len(ids)) + ")", ids).fetchall()
+        if is_range:
+            chapter = sorted({int(r["reference"].rsplit(" ", 1)[1].split(":")[0]) for r in here_rows}) or [1]
     else:
-        where, params = "", (book,)
-    here_rows = atlas.db.execute(
-        "SELECT echoes.phrase, echoes.reference FROM echoes JOIN verses USING (verse_id) "
-        "WHERE echoes.book = ?" + where, params).fetchall()
+        if is_range:
+            chapter = sorted(chapter)
+            where = " AND verses.chapter IN (" + ",".join("?" * len(chapter)) + ")"
+            params = (book, *chapter)
+        elif chapter:
+            where, params = " AND verses.chapter = ?", (book, chapter)
+        else:
+            where, params = "", (book,)
+        here_rows = atlas.db.execute(
+            "SELECT echoes.phrase, echoes.reference FROM echoes JOIN verses USING (verse_id) "
+            "WHERE echoes.book = ?" + where, params).fetchall()
     by_phrase = {}
     for r in here_rows:
         by_phrase.setdefault(r["phrase"], []).append(r["reference"])
     found = []
+    not_books = "book NOT IN (" + ",".join("?" * len(books)) + ")"
     for phrase, here in by_phrase.items():
         there = [r[0] for r in atlas.db.execute(
-            "SELECT reference FROM echoes WHERE phrase = ? AND book != ?", (phrase, book))]
+            f"SELECT reference FROM echoes WHERE phrase = ? AND {not_books}", (phrase, *books))]
         if there:
             found.append((phrase, here, there))
 
@@ -1333,8 +1769,9 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
              f"allusion or shared idiom; only reading the two passages can say which."
              + ("  Echoes are runs of Strong's roots, found however their words are spelled, so "
                 "'the heathen' and 'the nations' are one echo; the wording shown is the commonest "
-                "among the verses listed.  Between the testaments, where a Hebrew root and a Greek "
-                "root never match, echoes are found by English wording instead."
+                "among the verses listed.  Between the testaments, and between Hebrew and Aramaic "
+                "verses (Daniel 2 to 7, Ezra's decrees), where roots never match, echoes are found "
+                "by English wording instead and marked 'by English'."
                 if by_roots else "  Spellings of one echo are folded together.")
              + f"  'quotation' marks an echo of {QUOTE_MIN_WORDS} or more words found in exactly two "
                f"verses of the whole Bible: the strongest kind of evidence the table has; 'by English' "
@@ -1421,7 +1858,7 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
     # compared from one book page to another because it no longer
     # depends on the size of either book.
     total_echoes = sum(len(keys) for keys in partner_keys.values())
-    words_outside = atlas.n_bible - atlas.book_info[book]["words"]
+    words_outside = atlas.n_bible - sum(atlas.book_info[b]["words"] for b in books)
 
     # The scope as the titles print it: the chapter on a chapter page,
     # whose tallies are the chapter's own, the book on a book page
@@ -1513,9 +1950,17 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
             + "; ".join(disputes) + ".  Both tables are in atlas_text.py (BOOK_DATES, CRITICAL_DATES); "
             "the labels follow the conventional one.")
     elif book in DISPUTED_DATES:
+        # No partner changes side, and the reader should not have to work
+        # out why: say how the shown partners fall under both datings
+        # (on Daniel, the Old Testament partners are earlier and the New
+        # Testament ones later whether Daniel is 530 or 165)
+        shown = [rel.replace(" (disputed)", "") for _, _, _, _, _, rel in partner_rows[:TOP_N]]
+        counts = Counter(shown)
+        falls = ", ".join(f"{counts[rel]} {rel}" for rel in ("earlier", "contemporary", "later") if counts[rel])
         tally.footer.append(
             f"The date of {book} is disputed (conventional {abs(BOOK_DATES.get(book, 0))}, critical "
-            f"{abs(CRITICAL_DATES.get(book, 0))}), though no partner shown changes side between the two.")
+            f"{abs(CRITICAL_DATES.get(book, 0))}), but the labels do not depend on it: of the partners "
+            f"shown ({falls}), every one falls on the same side of {book} under both dates.")
 
     # -- who reads whom: each partner's rarest echoes, with both references ------
     # The partner table rewards volume; this one shows the evidence.
@@ -1531,7 +1976,8 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
              f"verse here and the verse there.  "
              f"'quotation grade' counts echoes of {QUOTE_MIN_WORDS} or more words found in exactly "
              f"two verses of the whole Bible: one here, one there, and nowhere else; an echo that "
-             f"meets the test only by English wording across the testaments (the translators' "
+             f"meets the test only by English wording across the languages (between the testaments, "
+             f"or between Hebrew and Aramaic verses: the translators' "
              f"idiom, not a shared root) is counted apart as 'by English'.  Earlier "
              f"partners are what {book} could have read, later ones who could have read it "
              f"('(disputed)' where the critical dates would say otherwise; see 4a); "
@@ -1571,7 +2017,7 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
             refs += here[:1] + there[:1]
         who.add([pb, rel, n, grade_cell, "; ".join(cited)], refs=refs, link={"book": pb, "chapter": 1})
 
-    if (chapter is None or is_range) and len(chapter_keys) > 1:
+    if (chapter is None or is_range) and len(chapter_keys) > 1 and not multi:
         # -- the echo map: chapters down the side, partners across ----------
         # Cell = summed weight of the echoes between that chapter and
         # that partner; the verses behind a cell are kept for clicking.
@@ -1708,7 +2154,7 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
         # the sayings source, Mark only Luke's use of Mark, and neither
         # is Luke's own material.  For any other book it still says
         # whether its two chief partners overlap or divide the text.
-        if len(partner_rows) >= 2:
+        if len(partner_rows) >= 2 and verse_ids is None:
             # The two heaviest partners whose echoes are spread through
             # the book: one with NARROW_PARTNER_SHARE or more of its weight
             # in five chapters (2 Kings in Isaiah 7 and 36 to 39, 94
@@ -1835,12 +2281,20 @@ def book_page(atlas, book_name):
     report.notes.append(f"{book}: {info['verses']} verses, {info['chapters']} chapters, "
                         f"{info['words']} words.  Rest of the Bible: {atlas.n_bible - info['words']} words.")
     report.notes.append(atlas.divine_name_note())
+    # Where the book's tagged words are Aramaic (Daniel 2 to 7, Ezra 4 to
+    # 7, a verse of Jeremiah 10), by chapter; nothing when none are
+    language = atlas.language_note(book)
+    if language:
+        report.notes.append(language)
 
     rows = [(r["root"], r["weight"], r["chapters_reached"], r["keyness"]) for r in atlas.db.execute(
         "SELECT root, weight, chapters_reached, keyness FROM word_book "
         "WHERE book = ? AND weight >= 2 ORDER BY keyness DESC LIMIT ?", (book, TOP_N))]
     top = signature_words_section(atlas, report, f"1. Signature words [{book}]", rows,
                                   info["words"], book, book, None, info["chapters"])
+    # 1b: the same words against the book's own kind, the baseline group
+    # from metadata.db, where the two lines of the project meet
+    group_words_section(atlas, report, f"1b. Signature words against the book's kind [{book}]", book, top)
 
     verses = atlas.verses_of(book)
     signature_formulas_section(atlas, report, f"2. Signature formulas [{book}]",
@@ -1893,6 +2347,23 @@ def sections_section(atlas, report, title, book, info):
         weight.setdefault(root, {})[ch] = w
     book_words = sum(words_by_ch.values())
     number = title.split(".")[0]
+    # A book in two languages (Daniel) measures each root against the
+    # rest of the book in the root's own language: "against the rest of
+    # the book" is otherwise a language test, and the visions' leading
+    # words came out as the commonest Hebrew words of a half-Aramaic
+    # book.  Word counts per chapter and language, from the verse
+    # languages stored at build; a root is Aramaic when the lexicon
+    # marks it so, Hebrew otherwise.  Where the rest of the book holds
+    # under FEW_WORDS words of the root's language (the Language division
+    # itself), the root is measured against the rest of its testament
+    bilingual = len(atlas.languages_of(book)) > 1
+    aramaic = atlas.aramaic_roots() if bilingual else set()
+    lang_words_by_ch = {}            # (chapter, language) -> words
+    if bilingual:
+        for ch, lang, n in atlas.db.execute(
+                "SELECT chapter, language, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) - 1) "
+                "FROM verses WHERE book = ? GROUP BY chapter, language", (book,)):
+            lang_words_by_ch[(ch, lang)] = n
 
     for d_index, (division, secs) in enumerate(divisions_of(book, info["chapters"])):
         prefix = number if d_index == 0 else f"{number}.{d_index + 1}"
@@ -1915,7 +2386,12 @@ def sections_section(atlas, report, title, book, info):
                  f"commandments, precepts and statutes).  A division that leaves chapters out gets a "
                  f"'Rest of {book}' row holding them.  A section under {FEW_WORDS} words is marked 'few': "
                  f"read its rows lightly.  Double-click a row for its first chapter; the section's own "
-                 f"page is [{book}: section name] in the ask box.")
+                 f"page is [{book}: section name] in the ask box."
+                 + (f"  {book} is in two languages, so each word is measured against the rest of the "
+                    f"book in its own language (an Aramaic root against the book's other Aramaic, a "
+                    f"Hebrew one against its Hebrew); where the rest of the book holds under {FEW_WORDS} "
+                    f"words of that language, against the rest of the testament instead."
+                    if bilingual else ""))
         for name, chs, is_rest in secs:
             n_words = sec_words[name]
             rest = book_words - n_words
@@ -1927,7 +2403,17 @@ def sections_section(atlas, report, title, book, info):
                 if a < HOME_MIN_WEIGHT:
                     continue
                 b = sum(by_ch.values()) - a
-                k = log_likelihood(a, b, n_words, rest) if rest else 0
+                n1, n2 = n_words, rest
+                if bilingual:
+                    lang = "Aramaic" if root in aramaic else "Hebrew"
+                    n1 = sum(lang_words_by_ch.get((c, lang), 0) for c in in_chs)
+                    n2 = sum(n for (c, l), n in lang_words_by_ch.items() if l == lang and c not in in_chs)
+                    if n2 < FEW_WORDS:
+                        # no rest of the book in this language: the testament instead
+                        row = atlas.word_row(root)
+                        b = (row["weight"] if row else a) - a
+                        n2 = atlas.comparison_words(root) - n1
+                k = log_likelihood(a, b, n1, n2) if n2 > 0 and n1 > 0 else 0
                 if k > 0:
                     scored.append((k, root, a, len(in_sec)))
             scored.sort(key=lambda t: -t[0])
@@ -1952,7 +2438,11 @@ def sections_section(atlas, report, title, book, info):
                         "says nothing about which is the source; the row where Matthew stands high and "
                         "Mark low is the double tradition (Q), and it is the diagnostic one.  The Compare "
                         "page's order lines and Mark's sharing table carry the argument for Mark's priority."
-                        if book in GOSPELS else ""),
+                        if book in GOSPELS else "")
+                     + ("  This book is in two languages.  A row of Aramaic chapters shares no root with "
+                        "a Hebrew partner, so its echoes with the Hebrew books are found by English "
+                        "wording (marked 'by English' in section 4), as echoes across the testaments are."
+                        if len(atlas.languages_of(book)) > 1 else ""),
                 kind="heatmap")
             heat.value_label = "echo weight per 1000 words"
             for name, chs, is_rest in secs:
@@ -2125,6 +2615,104 @@ def section_page(atlas, book_name, section_name):
     return report
 
 
+def passage_page(atlas, name):
+    """
+    The page of a named passage from the catalogue (metadata.db): any
+    set of verse ranges in any books, which is what the section layer
+    cannot hold.  Signature words against the rest of the testament,
+    the words behind them, formulas, and the echoes with the partner
+    table and who reads whom; when the passage lies in one book, the
+    chapter tables of the echoes as well.  A passage of whole chapters
+    of one book is better served by a section (atlas_sections.py), which
+    also gets the book-against-itself tables; this page is for the
+    rest: a verse range, or a study across books.
+    """
+    verses = atlas.passage_verses(name)
+    if not verses:
+        known = ", ".join(atlas.passages()) or "(none: no metadata.db beside the scripts, or no passages in it)"
+        raise ValueError(f"No passage named '{name}'.  Known passages: {known}.")
+    key = next(k for k in atlas.passages() if k.lower() == name.lower())
+    desc, ranges = atlas.passages()[key]
+    books = []
+    for book, *_ in ranges:
+        if book not in books:
+            books.append(book)
+    books.sort(key=atlas.books.index)
+    spans = []
+    for book, c1, v1, c2, v2 in ranges:
+        if v1 == 1 and v2 >= 999:
+            spans.append(f"{book} {c1}" if c1 == c2 else f"{book} {c1}-{c2}")
+        else:
+            end = f"{c2}" if v2 >= 999 else f"{c2}:{v2}"
+            spans.append(f"{book} {c1}:{v1}-{end}")
+    label = f"Passage: {key}"
+    atlas.use_scope(books[0])
+    ids = [v["verse_id"] for v in verses]
+    refs_of = {v["verse_id"]: v["reference"] for v in verses}
+    n_scope = sum(len(v["word_string"].split()) for v in verses)
+    chapters = sorted({(v["book"], v["chapter"]) for v in verses}, key=lambda bc: (atlas.books.index(bc[0]), bc[1]))
+    report = Report("passage_" + re.sub(r"[^a-z0-9]+", "_", key.lower()).strip("_"),
+                    f"Passage page [{key}] ({atlas.settings['translation']})")
+    report.notes.append(f"{key}: {'; '.join(spans)}.  {len(verses)} verses, {n_scope} words, "
+                        f"{len(chapters)} chapter{'s' if len(chapters) != 1 else ''} of "
+                        + ", ".join(books) + "." + (f"  {desc}" if desc else ""))
+    report.notes.append("A passage is any set of verse ranges in any books, kept in the catalogue "
+                        "(metadata.db, atlas_passages.py) and measured here as one text.  Partners are "
+                        "the books outside it, and the testament figures are those of the first book's "
+                        "testament where the passage spans both.")
+
+    # -- 1. signature words: the passage's tokens by root, against the rest
+    # of the root's testament (as a book's are), with the verses holding
+    # each root kept for the click
+    counts, held = Counter(), {}
+    marks = ",".join("?" * len(ids))
+    for vid, root in atlas.db.execute(
+            f"SELECT verse_id, root FROM tokens WHERE verse_id IN ({marks}) AND is_stop = 0", ids):
+        counts[root] += 1
+        held.setdefault(root, []).append(refs_of[vid])
+    scored = []
+    for root, a in counts.items():
+        if a < 2:
+            continue
+        w = atlas.word_row(root)
+        total = w["weight"] if w else a
+        n_compare = atlas.comparison_words(root)
+        k = log_likelihood(a, total - a, n_scope, n_compare - n_scope)
+        if k > 0:
+            scored.append((k, root, a, total, n_compare))
+    scored.sort(key=lambda s: (-s[0], s[1]))
+    sec = report.section(
+        f"1. Signature words [{label}]",
+        ["word", "count", "passage/1000", "rest/1000", "chapters", "books", "keyness", "note"],
+        note=f"The words far more common in the passage than in the rest of the testament (or, for an "
+             f"English stem, the Bible), ranked by keyness; at least two occurrences.  'chapters' is "
+             f"how many of the passage's {len(chapters)} chapters hold the word.  Click a row for the "
+             f"passage's verses holding it; double-click for the word's page.")
+    top = []
+    for k, root, a, total, n_compare in scored[:TOP_N]:
+        w = atlas.word_row(root)
+        chs = len({r.rsplit(" ", 1)[0] + " " + r.rsplit(" ", 1)[1].split(":")[0] for r in held[root]})
+        notes = []
+        renderings = atlas.renderings(root)
+        if renderings > 1:
+            notes.append(f"{renderings} renderings")
+        sec.add([atlas.form(root), a, per_thousand(a, n_scope), per_thousand(total, n_compare),
+                 f"{chs}/{len(chapters)}", f"{w['books_reached']}/{atlas.comparison_books(root)}" if w else "-",
+                 round(k, 1), ", ".join(notes)],
+                refs=list(dict.fromkeys(held[root])), link={"word": root, "book": books[0]})
+        top.append(root)
+    lexicon_section(atlas, report, f"1. Signature words [{label}]", top, books[0], None, "passage")
+
+    signature_formulas_section(atlas, report, f"2. Signature formulas [{label}]", verses, books[0], n_scope)
+    if len(books) > 1:
+        report.sections[-1].note += ("  The 'elsewhere' count leaves out the first book of the passage "
+                                     "only, so a formula shared by its books may be counted there.")
+
+    echoes_section(atlas, report, f"4. Echoes [{label}] -> other books", books[0], None,
+                   scope_name=label, verse_ids=ids, books=books)
+    return report
+
+
 def phrase_places(atlas, verses, column):
     """
     Every phrase of three to five units in a set of verses, ending on a
@@ -2177,6 +2765,36 @@ def drop_pieces(kept):
     return pieces
 
 
+def bridged_places(atlas, verses, book):
+    """
+    The English bridge inside a testament.  Phrases of three to five
+    words of English wording found in verses of two different languages
+    among the verses given (Daniel's Aramaic chapters against its Hebrew
+    ones, or against Ezekiel): key "en:wording" -> {chapter:
+    [references]}, and the wordings Counter the map expects.  Roots
+    cannot match across languages, so these are the only phrases the
+    two sides can share; a pair of chapters counts such a phrase only
+    where the two chapters are in different languages (see the callers),
+    and the root match covers the rest.
+    """
+    places, wordings = phrase_places(atlas, verses, "word_string")
+    out, out_wordings = {}, {}
+    for key, chapters in places.items():
+        languages = {atlas.language_of(ref, book) for refs in chapters.values() for ref in refs}
+        if len(languages) < 2:
+            continue
+        out["en:" + key] = chapters
+        out_wordings["en:" + key] = wordings[key]
+    return out, out_wordings
+
+
+def cross_language(atlas, refs_a, refs_b, book_a=None, book_b=None):
+    """True when some verse of refs_a and some verse of refs_b are in different languages."""
+    la = {atlas.language_of(r, book_a) for r in refs_a}
+    lb = {atlas.language_of(r, book_b) for r in refs_b}
+    return any(x != y for x in la for y in lb)
+
+
 def phrase_weight(atlas, key, column):
     """Summed rarity of a phrase's content words."""
     if column != "word_string":
@@ -2223,6 +2841,15 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
                     continue
                 seen.add(key)
                 places.setdefault(key, {}).setdefault(v["chapter"], []).append(v["reference"])
+    # A book in two languages (Daniel, Ezra) is bridged by English
+    # wording between them, as the testaments are: Daniel 7's "the four
+    # winds of heaven" (Aramaic) meets 8:8 and 11:4 (Hebrew) that way
+    # and no other
+    bridged = by_roots and len(atlas.languages_of(book)) > 1
+    if bridged:
+        en_places, en_wordings = bridged_places(atlas, verses, book)
+        places.update(en_places)
+        wordings.update(en_wordings)
     # Keep phrases in two or more chapters and few verses, with substance
     kept = {}
     for key, chapters in places.items():
@@ -2232,6 +2859,8 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
         display = wordings[key].most_common(1)[0][0]
         if not has_substance(display):
             continue
+        if key.startswith("en:"):
+            display += " (by English)"
         kept[key] = (chapters, display)
     # A shorter phrase inside a longer one with the same verses is a
     # piece of it.  Only phrases with the same verse set can nest, so
@@ -2271,6 +2900,10 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
         for x in range(len(chs)):
             for y in range(x + 1, len(chs)):
                 a, b = chs[x], chs[y]
+                # An English-bridged phrase counts only between chapters in
+                # different languages; within one language the roots count it
+                if key.startswith("en:") and not cross_language(atlas, chapters[a], chapters[b], book, book):
+                    continue
                 cell_weight[(a, b)] += weight
                 cell_count[(a, b)] += 1
                 cell_refs.setdefault((a, b), []).extend(chapters[a] + chapters[b])
@@ -2287,7 +2920,10 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
              f"verses of the book hold, so the book's own refrains do not fill the map.  A band off the "
              f"diagonal is a passage retold: the tabernacle prescribed in Exodus 25 to 31 and built in "
              f"35 to 40, Ezekiel's chariot in 1 and 10, a Gospel's doublets.  Click a cell for the verses "
-             f"in both chapters; tick 'each column on its own scale' for the fainter pairs.",
+             f"in both chapters; tick 'each column on its own scale' for the fainter pairs."
+             + ("  This book is in two languages, and a Hebrew root never matches an Aramaic one, so "
+                "between its Hebrew and Aramaic verses phrases are matched by English wording instead."
+                if bridged else ""),
         kind="heatmap")
     sec.value_label = "shared weight"
     index = {c: i for i, c in enumerate(chapters_all)}
@@ -2383,7 +3019,28 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
             refs = [r for c in sorted(chapters) for r in chapters[c]]
             rows.append((weight, display, ", ".join(str(c) for c in sorted(chapters)), len(refs), refs, key))
         rows.sort(key=lambda r: -r[0])
-        for weight, display, chs, n, refs, key in rows[:TOP_N]:
+        # The rarest TOP_N refrains, and beyond them any refrain that
+        # stays inside one section of the book: those are what the
+        # 'sections' column is for, and a frame made of common words
+        # ("in those days there was no king in Israel", Judges 17 to 21)
+        # would otherwise fall under the cap for its low rarity
+        shown = rows[:TOP_N]
+        passed_over = 0
+        if has_seams:
+            for row in rows[TOP_N:]:
+                chapters_of = [int(c) for c in row[2].split(", ")]
+                in_secs = {sname for c in chapters_of for sname, schs, srest in main_secs if c in schs}
+                if len(in_secs) == 1:
+                    shown.append(row)
+                else:
+                    passed_over += 1
+        else:
+            passed_over = len(rows) - len(shown)
+        if passed_over:
+            ref_sec.footer.append(
+                f"{passed_over} more refrain{'s' if passed_over != 1 else ''} of commoner words not shown"
+                + (" (a refrain confined to one section is always shown)." if has_seams else "."))
+        for weight, display, chs, n, refs, key in shown:
             content = atlas.content_units(key) if by_roots else \
                 tuple(atlas.root_of(w) for w in key.split() if w not in STOPLIST)
             # "names" when more than half the content words are proper names:
@@ -2672,6 +3329,10 @@ def chapter_page(atlas, book_name, chapter):
     report = Report(f"chapter_{book.lower().replace(' ', '_')}_{chapter}",
                     f"Chapter page [{label}] ({atlas.settings['translation']})")
     report.notes.append(f"{label}: {len(verses)} verses, {n_scope} words.")
+    # The chapter's language, when any of its tagged words are Aramaic
+    language = atlas.language_note(book, chapter)
+    if language:
+        report.notes.append(language)
     if atlas.has_depth:
         # The leading words of the passage: the words whose deepest place
         # in the whole book is this chapter
@@ -3053,18 +3714,38 @@ def compare_page(atlas, a_name, b_name):
     atlas.use_scope(None)
     same_testament = atlas.book_info[a_book]["testament"] == atlas.book_info[b_book]["testament"]
     column = atlas.phrase_column if same_testament else "word_string"
+    # Within a testament, a book in two languages (Daniel, Ezra) is
+    # bridged to the other book by English wording where the languages
+    # differ, as the testaments are bridged
+    bridged = (column != "word_string"
+               and len(atlas.languages_of(a_book) | atlas.languages_of(b_book)) > 1)
     report = Report(f"compare_{a_book.lower().replace(' ', '_')}_{b_book.lower().replace(' ', '_')}",
                     f"Compare [{a_book}] x [{b_book}] ({atlas.settings['translation']})")
     a_info, b_info = atlas.book_info[a_book], atlas.book_info[b_book]
     report.notes.append(f"{a_book}: {a_info['chapters']} chapters, {a_info['words']} words.  "
                         f"{b_book}: {b_info['chapters']} chapters, {b_info['words']} words.  "
                         + ("Phrases are matched as runs of Strong's roots."
+                           + ("  One of the books is partly Aramaic, and a Hebrew root never matches "
+                              "an Aramaic one, so between verses in different languages phrases are "
+                              "matched by English wording instead, marked 'by English'."
+                              if bridged else "")
                            if column != "word_string" else
                            "The books are in different testaments, so phrases are matched by English "
                            "wording (a Hebrew root and a Greek root never match)."))
 
     places_a, wordings_a = phrase_places(atlas, atlas.verses_of(a_book), column)
     places_b, wordings_b = phrase_places(atlas, atlas.verses_of(b_book), column)
+    if bridged:
+        # English wording on both sides, kept only where the two books'
+        # verses are in different languages; the roots cover the rest
+        en_a, enw_a = phrase_places(atlas, atlas.verses_of(a_book), "word_string")
+        en_b, enw_b = phrase_places(atlas, atlas.verses_of(b_book), "word_string")
+        for key in set(en_a) & set(en_b):
+            refs_a = [r for refs in en_a[key].values() for r in refs]
+            refs_b = [r for refs in en_b[key].values() for r in refs]
+            if cross_language(atlas, refs_a, refs_b, a_book, b_book):
+                places_a["en:" + key], wordings_a["en:" + key] = en_a[key], enw_a[key]
+                places_b["en:" + key], wordings_b["en:" + key] = en_b[key], enw_b[key]
     kept = {}
     for key in set(places_a) & set(places_b):
         total = sum(len(r) for r in places_a[key].values()) + sum(len(r) for r in places_b[key].values())
@@ -3074,6 +3755,8 @@ def compare_page(atlas, a_name, b_name):
         display = wording.most_common(1)[0][0]
         if not has_substance(display):
             continue
+        if key.startswith("en:"):
+            display += " (by English)"
         # chapters of A and of B kept apart under negative/positive keys
         chapters = {("a", c): refs for c, refs in places_a[key].items()}
         chapters.update({("b", c): refs for c, refs in places_b[key].items()})
@@ -3123,6 +3806,11 @@ def compare_page(atlas, a_name, b_name):
         b_chs = [c for (side, c) in chapters if side == "b"]
         for ca in a_chs:
             for cb in b_chs:
+                # An English-bridged phrase counts only between chapters in
+                # different languages
+                if key.startswith("en:") and not cross_language(
+                        atlas, chapters[("a", ca)], chapters[("b", cb)], a_book, b_book):
+                    continue
                 cell_weight[(ca, cb)] += weight
                 cell_count[(ca, cb)] += 1
                 cell_refs.setdefault((ca, cb), []).extend(chapters[("a", ca)] + chapters[("b", cb)])
@@ -3406,17 +4094,18 @@ def kin_page(atlas, book_name, chapter):
         if score > chapter_best.get((b, c), (0,))[0]:
             chapter_best[(b, c)] = (score, s_id, ref, shared, order, source_order[s_id])
 
-    # -- the other testament, by English stem ---------------------------------
+    # -- the other languages, by English stem ---------------------------------
     # On a Strong's build the pass above never crosses the testaments
     # (H5104 river is not G4215 river), so Ezekiel 47 would never find
-    # Revelation 22.  The same test is run again with the English stems
-    # of the words, against the verses of the other testament only: the
-    # source verse's rare stems (1 in 2,000 across the Bible, on the
-    # English count) against every verse there holding one of them.
+    # Revelation 22; nor does it cross from Daniel's Aramaic chapters to
+    # the Hebrew books.  The same test is run again with the English
+    # stems of the words, against the verses in another language than
+    # the source verse's: the source verse's rare stems (1 in 2,000
+    # across the Bible, on the English count) against every verse there
+    # holding one of them.
     if atlas.roots_mode == "strongs":
         stems, surfaces = atlas.english_stems()
-        testament = atlas.book_info[book]["testament"]
-        other_books = {b for b, info in atlas.book_info.items() if info["testament"] != testament}
+        source_language = {}
         sql = ("SELECT t.verse_id, v.reference, t.surface FROM tokens t JOIN verses v USING (verse_id) "
                "WHERE v.book = ? AND v.chapter = ? AND t.is_stop = 0")
         params = [book, chapter]
@@ -3431,6 +4120,7 @@ def kin_page(atlas, book_name, chapter):
                 en_source.setdefault(verse_id, set()).add(stem)
                 en_order.setdefault(verse_id, []).append(stem)
                 source_ref[verse_id] = reference
+                source_language[verse_id] = atlas.language_of(reference, book)
         en_pairs = {}
         en_meta = {}
         for s_id, s_stems in en_source.items():
@@ -3439,9 +4129,9 @@ def kin_page(atlas, book_name, chapter):
                     if t_id not in en_meta:
                         row = atlas.db.execute(
                             "SELECT book, chapter, reference FROM verses WHERE verse_id = ?", (t_id,)).fetchone()
-                        en_meta[t_id] = (row[0], row[1], row[2]) if row[0] in other_books else None
-                    if en_meta[t_id] is None:
-                        continue
+                        en_meta[t_id] = (row[0], row[1], row[2], atlas.language_of(row[2], row[0]))
+                    if en_meta[t_id][3] == source_language[s_id] or en_meta[t_id][0] == book:
+                        continue                  # same language: the root pass covers it; own book: 6c
                     en_pairs.setdefault((s_id, t_id), set()).add(stem)
         for (s_id, t_id), shared in sorted(en_pairs.items(), key=lambda kv: (kv[0][0], atlas.ref_key(en_meta[kv[0][1]][2]))):
             if len(shared) < KIN_MIN_SHARED:
@@ -3453,7 +4143,7 @@ def kin_page(atlas, book_name, chapter):
             target_order = [st for st in target_order if st in shared]
             order = in_order(en_order[s_id], target_order, shared)
             score = sum(atlas.english_rarity(st) for st in shared) * (1 + 0.5 * order / len(shared))
-            b, c, ref = en_meta[t_id]
+            b, c, ref, _ = en_meta[t_id]
             chapter_score[(b, c)] += score
             found_by[(b, c)] = "English"
             chapter_refs.setdefault((b, c), []).extend([source_ref[s_id], ref])
