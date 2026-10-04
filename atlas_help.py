@@ -320,6 +320,29 @@ for _label, _numbers, _gloss in FUNCTION_WORDS + FUNCTION_WORDS_HEBREW:
     COLUMN_HELP[_label] = (f"{_label} ({', '.join(_numbers)}): {_gloss}.  Occurrences per 1,000 tokens of the "
                            f"text (King James tokens for a Greek book, Hebrew elements for a Hebrew one).")
 
+# The Septuagint layer's columns (1e, 1f, 4e; atlas_septuagint.py)
+COLUMN_HELP.update({
+    "lemma": "The Greek word in its dictionary form, as the tagging gives it.",
+    "here/10k": "How often the word occurs per 10,000 content words of this book's Greek text.",
+    "Septuagint/10k": "How often the word occurs per 10,000 content words of the Septuagint (the whole of it, "
+                      "or the Septuagint books of the kind when the table says so).",
+    "rest of NT/10k": "How often the word occurs per 10,000 content words of the rest of the Greek New Testament.",
+    "rest of NT": "How many times the rest of the Greek New Testament uses the word.",
+    "Septuagint": "In 1f, how many times the Septuagint uses the word; in 4e, the Septuagint verses holding "
+                  "the echo, with the Rahlfs numbering in brackets where it differs from the English.",
+    "Septuagint home": "The Septuagint book where the word is commonest, with its count there; 'not in the "
+                       "Septuagint' when no book of it has the word.",
+    "leaning": "The Septuagint's rate for the word divided by the rest of the New Testament's: how far the "
+               "word belongs to the Greek Bible rather than to the New Testament's common stock.  'only here' "
+               "when the rest of the New Testament never uses it.",
+    "echo (Greek)": "The run of Greek words the two places share, as this book's text spells it.  Matched by "
+                    "root (Strong's number), so the forms may differ between the two places.",
+    "gloss": "The TAGNT's word-for-word English of the run, from the New Testament side of the match.",
+    "New Testament": "The New Testament verses holding the echo.",
+    "also in NT": "Other New Testament verses holding the same run: a synoptic parallel, or a formula.",
+    "also in Septuagint": "Other Septuagint verses holding the same run.",
+})
+
 PICTURE_HELP = {
     "heatmap": "A map: rows down the side, columns across, each cell shaded by its number "
                "(square-root scale, so the middle shows).  On a book page it is the echo map, "

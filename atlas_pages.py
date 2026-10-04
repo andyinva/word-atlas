@@ -30,6 +30,8 @@ import time
 from collections import Counter, defaultdict
 
 from atlas_function import book_table as function_book_table, section_table as function_section_table
+from atlas_septuagint import vocabulary_sections as septuagint_vocabulary_sections, \
+    echoes_section as septuagint_echoes_section
 from atlas_sections import (FEW_WORDS, SMALL_WORDS, divisions_of, find_section, sections_of, section_date,
                             section_of, seam_chapters, span_text)
 from atlas_text import (ATLAS_PATH, ECHO_MAX_TOTAL, FOCUS_MIN_OCCURRENCES,
@@ -47,7 +49,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.55"   # the program version; the window title and every report print it
+VERSION = "0.10.57"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -343,11 +345,21 @@ class Atlas:
         if cache is not None:
             return cache
         import re as _re
-        word_re = _re.compile(r"[A-Za-z][A-Za-z'-]*")
+        # The text joins compound names with an en dash (Beer–sheba,
+        # Eli–ezer, Pedah–zur), not an ASCII hyphen, so the dash must sit
+        # in the word class or the second half breaks off as a lowercase
+        # word of its own: 0.10.55 counted "sheba" 43 times that way and
+        # lost Sheba, Er, Ur and Ezer their names
+        word_re = _re.compile(r"[A-Za-z][A-Za-z'\-‐‑–]*")
         cache = Counter()
         for (text,) in self.db.execute("SELECT text FROM verses"):
             seen = set()
-            for m in word_re.finditer(text, 1):
+            # Scan from the first character and skip the match that
+            # starts there; scanning from the second character instead
+            # (as 0.10.55 did) clips the verse's first word to its tail,
+            # so "Our" and "Her" were counted as the words "ur" and "er"
+            # and outvoted the names Ur and Er
+            for m in word_re.finditer(text):
                 if m.start() == 0:
                     continue
                 w = m.group().rstrip("'-")
@@ -2755,6 +2767,12 @@ def book_page(atlas, book_name):
                             book, peers, groups[book])
         richness_section(atlas, report, f"1d. Vocabulary richness against the book's kind [{book}]",
                          book, peers, groups[book])
+    # 1e and 1f: a New Testament book's Greek against the Septuagint
+    # (atlas_septuagint.py), the comparison 1b cannot make across the
+    # testaments; nothing yet for an Old Testament book, whose measured
+    # text is the Hebrew behind the KJV
+    if info["testament"] == "New":
+        septuagint_vocabulary_sections(atlas, report, "1", book)
 
     verses = atlas.verses_of(book)
     signature_formulas_section(atlas, report, f"2. Signature formulas [{book}]",
@@ -2773,6 +2791,11 @@ def book_page(atlas, book_name):
                         book, root, atlas.forms.get(root, root), book)
 
     echoes_section(atlas, report, f"4. Echoes [{book}] -> other books", book)
+    # 4b: the echoes across the testaments in Greek, through the
+    # Septuagint (atlas_septuagint.py): section 4's 'by English' rows
+    # tested by root
+    far = "Greek Old Testament" if info["testament"] == "New" else "New Testament, in Greek"
+    septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{book}] -> {far}", book)
     if atlas.has_depth:
         reach_depth_section(atlas, report, f"5. Reach and depth [{book}]", book, info)
     if info["chapters"] > 2:
@@ -3084,6 +3107,8 @@ def section_page(atlas, book_name, section_name):
 
     echoes_section(atlas, report, f"4. Echoes [{label}] -> other books", book, chapters,
                    scope_name=label, date=section_date(book, name))
+    far = "Greek Old Testament" if atlas.book_info[book]["testament"] == "New" else "New Testament, in Greek"
+    septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{label}] -> {far}", book, chapters)
     if len(chapters) > 1:
         within_book_section(atlas, report, f"6. Echoes within [{label}]: chapter against chapter",
                             book, chapter_range=chapters)
@@ -3863,6 +3888,8 @@ def chapter_page(atlas, book_name, chapter):
                                          "book this chapter belongs to.  " + report.sections[-len(focus)].note)
 
     echoes_section(atlas, report, f"4. Echoes [{label}] -> other books", book, chapter)
+    far = "Greek Old Testament" if atlas.book_info[book]["testament"] == "New" else "New Testament, in Greek"
+    septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{label}] -> {far}", book, [chapter])
     synopsis_section(atlas, report, book, chapter, verses)
     kin_section(atlas, report, book, chapter)
     return report
@@ -4271,7 +4298,7 @@ def compare_page(atlas, a_name, b_name):
     # saying" around "voice from heaven") is the refrain grown by a word,
     # and goes with it
     refrain_units = [(k.split(), book) for k, book in refrains.items()]
-    for key in kept:
+    for key in sorted(kept):
         if key in pieces or key in refrains:
             continue
         units = key.split()
@@ -4341,7 +4368,12 @@ def compare_page(atlas, a_name, b_name):
     heat.footer.append(f"Chapters of {a_book} most drawn on: " + ", ".join(
         f"{ca} ({round(w)})" for ca, w in row_total.most_common(6)) + ".")
     if refrains:
-        shown = sorted(refrains.items(), key=lambda kv: -phrase_weight(atlas, kv[0], column))[:8]
+        # Equal weights are broken by the phrase itself, so two runs list
+        # the same eight: a tie left to dictionary order moved "up for a
+        # burnt offering" against "for the burnt offering" on Genesis x
+        # Ezekiel between 0.10.53 and 0.10.55 and put a line in every
+        # diff of the dossiers for no reason a reader could see
+        shown = sorted(refrains.items(), key=lambda kv: (-phrase_weight(atlas, kv[0], column), kv[0]))[:8]
         heat.footer.append("Refrains set aside: " + "; ".join(
             f"\"{kept[key][1]}\" ({book})" for key, book in shown)
             + (f"; and {len(refrains) - 8} more" if len(refrains) > 8 else "") + ".")

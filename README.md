@@ -39,7 +39,10 @@ Septuagint files (`build_lxx.py`), STEPBible's TAGNT Greek New
 Testament (`build_gnt.py`, two files downloaded into `data/tagnt/`)
 and STEPBible's TAHOT Hebrew Old Testament (`build_tahot.py`, four
 files into `data/tahot/`), both from github.com/STEPBible/STEPBible-Data
-under CC BY 4.0; the manual's section 28c says how.
+under CC BY 4.0; the manual's section 28c says how. With both Greek
+corpora in place the pages gain the Septuagint layer (`atlas_septuagint.py`,
+section 28d): a New Testament book's Greek against the Septuagint, its
+Septuagint words, and the echoes across the testaments in Greek.
 
 ## Reading further
 

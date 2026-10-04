@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.55. Andrew Hopkins, with Claude.
+For version 0.10.57. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -330,6 +330,8 @@ English ones.
 | `inspect_strongs.py`, `inspect_strongs_2.py` | One-off helpers used to study the Strong's tagging |
 | `metadata.db` | The catalogue: each book's baseline group, named passages, the Septuagint's book list and verse map, root equivalents (section 28b); kept as text in `metadata_backup.sql` |
 | `atlas_metadata.py`, `create_metadata_db.py`, `atlas_passages.py`, `atlas_backup.py` | The catalogue's code: the shared reader, the table setup, named passages, the backup and its dialog |
+| `atlas_septuagint.py` | The Septuagint layer of the pages: 1e, 1f and 4e, the Greek New Testament against the Septuagint by shared roots (section 28d) |
+| `build_gnt.py`, `build_tahot.py` | Import STEPBible's TAGNT Greek New Testament and TAHOT Hebrew Old Testament into `lxx.db` (section 28c) |
 | `atlas_lift.py`, `atlas_lxx.py`, `build_lxx.py`, `septuagint_bridge.py` | The command-line line of work on fair baselines, passages and the Septuagint; `METADATA_IN_WORD_ATLAS.md` and `NORMALIZATION_IN_WORD_ATLAS.md` describe it |
 | `WORD_ATLAS_MANUAL.md` | This manual |
 | `HOW_WORD_ATLAS_GREW.md` | The story of how the program was built |
@@ -573,6 +575,28 @@ findings. The group is the
 baseline_group column of the books table in `metadata.db` and can be
 changed there; when the file is absent the table is left off.
 
+**Sections 1e and 1f, the Greek against the Septuagint** (New
+Testament books; 0.10.57, section 28d). The comparison 1b refuses
+across the testaments is made here in Greek: 1e measures the book's
+content words in the Greek New Testament (the Textus Receptus text
+of lxx.db) by keyness against the Septuagint, the Septuagint books of
+the book's kind when it has two or more there (Revelation against the
+sixteen prophets in Greek: angel, seven, throne, Lamb, authority,
+beast, church, overcoming), otherwise the whole Septuagint, with the
+rate here, in the Septuagint and in the rest of the New Testament per
+10,000 content words, and the Septuagint book where the word is
+commonest; the footer gives the other end, the words the Septuagint
+uses far more than the book does. 1f lists the book's Septuagint
+words, content words whose rate in the Septuagint is at least twice
+their rate in the rest of the New Testament ("leaning" is the ratio),
+the words a writer takes from the Greek Bible rather than from the
+Greek of the day, and ranks every New Testament book by the share of
+its content words that lean that way: Revelation 26.9 percent,
+Hebrews 24.0, Acts 20.4, 2 Peter 19.5, James 18.1, Luke 17.7, down
+to John 8.3 and 1 John 5.9, which is the Septuagintal colouring of
+each book as one number. Click a row for the verses, double-click
+for the word's page.
+
 **Section 2, Signature formulas.** Set phrases of two to five words
 used at least twice in the book, ranked by keyness. On a Strong's
 build a formula is a run of roots, so "the heathen" and "the nations"
@@ -661,6 +685,34 @@ partner whose echoes are concentrated in a few chapters (more than 80
 percent of its weight in five) is passed over in favour of the next,
 and when fewer than a twentieth of the book's verses have any parallel
 the table is replaced by a line saying that 4a2 is the one to read.
+
+**Section 4e, Septuagint echoes** (both testaments; 0.10.57, section
+28d). Section 4 finds echoes across the testaments only "by English",
+since a Hebrew number never matches a Greek one. 4e finds them in
+Greek: runs of four or more words, by Strong's number, that the
+book's Greek text shares with the other testament's, the Greek New
+Testament of lxx.db against the Septuagint for a New Testament book
+and the book's Septuagint text against the Greek New Testament for an
+Old Testament book. Each run is grown to its full length, needs two
+content words, and is set aside as a formula of the language when
+more than six verses of the far side hold it; the rows are ranked by
+the rarity of the content words shared, with the Greek as the book
+spells it, the TAGNT's word-for-word gloss, the length, the grade,
+the verse here and the verses on the far side (a Septuagint verse
+numbered differently from the English carries the Rahlfs numbering in
+brackets, "Psalms 110:1 (Rahlfs 109:1)"), and other verses of the
+book's own testament holding the same run, which for a Gospel is its
+synoptic parallels. "quotation" marks a run of five or more words in
+one verse of the far side (three for an Old Testament book, since the
+Synoptics quote side by side; or ten or more words in no more than
+three, a parallel pair such as Samuel beside Chronicles). The first
+sixty rows are shown and every quotation beyond them; the footer
+counts the rest, the formulas, and the far side's books by echoes.
+Hebrews 1 comes out as the catena it is: Psalm 45:7 in twenty words,
+Psalm 110:1 in fourteen, Psalm 102:25 to 27 in three runs, Psalm 104:4,
+Psalm 2:7 (with Acts 13:33 and Hebrews 5:5 in the last column), 2
+Samuel 7:14 beside 1 Chronicles 17:13, Deuteronomy 32:43. The chapter
+and section pages carry 4e over their own verses.
 
 **Section 5, Reach and depth.** A chart with one point per signature
 word, reach across (how many chapters the word touches) and depth up
@@ -806,10 +858,12 @@ thin chapter's line is short rather than padded; a chapter with fewer
 than four is filled out with its own top signature words marked with a
 star.
 
-Then come sections 1 to 4d at chapter scale, with the same columns as
+Then come sections 1 to 4e at chapter scale, with the same columns as
 the book page: signature words against the rest of the testament, the
 Hebrew and Greek behind them, formulas, neighbors, echoes and their
-partners, who reads whom, and the sharing table. The 4a and 4a2 tables
+partners, who reads whom, the sharing table, and the Septuagint echoes
+of the chapter's own verses (Matthew 1 gives Isaiah 7:14 and, in the
+same words by root, Genesis 16:11, Hagar's annunciation). The 4a and 4a2 tables
 are headed with the chapter ([Mark 13]) because they hold the chapter's
 figures, not the book's.
 
@@ -1779,6 +1833,176 @@ measure every Hebrew book from it (sections 12 and 24a). lxx.db is
 now the atlas's original-language layer in three corpora, the
 Septuagint, the Greek New Testament and the Hebrew Old Testament,
 under a file name that records where it began.
+
+## 28d. The Septuagint layer: 1e, 1f and 4e
+
+Section 28c ends with the two things the Greek import did not do;
+0.10.57 does the first of them. atlas_septuagint.py reads the two
+Greek corpora of lxx.db, the Septuagint and the Greek New Testament,
+and puts three tables on the book page (12), two of them on New
+Testament books only and the third on every book, and the third also
+on the chapter and section pages (13, 14). Nothing in atlas.db
+changes: the King James tagging remains the measured text of every
+other table, and this layer stands beside it as the function-word
+layer does, read from the file beside the program and replaced by a
+note saying what to build when the file or either corpus is missing.
+
+**The texts.** The New Testament side is the Textus Receptus words
+of the TAGNT (in_tr = 1), the Greek the King James translators had,
+so the page stays one text throughout; the constant GNT_EDITION in
+atlas_septuagint.py switches to every edition's words. The
+Septuagint side is one text per book: the text the catalogue's
+lxx_books table prefers where it holds two (Theodotion's Daniel, the
+B texts of Joshua and Judges), and of the books with no English
+counterpart the BA text of Tobit and Theodotion's Susanna and Bel,
+with the Odes left out altogether, since they are the Septuagint's
+own copies of songs from elsewhere (Exodus 15, Deuteronomy 32,
+Hannah, Jonah, and Luke's Magnificat and Benedictus), and a run
+shared with Deuteronomy 32 would otherwise list Odes 2 beside it,
+and Luke would echo its own canticles. The fifty-three Septuagint
+books so chosen hold 295,000 content words; the Textus Receptus
+69,000.
+
+**The key.** Every word is matched and counted by one key. It is the
+word's Strong's number, through three repairs. A Septuagint word the
+tagging left without a number (keyed "L:" and the lemma, twelve
+percent of its content words) takes the number the TAGNT gives that
+lemma when it gives it exactly one, so the lemma with the breathings
+and accents stripped is the join. The catalogue's root equivalents
+(28b, atlas_lxx.py equivalents) are then followed as far as they
+lead, so eipon counts as lego and horao as eidon on both sides, and a
+chain of two works: "L:οιδα" entered against G6063 would then follow
+G6063 wherever the table sends it, which is the one entry the layer
+still wants, since the Septuagint's 258 uses of oida stand under a
+lemma key while the TAGNT numbers the word G6063. Last, the pronouns
+of the first and second person are folded to a person each, because
+the Septuagint tags each form under its own number (sou G4675, mou
+G3450, humin G5213) and the TAGNT the lemma (ego G1473 or G3165, su
+G4771 for the plural too), so without the fold no run containing
+"you" could ever match. Which keys are function words is decided
+once for both texts by the vote of all their words: the two imports
+drew the line differently, the Septuagint's counting eimi, ginomai,
+idou and heis as stop words and the TAGNT's as content, and measured
+each by its own line "is" came out as Luke's first word against a
+Septuagint that never "uses" it. All three tables share these keys,
+and the help entry on each column says so.
+
+**1e.** The book's content words by keyness (Dunning's log-likelihood,
+section 20) against the Septuagint, with the same occurrence floor as
+1b (three to five by the book's size). The far side is the Septuagint
+books of the book's own kind when the catalogue puts two or more
+there, which it does for Revelation alone (Prophecy: Isaiah to
+Malachi in Greek, sixteen books, Lamentations and Daniel among them),
+and the whole Septuagint otherwise, since the Gospels and the letters
+have no kind in the Old Testament. So the comparison section 1b
+refuses for Revelation (a Greek root against a Hebrew baseline is not
+a measurement) is made here with both sides Greek, and the prophets'
+kind is Revelation's baseline after all: having, angel, seven,
+throne, great, Lamb, authority, beast, church, overcoming, heaven,
+cast, with the keyness, the three rates per 10,000 content words and
+each word's Septuagint home (the Lamb's is Psalms, with two uses; the
+beast's Daniel, twenty-four). The footer runs the other way, the ten
+words the far side uses far more than the book: for Revelation the
+prophets' Lord at 383 per 10,000 against 52, house 87 against none,
+Israel, because (dioti), Judah, people, go, son, turning away, way.
+For Luke against the whole Septuagint the top is saying, disciples,
+Jesus, Pharisees, crowd, John, and the footer king, Lord, Israel,
+earth, son, Egypt: what a Gospel is not, in one line.
+
+**1f.** The Septuagint words: the book's content words whose rate in
+the whole Septuagint is at least twice (LEANING) their rate in the
+rest of the New Testament, most used here first, with the counts on
+all three sides, the ratio, and the Septuagint home. This is the
+measure of Septuagintal colouring, the words a writer takes from the
+Greek Bible rather than from the Greek of the day: Luke's Lord, son,
+go, city, people, house, Jerusalem, hand, rhema, face, Revelation's
+earth, seven, throne, beast, four, tribe (8.8 times), king (7.2),
+living creatures. The footer ranks the twenty-seven books by the
+share of their content words that lean this way, Revelation 26.9
+percent, Hebrews 24.0, Acts 20.4, 2 Peter 19.5, James 18.1, Luke 17.7,
+Jude 17.0, 1 Peter 16.3, then the Paulines between 14 and 9, Mark
+9.2, John 8.3, 2 John 6.3 and 1 John 5.9. That the two ends are
+Revelation and 1 John, the two books tradition gives the same author,
+is a number worth having beside 1c's Delta between them; and that
+Luke stands above Matthew and far above Mark is the familiar
+judgement about Luke's Septuagintal style as a share.
+
+**4e.** The echoes. Every run of four keys in the far corpus is
+indexed once (390,000 distinct runs for the Septuagint, built in
+under a second and kept for the session); each run of four in the
+book's verses is looked up and grown to the full length the two
+places share, recorded only where it cannot be grown to the left so
+each shared stretch is found once at its full length. A run needs
+two distinct content words (so "and he said to him" is not an echo),
+and a run that more than six verses of the far side hold is a formula
+of the language and is counted in the footer instead; a shorter run
+inside a longer one of the same verse, whose far verses the longer
+already lists, is a piece of it and is dropped. The rows are ranked
+by the summed rarity of the content words shared (rarity over both
+corpora together), then by length; the first sixty are shown, and
+every quotation beyond them. A quotation is five or more words in
+exactly one far verse, with two allowances: for an Old Testament
+book the far side may be three verses, since the Synoptics quote the
+same verse of Isaiah side by side, and on either side ten or more
+words in no more than three verses count, so a long run shared only
+with a parallel pair (2 Samuel 7:14 beside 1 Chronicles 17:13 behind
+Hebrews 1:5) is not denied the grade by the doublet. The far verse
+prints with its English reference and, where the Septuagint numbers
+it differently, the Rahlfs numbering in brackets: "Jonah 1:17 (Rahlfs
+2:1)", "Psalms 118:22 (Rahlfs 117:22)"; a book with no English
+counterpart prints under the catalogue's name. The last column lists
+other verses of the book's own testament holding the same run, which
+for a Gospel are the synoptic parallels of the quotation (Isaiah 40:3
+from Matthew 3:3 lists Mark 1:3 and Luke 3:4) and for a letter its
+own repetitions (Revelation 2:27 and 19:15 on Psalm 2:9).
+
+What it finds is the quotation catalogue of each book, read off the
+text. Matthew's first rows are Isaiah 40:3 in thirteen words, Isaiah
+6:9 to 10 in three runs (sixteen, thirteen and ten words, each with
+Acts 28:26 to 27 in the last column), Jeremiah 31:15, Jonah 1:17,
+Psalm 118:22 (with Mark, Luke and 1 Peter), Psalm 8:2, Psalm 22:18
+(with John 19:24), Psalm 110:1, Isaiah 9:2; 558 echoes in all and 98
+formulas set aside. Isaiah read the other way gives Luke 4:18 in
+twenty-three words (61:1), Galatians 4:27 in twenty-three (54:1),
+Acts 8:32 in nineteen (53:7), Acts 7:49, Romans 9:29, Romans 15:12,
+2 Corinthians 6:2, Luke 3:5, Acts 13:47, 1 Corinthians 1:19, Romans
+11:26, and the footer's count of New Testament books by echoes, Acts
+101, Luke 75, Revelation 75, Matthew 61, Mark 41, John 37, Romans 28,
+Hebrews 20, which is the reception of Isaiah as one line. Revelation,
+which quotes nothing and borrows everything, shows what the table
+does for allusion: Daniel 11:38 in seven words behind 18:12, Psalm
+2:9 behind 2:27 and 19:15, Ezekiel 47:13 behind 21:12, 2 Samuel
+12:30 behind 17:4 and 18:16, Deuteronomy 1:7's "the great river
+Euphrates" behind 9:14, Ezekiel 43:20's four horns of the altar
+behind 9:13, Jeremiah 44:13's sword, famine and plague behind 6:8,
+2 Kings 9:7's avenging of the blood of the servants behind 19:2; 400
+echoes, and the far side by echoes Psalms 79, Genesis 73, Daniel 61,
+Jeremiah 57, Isaiah 54, Deuteronomy 53, Exodus 50. Matthew 1:23 is
+the instructive row: by root the longer run (eleven words, "shall
+conceive and bear a son and they shall call his name") is Genesis
+16:11, the annunciation to Hagar, and Isaiah 7:14 follows with nine,
+because the Septuagint's tagging reads Isaiah's hexei as the noun
+hexis (G1838) where Genesis has echo (G2192), and a run breaks at a
+mistagged word. That is the limit to state: the matching is by
+number, so inflection is ignored (which is what lets Luke 1:31's
+"you will call" meet Isaiah's "you shall call") and a wrong number on
+either side breaks a run, as does a quotation that departs from the
+Septuagint's wording for a word (Matthew's "in the land and shadow of
+death" is six words, not the whole verse). A word apart is not yet
+bridged, and the second half of Jeremiah, whose verse map the
+catalogue has not finished by hand (28b), prints some verses under
+the Rahlfs chapter as if it were the English one ("Jeremiah 30:12"
+for English 49:18, Sodom and Gomorrah behind Jude 7). And 1 Enoch is
+not in the Septuagint, so Jude 14 finds no source, rightly.
+
+What the layer does not do yet is the Old Testament side of 1e and
+1f: an Old Testament book's own Greek against the rest of the
+Septuagint would measure the translator rather than the book, a
+different question, and it waits with the Septuagint pages for the
+books that have no English (Sirach, Wisdom, the Maccabees), which the
+index already holds and 4e already echoes (Judith 33 behind
+Revelation, Wisdom 9 behind Luke 1:75), but which have no page of
+their own.
 
 ## 29. What the atlas cannot see
 
@@ -4080,6 +4304,23 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.57.** The Septuagint layer (atlas_septuagint.py, section 28d):
+1e the book's Greek by keyness against the Septuagint (the kind's
+books in Greek for Revelation), 1f the Septuagint words and every New
+Testament book's share of them, 4e the echoes across the testaments
+in Greek, with the quotation grade, the Rahlfs numbering and the
+synoptic parallels, on book, chapter and section pages. The Compare
+page's "Refrains set aside" breaks ties by the phrase, so two runs
+list the same eight.
+
+**0.10.56.** The names test of 0.10.54 mended: it scanned each verse
+from its second letter, so a verse opening "Our" or "Her" counted the
+words "ur" and "er", and it broke compound names at the text's en dash,
+so Beer-sheba counted a lowercase "sheba". Er, Ur, Ezer, Sheba and
+forty-six other second halves of compound names are names again, and
+the "Without them" figures on their chapters are back where 0.10.53
+had them.
 
 **0.10.55.** build_tahot.py imports STEPBible's TAHOT Hebrew Old
 Testament into lxx.db; the function-word layer (1c, 7d) measures the

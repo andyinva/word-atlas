@@ -7,7 +7,7 @@ with the version that carried them. Add to it whenever a review or a
 conversation raises something; the manual's version history records
 what shipped, this records what has not.
 
-Last updated 2026-10-03, at version 0.10.55.
+Last updated 2026-10-04, at version 0.10.57.
 
 ## Standing work
 
@@ -158,6 +158,36 @@ Decided 2026-10-02: finish the book-by-book review, then import a
 Greek New Testament tagged with Strong's numbers, and only then take up
 the Septuagint pages.
 
+**Done 0.10.57: the Septuagint layer, part one (atlas_septuagint.py;
+manual 28d).** The decision recorded below is taken: the Septuagint
+stays a separate database the pages reach through lxx.db and the
+catalogue, not a second translation in atlas.db, so the King James
+tagging remains the measured text and the Greek stands beside it as
+the function-word layer does. Three tables: 1e the New Testament
+book's Greek by keyness against the Septuagint (the kind's books in
+Greek for Revelation, the whole otherwise), 1f its Septuagint words
+and every New Testament book's share of them (Revelation 26.9%,
+Hebrews 24.0%, Acts 20.4% ... John 8.3%, 1 John 5.9%), 4e the echoes
+across the testaments in Greek, both directions, with the quotation
+grade, the Rahlfs numbering and the synoptic parallels, on book,
+chapter and section pages. One key for both texts (lemma repair for
+the Septuagint's unnumbered words, the equivalents followed as a
+chain, pronouns folded to a person, stop words by the vote of both
+texts); the Odes left out.
+
+**Next for the layer.** (1) One equivalents entry the layer wants:
+`python atlas_lxx.py equivalents add L:οιδα G6063 --note "oida 'know':
+the Septuagint keys it by lemma, the TAGNT under G6063"`, so the
+Septuagint's 258 uses of oida meet the New Testament's. (2) Jeremiah
+49's verse map (28b) is now visible on the pages: 4e prints
+"Jeremiah 30:12" for English 49:18. (3) A run bridged across one
+mismatched word (the hexis/echo kind of break at Isaiah 7:14), marked
+as such. (4) The Old Testament side of 1e: a book's Septuagint
+vocabulary against the rest of the Septuagint measures the translator;
+decide whether that is wanted. (5) Pages for the Septuagint-only books
+(Sirach, Wisdom, Judith, the Maccabees), which 4e already echoes but
+which have no page. (6) 1e and 1f on the Passage page.
+
 **Done 0.10.51: the import.** build_gnt.py reads STEPBible's TAGNT
 (CC BY 4.0; the two files downloaded into data/tagnt/, not kept in
 git) into lxx.db beside the Septuagint: 7,958 verses, 142,096 words
@@ -216,7 +246,7 @@ draft" command in the feeling-word pattern (TSV with counts and the
 lexicon's sentence as the note, keep column, import) is a small
 addition if wanted before the import; after it, unnecessary.
 
-**The Septuagint pages (on hold until then).** What is ready: lxx.db
+**The Septuagint pages (the reasoning, kept; part one done in 0.10.57 above).** What was ready: lxx.db
 (Rahlfs, Theodotion's Daniel preferred, local only), the verse map and
 root equivalents in the catalogue, the corpora language rule, and
 atlas_lift.py --text lxx. What it would give the pages: Revelation and
@@ -242,7 +272,7 @@ go, and the README says what a visitor must supply.
 
 ## DONE
 
-2026-10-03 the repository public with 0.10.37 pushed. 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
+2026-10-03 the repository public with 0.10.37 pushed. 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
 splits. 0.10.50 1d a language at a time for Daniel and Ezra. 0.10.49 a run figure for the once-here share. 0.10.48 1c and 1d refusals and the sibling caution. 0.10.47 nearest beyond the kind under 1c and 1d. 0.10.46 1d's run figures cached. 0.10.45 1d's run columns. 0.10.44 vocabulary richness (1d); Hebrews in parts. 0.10.43 the kind's own size yardsticks. 0.10.42 nine-in-ten yardsticks and a no-pronoun Delta. 0.10.41 cautions and a size yardstick on 1c and 7d; three more
 letters in parts. 0.10.40 the function-word layer, 1c and 7d (New Testament). 0.10.39 section 7's leading words floored and ended early. 0.10.38 2 Corinthians, Galatians and Ephesians in parts. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
 words, 3 to 5). 0.10.34 1b stops at a keyness floor (6.63); three occurrences for a
