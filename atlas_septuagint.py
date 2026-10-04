@@ -70,6 +70,8 @@ ECHO_MIN_CONTENT = 2      # of which this many must be content words
 ECHO_BRIDGE_MIN = 3       # words a run must go on for beyond a one-word gap for the gap to be bridged
 ECHO_MAX_PLACES = 6       # verses on the far side beyond which a run is a formula, not an echo
 QUOTATION_MIN_WORDS = 5   # an echo this long found in few enough verses on the far side is graded 'quotation'
+QUOTATION_MIN_CONTENT = 3 # and holding this many distinct content words: eight words of "their iniquities and
+                          # their sins" are two content words and six particles, a stock pair, not a quotation
 # How many verses of the far side a quotation may stand in: one of the
 # Septuagint (a run in two Septuagint verses is likelier its own formula
 # than a quotation of either), but three of the New Testament, since
@@ -192,6 +194,14 @@ class GreekTexts:
             try:
                 for root, group in conn.execute("SELECT root, group_root FROM root_equivalents"):
                     if group != "-":
+                        # atlas_lxx.py upper-cases a root as it enters it,
+                        # so a lemma key comes back "L:ΟΙΔΑ" where the
+                        # tokens carry "L:οιδα"; the lemma part is put
+                        # back in the tokens' form (lowercase, no accents)
+                        if root[:2].upper() == "L:":
+                            root = "L:" + normal_lemma(root[2:])
+                        if group[:2].upper() == "L:":
+                            group = "L:" + normal_lemma(group[2:])
                         self.equivalent[root] = group
             except sqlite3.OperationalError:
                 pass
@@ -917,7 +927,7 @@ def echoes_section(atlas, report, title, book, chapters=None):
     far_col = "Septuagint" if far == "LXX" else "New Testament"
     also_col = "also in NT" if far == "LXX" else "also in Septuagint"
     sec = report.section(
-        title, ["echo (Greek)", "gloss", "words", "grade", "here", far_col, also_col],
+        title, ["echo (Greek)", "gloss", "words", "content", "grade", "here", far_col, also_col],
         note=f"Runs of {ECHO_MIN_WORDS} or more Greek words, by root, that {book}'s text in {near_name} shares "
              f"with {far_name} (lxx.db): the quotations and allusions in the words the writers used, found "
              f"by Strong's numbers rather than by English wording, so section 4's 'by English' echoes across "
@@ -927,7 +937,8 @@ def echoes_section(atlas, report, title, book, chapters=None):
              f"apart', and 'words' counts the words shared); at least "
              f"{ECHO_MIN_CONTENT} content words; a run in more than {ECHO_MAX_PLACES} verses of {far_name} is a "
              f"formula of the language and set aside (footer).  Ranked by the rarity of the content words "
-             f"shared.  'quotation' marks a run of {QUOTATION_MIN_WORDS} or more words found in "
+             f"shared.  'content' counts the distinct content words shared; 'quotation' marks a run of "
+             f"{QUOTATION_MIN_WORDS} or more words, {QUOTATION_MIN_CONTENT} or more of them content words, found in "
              f"{'exactly one verse' if QUOTATION_MAX_FAR[far] == 1 else 'no more than ' + str(QUOTATION_MAX_FAR[far]) + ' verses (the Synoptics quote side by side)'} "
              f"of {far_name}, or of {QUOTATION_MIN_WORDS + 1} or more in no more than three (a doublet: Samuel beside "
              f"Chronicles, a psalm beside its double); the first {ECHO_ROWS} echoes by rank are shown, and every "
@@ -949,7 +960,20 @@ def echoes_section(atlas, report, title, book, chapters=None):
         # being common ones
         return length >= QUOTATION_MIN_WORDS and (
             len(extra) <= QUOTATION_MAX_FAR[far] or (length >= QUOTATION_MIN_WORDS + 1 and len(extra) <= 3))
-    shown = kept[:ECHO_ROWS] + [r for r in kept[ECHO_ROWS:] if is_quotation(texts.matched(r[2], r[5]), r[3])]
+
+    def content_of(vid, start, length, gaps):
+        """The distinct content words the two places share in a run."""
+        gap_positions = {pos for pos, kind in gaps if kind != "far"}
+        ks = texts.keys[vid][start:start + length]
+        st = texts.stop[vid][start:start + length]
+        return {k for n_, (k, s) in enumerate(zip(ks, st)) if not s and start + n_ not in gap_positions}
+
+    def graded(r):
+        vid, start, length, extra, places, gaps = r
+        return is_quotation(texts.matched(length, gaps), extra) and len(content_of(vid, start, length, gaps)) >= QUOTATION_MIN_CONTENT
+
+    shown = kept[:ECHO_ROWS] + [r for r in kept[ECHO_ROWS:] if graded(r)]
+    seams = {}                 # (near key, far key) -> (word, here reference): same word, two keys
     for vid, start, length, extra, places, gaps in shown:
         # The far place the Greek is rendered against: the first listed
         # verse among those this row is for
@@ -962,7 +986,18 @@ def echoes_section(atlas, report, title, book, chapters=None):
             # The gloss comes from the New Testament side of the match
             gloss = " ".join(g for g in texts.gloss[ovid][j:j + flength] if g)
         n_matched = texts.matched(length, gaps)
-        grade = "quotation" if is_quotation(n_matched, extra) else ""
+        n_content = len(content_of(vid, start, length, gaps))
+        grade = "quotation" if is_quotation(n_matched, extra) and n_content >= QUOTATION_MIN_CONTENT else ""
+        # A changed word spelt the same on both sides is a seam between
+        # the two taggings, not a change in the text
+        for pos, kind in gaps:
+            if kind == "changed":
+                fpos = j + (pos - start) - sum(1 for p2, k2 in gaps if p2 < pos and k2 == "near") \
+                    + sum(1 for p2, k2 in gaps if p2 <= pos and k2 == "far")
+                if fpos < len(texts.surface[ovid]) and \
+                        normal_lemma(texts.surface[vid][pos]) == normal_lemma(texts.surface[ovid][fpos]):
+                    seams.setdefault((texts.keys[vid][pos], texts.keys[ovid][fpos]),
+                                     (texts.surface[vid][pos], texts.ref(vid)))
         if gaps:
             apart = f"{'one word' if len(gaps) == 1 else str(len(gaps)) + ' words'} apart"
             grade = f"{grade}, {apart}" if grade else apart
@@ -972,7 +1007,7 @@ def echoes_section(atlas, report, title, book, chapters=None):
         own_refs = [texts.ref(v) for v in sorted(own, key=texts.order_key)]
         far_refs = [texts.ref(v) for v in sorted(extra, key=texts.order_key)]
         refs = [r for r in [texts.english_ref(vid)] + [texts.english_ref(v) for v in extra] if r]
-        sec.add([greek, gloss, n_matched, grade, texts.ref(vid), ", ".join(far_refs),
+        sec.add([greek, gloss, n_matched, n_content, grade, texts.ref(vid), ", ".join(far_refs),
                  ", ".join(own_refs[:4]) + (f" and {len(own_refs) - 4} more" if len(own_refs) > 4 else "")],
                 refs=refs, link={"book": book})
     if len(kept) > len(shown):
@@ -1007,6 +1042,18 @@ def echoes_section(atlas, report, title, book, chapters=None):
         number = title.split(".")[0].rstrip("abcdefgh")
         unconfirmed_section(atlas, report, number + f"f. Quoted by English, not in the Septuagint's words [{label}]",
                             texts, unconfirmed, near, far, far_name)
+    if seams:
+        # Two lists for the catalogue's keeper: the same word under two
+        # numbers is either two legitimate numbers for one word (an
+        # equivalents row) or one side's tagging mistaken (a lemma
+        # repair on the Septuagint side: hexei read as the noun hexis);
+        # only reading decides which, so the footer names them
+        sec.footer.append(
+            "Seams between the two taggings, the same word under two keys (here | there), from the bridged rows: "
+            + "; ".join(f"{word} ({nk} | {fk}) at {ref}" for (nk, fk), (word, ref) in list(seams.items())[:12])
+            + (f"; and {len(seams) - 12} more" if len(seams) > 12 else "")
+            + ".  Each is either two numbers for one word (an equivalents row) or one tagging's slip (a lemma repair); "
+              "the reading decides which.")
     # Partners: which books of the far side the echoes come from
     partners = Counter()
     for vid, start, length, extra, places, gaps in kept:

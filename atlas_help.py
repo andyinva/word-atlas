@@ -342,6 +342,15 @@ COLUMN_HELP.update({
     "New Testament": "The New Testament verses holding the echo.",
     "also in NT": "Other New Testament verses holding the same run: a synoptic parallel, or a formula.",
     "also in Septuagint": "Other Septuagint verses holding the same run.",
+    "content": "How many distinct content words (not particles, articles, pronouns or conjunctions) the two "
+               "places share in the run; a quotation needs three.",
+    "English echo": "An echo section 4 found across the testaments by the King James wording, grown to the run "
+                    "the two verses share in English.",
+    "Greek shared": "The longest run of Greek, by root, that the two verses share; empty when they share no word.",
+    "test": "What the Greek says of an echo the English found: 'departs' (two words or fewer in common), a "
+            "quotation not in the Septuagint's words or an echo the translators' English made; 'short run', "
+            "Greek that agrees for fewer words than 4e needs; 'formula', a run 4e set aside as the language's "
+            "common stock; 'no Greek verse mapped', a Septuagint verse the catalogue has not placed.",
 })
 
 PICTURE_HELP = {

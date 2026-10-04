@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.61. Andrew Hopkins, with Claude.
+For version 0.10.62. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -2067,8 +2067,28 @@ hexis (G1838) where the TAGNT has echo (G2192), so the row prints
 [ἕξει | ἕξει], the same word on both sides with different numbers,
 fourteen words, and Isaiah 7:14 leads the verse where before Genesis
 16:11, the annunciation to Hagar, led it with eleven words unbroken.
-A bracket with the same word on both sides is a tagging split made
-visible, and a candidate for the equivalents table. The limit to
+A bracket with the same word on both sides is a seam between the two
+taggings made visible, and 4e's footer lists them ("εἰδήσουσίν (G1492
+| L:οιδα) at Hebrews 8:11"). They are of two kinds, and only reading
+tells which: two legitimate numbers for one word, which is an
+equivalents row (μήποτε at Matthew 13:15), or one tagging's slip,
+which is a lemma repair on the side that erred (ἕξει is the future of
+echo, and the Septuagint's tagger read it as the noun hexis; the
+remedy is to correct that lemma, not to declare two real keys
+equivalent). The Hebrews 8:11 seam was the test of the οἶδα
+equivalence entered in 0.10.57: it had not reached the page because
+atlas_lxx.py upper-cases a root as it enters it, so the row read
+"L:ΟΙΔΑ" where the tokens carry "L:οιδα"; since 0.10.62 the layer
+puts a lemma key back in the tokens' form as it reads the table, and
+the seam closes. The bridge also made a grade too easy: "their
+iniquities and their sins" at Hebrews 8:12 reached Leviticus 16:21
+and Hosea 8:13 across a gap at eight and seven words and was graded a
+quotation, two content words and six particles counted alike, since
+a stock pair rarely runs five exact words into a second verse but
+with a gap bridged often does. A quotation now needs three distinct
+content words as well as five words, exact or bridged, and the
+content count is a column of its own so a reader sees that the eight
+words against Leviticus are two. The limit to
 state: the matching is by number, so inflection is ignored (which is
 what lets Luke 1:31's "you will call" meet Isaiah's "you shall call"),
 a wrong number on either side is a gap, and a gap of two words
@@ -4397,6 +4417,13 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.62.** 4e's quotation grade needs three distinct content words
+(a bridged stock pair, "their iniquities and their sins", had reached
+it on particles), shown in a content column; a footer lists the seams
+between the taggings, the same word under two keys in the bridged
+rows; a lemma key in the equivalents table is read in the tokens'
+form, so the οἶδα row of 0.10.57 takes effect.
 
 **0.10.61.** 4e grows a run across a gap of one word (changed, or
 added on either side) when the run goes on for three words beyond
