@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.58. Andrew Hopkins, with Claude.
+For version 0.10.59. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -1771,7 +1771,13 @@ Rev) and the King James reference in eng_book, eng_chapter and
 eng_verse (the TAGNT numbers verses as the NRSV does and marks the
 King James's numbering in square brackets where it differs, as at
 2 Corinthians 13:13[14] and Revelation 12:18[13:1], and the import
-follows the brackets, since that is the numbering the atlas uses).
+follows the brackets, since that is the numbering the atlas uses;
+since 0.10.59 it follows them word by word, so where the King James
+draws its line inside an NRSV verse, as at Hebrews 3:9, which ends
+with the "forty years" the NRSV begins 3:10 with, the words go to the
+King James verse they belong to, and the verses table holds the
+7,957 verses of the King James New Testament, one each, with the
+NRSV reference of the verse's first word kept in the ref column).
 The tokens table gains five columns for these rows: word_type (the
 TAGNT marker, NKO for a word in every edition, K for a word only in
 the Textus Receptus, N(k)O and the rest for the variants), editions,
@@ -1966,8 +1972,17 @@ the testaments that no Greek run confirms: quotations not in the
 Septuagint's words, a rendering of the Hebrew or a free quotation
 (Hebrews 8:8 against Jeremiah 31:31, where Hebrews has "I will make"
 and "upon the house" against the Septuagint's "I will covenant" and
-"with the house", though 8:9 to 12 follow it in four runs), limited
-to the rows section 4 shows. The last column lists
+"with the house", though 8:9 to 12 follow it in four runs). The
+footer draws on the echoes table itself, section 4's candidates
+before its cap, taking an English-bridged echo when grown over its
+verses it is five or more words in at most four verses of the Bible
+(section 4's own grade loosened by two verses, so a saying the
+Synoptics share is not excluded); on Matthew, whose section 4 at
+book level is filled by Mark and Luke, that is what lets the
+non-Septuagintal quotations surface: Isaiah 42:3 behind 12:20,
+Zechariah 11:13 behind 27:3, Deuteronomy 10:12 behind 22:37, among
+idiom the English finder pairs on its own account (Esther 8:3's
+"fell down at his feet and besought"), which a reader sorts by eye. The last column lists
 other verses of the book's own testament holding the same run, which
 for a Gospel are the synoptic parallels of the quotation (Isaiah 40:3
 from Matthew 3:3 lists Mark 1:3 and Luke 3:4) and for a letter its
@@ -4329,6 +4344,12 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.59.** build_gnt.py files each word under its King James verse
+(Hebrews 3:10 had been filed as 3:9, so its Psalm 95 runs were
+missing from 4e); rerun it. 4e's unconfirmed-by-Greek footer draws on
+the echoes table rather than on section 4's shown rows, so Matthew's
+non-Septuagintal quotations appear.
 
 **0.10.58.** The Septuagint layer read by the reviewer on Hebrews,
 Matthew, Revelation, Jude, Jeremiah and Romans: the quotation grade

@@ -188,10 +188,20 @@ def build(data_dir, out_path, metadata_path):
         nonlocal next_id
         if current is None:
             return
-        code, ch, v = current
+        # The verse is the King James verse: its words are the ones the
+        # TAGNT marks with its number, whichever NRSV verse they stand
+        # in.  Until 0.10.59 a verse took the whole NRSV verse and the
+        # King James number of its first word, so where the KJV draws
+        # the line inside an NRSV verse (Hebrews 3:9 ends with "forty
+        # years", which the NRSV begins 3:10 with) two words went to the
+        # wrong verse and 3:10 was filed as 3:9, a verse the atlas then
+        # had twice and once not at all.  The ref column keeps the NRSV
+        # reference of the verse's first word, for a reader with that
+        # numbering
+        code, kjv_ch, kjv_v = current
         text = " ".join(w[11] for w in words)
-        kjv_ch, kjv_v = words[0][12], words[0][13]
-        verse_rows.append((next_id, code, ch, str(v), f"{code}.{ch}.{v}", BOOK_NUMBERS[code], kjv_ch, kjv_v,
+        nrsv = f"{code}.{words[0][1]}.{words[0][2]}"
+        verse_rows.append((next_id, code, kjv_ch, str(kjv_v), nrsv, BOOK_NUMBERS[code], kjv_ch, kjv_v,
                            text, "GNT"))
         for i, w in enumerate(words):
             (_, _, _, pos, wtype, greek, gloss, dstrong, morph, lemma, editions, _raw, _kc, _kv) = w
@@ -207,13 +217,17 @@ def build(data_dir, out_path, metadata_path):
                 lemma_of[root] = lemma
         next_id += 1
 
+    # Words are gathered by King James verse.  They come in NRSV order,
+    # so a King James verse whose words the NRSV splits across two of
+    # its own (Philippians 1:16 and 17, swapped) is gathered when its
+    # key recurs rather than started again
+    gathered = {}
     for row in read_tagnt(paths):
-        key = row[:3]
-        if key != current:
-            flush()
-            current, words = key, []
-        words.append(row)
-    flush()
+        key = (row[0], row[12], row[13])
+        gathered.setdefault(key, []).append(row)
+    for current, words in gathered.items():
+        flush()
+    current = None
     tr_tokens = sum(1 for t in token_rows if t[11])
 
     log(f"writing {len(verse_rows):,} verses and {len(token_rows):,} words ...")

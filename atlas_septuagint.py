@@ -611,6 +611,65 @@ def vocabulary_sections(atlas, report, number, book):
             f"{bk} {s:.1f}%" for bk, s in ranked) + ".")
 
 
+ENGLISH_MAX_VERSES = 4    # an English-bridged echo in at most this many verses of the Bible is tested against the Greek
+ENGLISH_ROWS = 15         # how many unconfirmed English echoes the footer lists
+
+
+def QUOTE_MIN_WORDS_OF(atlas):
+    from atlas_pages import QUOTE_MIN_WORDS
+    return QUOTE_MIN_WORDS
+
+
+def english_echoes_unconfirmed(atlas, book, chapters, testament, greek_pairs):
+    """
+    The 'en:' echoes of the book (or its chapters) whose partner verses
+    lie in the other testament, grown over their verses to the full run
+    as section 4 grows them, kept when the run is QUOTE_MIN_WORDS or
+    more words in at most ENGLISH_MAX_VERSES verses of the Bible, and
+    not confirmed by a Greek run between the same two verses.  Returns
+    [(phrase, here reference, there reference)], rarest first.
+    """
+    from atlas_pages import QUOTE_MIN_WORDS, STOPLIST
+    if chapters is None:
+        rows = atlas.db.execute(
+            "SELECT phrase, reference FROM echoes WHERE book = ? AND phrase LIKE 'en:%'", (book,)).fetchall()
+    else:
+        marks = ",".join("?" * len(chapters))
+        rows = atlas.db.execute(
+            "SELECT e.phrase, e.reference FROM echoes e JOIN verses v USING (verse_id) "
+            f"WHERE e.book = ? AND e.phrase LIKE 'en:%' AND v.chapter IN ({marks})", (book, *chapters)).fetchall()
+    by_phrase = defaultdict(list)
+    for phrase, ref in rows:
+        if ref not in by_phrase[phrase]:
+            by_phrase[phrase].append(ref)
+    other = "Old" if testament == "New" else "New"
+    found = {}
+    for phrase, here in by_phrase.items():
+        there = [r[0] for r in atlas.db.execute(
+            "SELECT reference FROM echoes WHERE phrase = ? AND book <> ?", (phrase, book))]
+        far = [t for t in there if atlas.book_info.get(t.rsplit(" ", 1)[0], {}).get("testament") == other]
+        if not far or len(here) + len(there) > ENGLISH_MAX_VERSES:
+            continue
+        refs = here + there
+        strings = [r[0] for r in atlas.db.execute(
+            "SELECT word_string FROM verses WHERE reference IN (" + ",".join("?" * len(refs)) + ")", refs)]
+        grown = atlas.grow_formula(phrase[3:], strings) if strings else phrase[3:]
+        if len(grown.split()) < QUOTE_MIN_WORDS:
+            continue
+        for h in here:
+            for e in far:
+                if (h, e) in greek_pairs:
+                    continue
+                # One row per verse pair: the longest grown phrase
+                if (h, e) not in found or len(grown) > len(found[(h, e)]):
+                    found[(h, e)] = grown
+    def rarity(phrase):
+        return sum(atlas.rarity(atlas.root_of(w)) for w in phrase.split() if w not in STOPLIST)
+    out = [(phrase, h, e) for (h, e), phrase in found.items()]
+    out.sort(key=lambda r: (-rarity(r[0]), atlas.ref_key(r[1]), atlas.ref_key(r[2])))
+    return out
+
+
 # --- 4e: the echoes ----------------------------------------------------------
 def echoes_section(atlas, report, title, book, chapters=None):
     """
@@ -729,11 +788,18 @@ def echoes_section(atlas, report, title, book, chapters=None):
                           f"of {far_name} set aside as formulas of the language.")
     if not kept:
         sec.footer.append(f"No run of {ECHO_MIN_WORDS} or more words shared with {far_name} meets the tests.")
-    # The English bridge's cross-testament echoes (section 4, 'by
-    # English') that no Greek run confirms: a quotation the writer made
-    # from the Hebrew, or from memory, rather than in the Septuagint's
-    # words.  For Matthew that list is the non-Septuagintal formula
-    # quotations themselves (Micah 5:2, Hosea 11:1, Zechariah 11:12)
+    # The English bridge's cross-testament echoes that no Greek run
+    # confirms: a quotation the writer made from the Hebrew, or from
+    # memory, rather than in the Septuagint's words.  Drawn from the
+    # echoes table itself (the 'en:' phrases, section 4's candidates
+    # before its cap), not from the rows section 4 shows, since on a
+    # large book those are filled by its own testament's partners and
+    # the Old Testament never reaches them: Matthew's non-Septuagintal
+    # formula quotations (Isaiah 42:3, Zechariah 11:13) are the finding
+    # here.  A phrase counts when grown over its verses it is
+    # QUOTE_MIN_WORDS or more words in at most ENGLISH_MAX_VERSES verses
+    # of the Bible, section 4's 'by English' grade loosened by two
+    # verses so a saying the Synoptics share is not excluded
     pairs = set()
     for vid, start, length, extra, places in kept:
         here_ref = texts.english_ref(vid)
@@ -741,33 +807,14 @@ def echoes_section(atlas, report, title, book, chapters=None):
             e = texts.english_ref(v)
             if here_ref and e:
                 pairs.add((here_ref, e))
-    unconfirmed = []
-    for other in report.sections:
-        if not other.title.startswith("4. Echoes") or len(other.columns) < 4:
-            continue
-        cols = {c: i for i, c in enumerate(other.columns)}
-        if "grade" not in cols or "here" not in cols or "elsewhere" not in cols:
-            continue
-        for row in other.rows:
-            if "by English" not in str(row[cols["grade"]]):
-                continue
-            for here_ref in str(row[cols["here"]]).split(", "):
-                for e in str(row[cols["elsewhere"]]).split(", "):
-                    e_book = e.rsplit(" ", 1)[0]
-                    if e_book in atlas.book_info and atlas.book_info[e_book]["testament"] != testament \
-                            and (here_ref, e) not in pairs:
-                        unconfirmed.append((row[cols["echo"]], here_ref, e))
+    unconfirmed = english_echoes_unconfirmed(atlas, book, chapters, testament, pairs)
     if unconfirmed:
-        seen, lines = set(), []
-        for echo, here_ref, e in unconfirmed:
-            if (here_ref, e) in seen:
-                continue
-            seen.add((here_ref, e))
-            lines.append(f"{here_ref} and {e} (\"{echo}\")")
         sec.footer.append(
-            f"Of the 'by English' rows section 4 shows, those no Greek run here confirms, so not in the "
-            f"Septuagint's words (a rendering of the Hebrew, a free quotation, or a run broken by a differing word): "
-            + "; ".join(lines[:12]) + (f"; and {len(lines) - 12} more" if len(lines) > 12 else "") + ".")
+            f"Found by English wording (section 4's bridge: {QUOTE_MIN_WORDS_OF(atlas)} or more words in at most "
+            f"{ENGLISH_MAX_VERSES} verses of the Bible) but by no Greek run here, so not in the Septuagint's words: "
+            f"a rendering of the Hebrew, a free quotation, or a run broken by a differing word: "
+            + "; ".join(f"{h} and {e} (\"{phrase}\")" for phrase, h, e in unconfirmed[:ENGLISH_ROWS])
+            + (f"; and {len(unconfirmed) - ENGLISH_ROWS} more" if len(unconfirmed) > ENGLISH_ROWS else "") + ".")
     # Partners: which books of the far side the echoes come from
     partners = Counter()
     for vid, start, length, extra, places in kept:
