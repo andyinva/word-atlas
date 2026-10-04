@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.57. Andrew Hopkins, with Claude.
+For version 0.10.58. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -1943,14 +1943,31 @@ corpora together), then by length; the first sixty are shown, and
 every quotation beyond them. A quotation is five or more words in
 exactly one far verse, with two allowances: for an Old Testament
 book the far side may be three verses, since the Synoptics quote the
-same verse of Isaiah side by side, and on either side ten or more
-words in no more than three verses count, so a long run shared only
-with a parallel pair (2 Samuel 7:14 beside 1 Chronicles 17:13 behind
-Hebrews 1:5) is not denied the grade by the doublet. The far verse
+same verse of Isaiah side by side, and on either side six or more
+words in no more than three verses count, so a run shared only with
+a doublet (2 Samuel 7:14 beside 1 Chronicles 17:13 behind Hebrews
+1:5; Psalm 118:6 beside Psalm 56:11 behind Hebrews 13:6) is not
+denied the grade. The second allowance was widened in 0.10.58 after
+the reviewer found Hebrews 13:6 missing: six words of a psalm
+verbatim, in two psalms, had no grade, and its words being common
+ones it fell under the row cap. The lesson is general: in Greek the
+long verbatim runs are the quotations whatever their words, so every
+graded run is shown whatever its rank. The far verse
 prints with its English reference and, where the Septuagint numbers
 it differently, the Rahlfs numbering in brackets: "Jonah 1:17 (Rahlfs
 2:1)", "Psalms 118:22 (Rahlfs 117:22)"; a book with no English
-counterpart prints under the catalogue's name. The last column lists
+counterpart prints under the catalogue's name; and a verse of a book
+the English has but to which the catalogue's map (28b) has given no
+English verse yet, which is most of the Septuagint's Jeremiah 25 to
+51, prints as "Jeremiah (Rahlfs 30:12, no English verse mapped)", so
+that no reader opens English Jeremiah 30:12 for what is English
+49:18. A last footer lists the 'by English' rows of section 4 across
+the testaments that no Greek run confirms: quotations not in the
+Septuagint's words, a rendering of the Hebrew or a free quotation
+(Hebrews 8:8 against Jeremiah 31:31, where Hebrews has "I will make"
+and "upon the house" against the Septuagint's "I will covenant" and
+"with the house", though 8:9 to 12 follow it in four runs), limited
+to the rows section 4 shows. The last column lists
 other verses of the book's own testament holding the same run, which
 for a Gospel are the synoptic parallels of the quotation (Isaiah 40:3
 from Matthew 3:3 lists Mark 1:3 and Luke 3:4) and for a letter its
@@ -1989,11 +2006,19 @@ number, so inflection is ignored (which is what lets Luke 1:31's
 either side breaks a run, as does a quotation that departs from the
 Septuagint's wording for a word (Matthew's "in the land and shadow of
 death" is six words, not the whole verse). A word apart is not yet
-bridged, and the second half of Jeremiah, whose verse map the
-catalogue has not finished by hand (28b), prints some verses under
-the Rahlfs chapter as if it were the English one ("Jeremiah 30:12"
-for English 49:18, Sodom and Gomorrah behind Jude 7). And 1 Enoch is
-not in the Septuagint, so Jude 14 finds no source, rightly.
+bridged. The misses are the finding as often as the rows: of
+Matthew's formula quotations the table finds the Septuagintal ones
+and not Micah 5:2, Hosea 11:1 ("my son" from the Hebrew where the
+Septuagint has "his children"), Isaiah 53:4, Isaiah 42:1 to 4 or
+Zechariah 11:12 to 13, which is the mixed text form of Matthew's
+quotations appearing as gaps; Hebrews 1:6 finds Deuteronomy 32:43 in
+four words and not six because Rahlfs' Deuteronomy has "sons of God"
+where Hebrews, with the Odes, has "angels", the one place leaving the
+Odes out costs a row; and 1 Enoch is not in the Septuagint, so Jude
+14 finds no source, rightly. The far side's books in the footer are
+one text per book (Theodotion's Daniel, the B texts of Joshua and
+Judges, the BA text of Tobit), so a book with two Greek texts is not
+counted twice.
 
 What the layer does not do yet is the Old Testament side of 1e and
 1f: an Old Testament book's own Greek against the rest of the
@@ -4304,6 +4329,15 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.58.** The Septuagint layer read by the reviewer on Hebrews,
+Matthew, Revelation, Jude, Jeremiah and Romans: the quotation grade
+admits six or more words in up to three far verses (Hebrews 13:6 and
+Psalm 118:6 had fallen under the cap), a Septuagint verse with no
+English verse mapped prints as Rahlfs' numbering and says so, 4e's
+footer lists section 4's 'by English' rows that no Greek run confirms,
+1e's home column is headed "(any book)" and its note says why a
+common verb can lead.
 
 **0.10.57.** The Septuagint layer (atlas_septuagint.py, section 28d):
 1e the book's Greek by keyness against the Septuagint (the kind's

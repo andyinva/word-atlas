@@ -330,8 +330,9 @@ COLUMN_HELP.update({
     "rest of NT": "How many times the rest of the Greek New Testament uses the word.",
     "Septuagint": "In 1f, how many times the Septuagint uses the word; in 4e, the Septuagint verses holding "
                   "the echo, with the Rahlfs numbering in brackets where it differs from the English.",
-    "Septuagint home": "The Septuagint book where the word is commonest, with its count there; 'not in the "
-                       "Septuagint' when no book of it has the word.",
+    "Septuagint home (any book)": "The Septuagint book where the word is commonest, with its count there, searched "
+                                  "over the whole Septuagint whatever the table's far side is; 'not in the "
+                                  "Septuagint' when no book of it has the word.",
     "leaning": "The Septuagint's rate for the word divided by the rest of the New Testament's: how far the "
                "word belongs to the Greek Bible rather than to the New Testament's common stock.  'only here' "
                "when the rest of the New Testament never uses it.",

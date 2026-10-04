@@ -375,6 +375,14 @@ class GreekTexts:
         if corpus == "GNT":
             return eng or f"{code} {ch}:{v}"
         if eng is None:
+            # A verse of a book the English has, but with no English
+            # verse mapped to it (the second half of Jeremiah until the
+            # catalogue's map is finished by hand), is marked as Rahlfs'
+            # numbering, so no reader opens English Jeremiah 30:12 for
+            # what is English 49:18; a book the English lacks (Sirach)
+            # has only Rahlfs' numbering and prints plainly
+            if self.lxx_book_num.get(code):
+                return f"{self.book_of_code(code)} (Rahlfs {ch}:{v}, no English verse mapped)"
             return f"{self.book_of_code(code)} {ch}:{v}"
         if str(ec) != str(ch) or str(ev) != str(v):
             return f"{eng} (Rahlfs {ch}:{v})"
@@ -514,13 +522,16 @@ def vocabulary_sections(atlas, report, number, book):
     rows.sort(key=lambda r: (-r[0], r[1]))
     sec = report.section(
         title_e, ["word", "lemma", "root", "here", "here/10k", "Septuagint/10k", "rest of NT/10k", "keyness",
-                  "Septuagint home"],
+                  "Septuagint home (any book)"],
         note=f"The book's own Greek against the Greek Old Testament.  {book}'s content words in the Greek New "
              f"Testament ({n_here:,} words, the Textus Receptus text of lxx.db) measured by keyness against "
              f"{far}: the words {book} uses far more than the Septuagint does, highest keyness first, "
              f"{floor} occurrences or more.  'Septuagint/10k' and 'rest of NT/10k' are rates per {PER:,} "
              f"content words, so the two can be read against each other; 'Septuagint home' is the "
-             f"Septuagint book where the word is commonest.  Where section 1b could not measure the book "
+             f"Septuagint book where the word is commonest, searched over the whole Septuagint whatever the far "
+             f"side is (so a word at 0.0 against the kind can still have a home elsewhere).  A common verb at "
+             f"the top (Revelation's 'having', its participles) is a habit of the book's syntax as much as a "
+             f"word; section 1c is where habits are measured.  Where section 1b could not measure the book "
              f"against a kind in the other testament, this table measures it against the same kind in Greek.  "
              f"The catalogue's root equivalents are applied, pronouns are folded to a person each, and "
              f"a Septuagint word with no Strong's number takes the number the New Testament gives its lemma.")
@@ -577,7 +588,7 @@ def vocabulary_sections(atlas, report, number, book):
     place = [bk for bk, s in ranked].index(book) + 1
     sec_f = report.section(
         title_f, ["word", "lemma", "root", "here", "rest of NT", "Septuagint", "Septuagint/10k", "rest of NT/10k",
-                  "leaning", "Septuagint home"],
+                  "leaning", "Septuagint home (any book)"],
         note=f"The book's words that belong to the Septuagint's vocabulary more than to the New Testament's: "
              f"a content word whose rate in the whole Septuagint is at least {LEANING:g} times its rate in the "
              f"rest of the New Testament ('leaning' is that ratio; 'only here' when the rest of the New "
@@ -674,8 +685,8 @@ def echoes_section(atlas, report, title, book, chapters=None):
              f"formula of the language and set aside (footer).  Ranked by the rarity of the content words "
              f"shared.  'quotation' marks a run of {QUOTATION_MIN_WORDS} or more words found in "
              f"{'exactly one verse' if QUOTATION_MAX_FAR[far] == 1 else 'no more than ' + str(QUOTATION_MAX_FAR[far]) + ' verses (the Synoptics quote side by side)'} "
-             f"of {far_name}, or of {2 * QUOTATION_MIN_WORDS} or more in no more than three (a parallel pair: Samuel "
-             f"beside Chronicles, a psalm beside its double); the first {ECHO_ROWS} echoes by rank are shown, and every "
+             f"of {far_name}, or of {QUOTATION_MIN_WORDS + 1} or more in no more than three (a doublet: Samuel beside "
+             f"Chronicles, a psalm beside its double); the first {ECHO_ROWS} echoes by rank are shown, and every "
              f"quotation beyond them.  'gloss' is the TAGNT's word-for-word English of the New Testament side.  "
              f"'{also_col}' lists other verses of {book}'s own testament holding the same run (a synoptic "
              f"parallel, a repeated formula).  The Greek is {'the Textus Receptus' if GNT_EDITION == 'tr' else 'every edition'} "
@@ -684,11 +695,16 @@ def echoes_section(atlas, report, title, book, chapters=None):
     # The first ECHO_ROWS by rank, and beyond them every run graded a
     # quotation, so no quotation falls under the cap
     def is_quotation(length, extra):
-        # Five words in one far verse; or twice that in no more than
-        # three, which lets a long run shared only with a parallel pair
-        # (Samuel beside Chronicles, a psalm beside its double) count
+        # Five words in one far verse (three for the New Testament side,
+        # where the Synoptics quote side by side); or six or more words
+        # in no more than three, which lets a run shared with a doublet
+        # count (Psalm 118:6 behind Hebrews 13:6 is also Psalm 56:11;
+        # 2 Samuel 7:14 behind Hebrews 1:5 is also 1 Chronicles 17:13).
+        # Before the second allowance Hebrews 13:6, six words of a psalm
+        # verbatim, had no grade and fell under the row cap, its words
+        # being common ones
         return length >= QUOTATION_MIN_WORDS and (
-            len(extra) <= QUOTATION_MAX_FAR[far] or (length >= 2 * QUOTATION_MIN_WORDS and len(extra) <= 3))
+            len(extra) <= QUOTATION_MAX_FAR[far] or (length >= QUOTATION_MIN_WORDS + 1 and len(extra) <= 3))
     shown = kept[:ECHO_ROWS] + [r for r in kept[ECHO_ROWS:] if is_quotation(r[2], r[3])]
     for vid, start, length, extra, places in shown:
         greek = " ".join(texts.surface[vid][start:start + length])
@@ -713,6 +729,45 @@ def echoes_section(atlas, report, title, book, chapters=None):
                           f"of {far_name} set aside as formulas of the language.")
     if not kept:
         sec.footer.append(f"No run of {ECHO_MIN_WORDS} or more words shared with {far_name} meets the tests.")
+    # The English bridge's cross-testament echoes (section 4, 'by
+    # English') that no Greek run confirms: a quotation the writer made
+    # from the Hebrew, or from memory, rather than in the Septuagint's
+    # words.  For Matthew that list is the non-Septuagintal formula
+    # quotations themselves (Micah 5:2, Hosea 11:1, Zechariah 11:12)
+    pairs = set()
+    for vid, start, length, extra, places in kept:
+        here_ref = texts.english_ref(vid)
+        for v in extra:
+            e = texts.english_ref(v)
+            if here_ref and e:
+                pairs.add((here_ref, e))
+    unconfirmed = []
+    for other in report.sections:
+        if not other.title.startswith("4. Echoes") or len(other.columns) < 4:
+            continue
+        cols = {c: i for i, c in enumerate(other.columns)}
+        if "grade" not in cols or "here" not in cols or "elsewhere" not in cols:
+            continue
+        for row in other.rows:
+            if "by English" not in str(row[cols["grade"]]):
+                continue
+            for here_ref in str(row[cols["here"]]).split(", "):
+                for e in str(row[cols["elsewhere"]]).split(", "):
+                    e_book = e.rsplit(" ", 1)[0]
+                    if e_book in atlas.book_info and atlas.book_info[e_book]["testament"] != testament \
+                            and (here_ref, e) not in pairs:
+                        unconfirmed.append((row[cols["echo"]], here_ref, e))
+    if unconfirmed:
+        seen, lines = set(), []
+        for echo, here_ref, e in unconfirmed:
+            if (here_ref, e) in seen:
+                continue
+            seen.add((here_ref, e))
+            lines.append(f"{here_ref} and {e} (\"{echo}\")")
+        sec.footer.append(
+            f"Of the 'by English' rows section 4 shows, those no Greek run here confirms, so not in the "
+            f"Septuagint's words (a rendering of the Hebrew, a free quotation, or a run broken by a differing word): "
+            + "; ".join(lines[:12]) + (f"; and {len(lines) - 12} more" if len(lines) > 12 else "") + ".")
     # Partners: which books of the far side the echoes come from
     partners = Counter()
     for vid, start, length, extra, places in kept:
