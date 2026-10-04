@@ -67,6 +67,7 @@ from atlas_text import log_likelihood
 # --- the rules ------------------------------------------------------------
 ECHO_MIN_WORDS = 4        # roots a shared run needs to be an echo
 ECHO_MIN_CONTENT = 2      # of which this many must be content words
+ECHO_BRIDGE_MIN = 3       # words a run must go on for beyond a one-word gap for the gap to be bridged
 ECHO_MAX_PLACES = 6       # verses on the far side beyond which a run is a formula, not an echo
 QUOTATION_MIN_WORDS = 5   # an echo this long found in few enough verses on the far side is graded 'quotation'
 # How many verses of the far side a quotation may stand in: one of the
@@ -295,6 +296,13 @@ class GreekTexts:
         # The lemma a key prints under: the one most of its words carry
         # (horao's group prints as horao, not as the rarer optanomai)
         self.lemma_of = {k: c.most_common(1)[0][0] for k, c in self.lemmas.items()}
+        # English reference -> verse, for each corpus, so a pair the
+        # English bridge found can be looked up in Greek (4f)
+        self.by_ref = {"GNT": {}, "LXX": {}}
+        for vid, m in self.meta.items():
+            e = self.english_ref(vid)
+            if e and e not in self.by_ref[m[0]]:
+                self.by_ref[m[0]][e] = vid
         self.lxx_books = [b for (c, b) in self.by_book if c == "LXX"]
         self.nt_books = [b for (c, b) in self.by_book if c == "GNT"]
         self.lxx_total = Counter()
@@ -410,13 +418,62 @@ class GreekTexts:
             self._index[corpus] = idx
         return self._index[corpus]
 
+    def grow(self, ks, i, oks, j):
+        """
+        Grow a matching run of ECHO_MIN_WORDS keys at ks[i] / oks[j] to
+        its full length, bridging a gap of one word where the run goes
+        on for ECHO_BRIDGE_MIN words beyond it: a word changed (Hebrews
+        10:5 has "body" where Psalm 40:6 has "ears", inside an otherwise
+        verbatim run), a word the near side adds (the Textus Receptus
+        "and" in Hebrews 13:6), or a word the far side adds.  Returns
+        (start, near length, far start, far length, gaps), gaps being a
+        tuple of (near position, kind) with kind "changed", "near" (a
+        word only here) or "far" (a word only there).
+        """
+        a, b = i + ECHO_MIN_WORDS, j + ECHO_MIN_WORDS
+        gaps = []
+        while True:
+            while a < len(ks) and b < len(oks) and ks[a] == oks[b]:
+                a += 1
+                b += 1
+            bridged = False
+            for da, db, kind in ((1, 1, "changed"), (1, 0, "near"), (0, 1, "far")):
+                a2, b2 = a + da, b + db
+                m = ECHO_BRIDGE_MIN
+                if a2 + m <= len(ks) and b2 + m <= len(oks) and ks[a2:a2 + m] == oks[b2:b2 + m]:
+                    gaps.append((a, kind))
+                    a, b = a2 + m, b2 + m
+                    bridged = True
+                    break
+            if not bridged:
+                break
+        # Leftwards the same, so a short head cut off by a gap joins
+        # ("Lord my helper [and] I will not fear ...")
+        while True:
+            while i > 0 and j > 0 and ks[i - 1] == oks[j - 1]:
+                i -= 1
+                j -= 1
+            bridged = False
+            for da, db, kind in ((1, 1, "changed"), (1, 0, "near"), (0, 1, "far")):
+                m = ECHO_BRIDGE_MIN
+                i2, j2 = i - da - m, j - db - m
+                if i2 >= 0 and j2 >= 0 and ks[i2:i2 + m] == oks[j2:j2 + m]:
+                    gaps.insert(0, (i - da, kind))
+                    i, j = i2, j2
+                    bridged = True
+                    break
+            if not bridged:
+                break
+        return i, a - i, j, b - j, tuple(gaps)
+
     def runs(self, vids, far_corpus):
         """
         The runs of ECHO_MIN_WORDS or more keys that the given verses
-        share with the far corpus, grown to their full length.  Returns
-        {(verse_id, start, length): [(far verse_id, far start), ...]}.
-        A run is recorded only where it cannot be grown to the left, so
-        each shared stretch is found once, at its full length.
+        share with the far corpus, grown to their full length with
+        one-word gaps bridged (see grow).  Returns {(verse_id, start,
+        length, gaps): [(far verse_id, far start, far length), ...]}.
+        Each shared stretch is recorded once, at its full length: a
+        start that an earlier start grows over is skipped.
         """
         idx = self.index(far_corpus)
         n = ECHO_MIN_WORDS
@@ -428,11 +485,51 @@ class GreekTexts:
                     oks = self.keys[ovid]
                     if i > 0 and j > 0 and ks[i - 1] == oks[j - 1]:
                         continue          # found already from one word earlier
-                    length = n
-                    while i + length < len(ks) and j + length < len(oks) and ks[i + length] == oks[j + length]:
-                        length += 1
-                    found[(vid, i, length)].append((ovid, j))
+                    start, length, fstart, flength, gaps = self.grow(ks, i, oks, j)
+                    place = (ovid, fstart, flength)
+                    if place not in found[(vid, start, length, gaps)]:
+                        found[(vid, start, length, gaps)].append(place)
         return found
+
+    def render_run(self, vid, start, length, gaps, ovid=None, fstart=None):
+        """
+        The Greek of a run as the near verse spells it, a bridged gap
+        shown in brackets as [here | there] (a dash for a side that has
+        no word at the gap).  With no far place the gaps show the near
+        word alone.
+        """
+        words = []
+        a, b = start, fstart
+        end = start + length
+        gap_at = {pos: kind for pos, kind in gaps}
+        while a < end:
+            # A gap is rendered once; a 'far' gap sits before the near
+            # word at the same position, which then renders as usual
+            kind = gap_at.pop(a, None)
+            if kind is None:
+                words.append(self.surface[vid][a])
+                a += 1
+                if b is not None:
+                    b += 1
+            elif kind == "changed":
+                far_word = self.surface[ovid][b] if ovid is not None else "?"
+                words.append(f"[{self.surface[vid][a]} | {far_word}]")
+                a += 1
+                if b is not None:
+                    b += 1
+            elif kind == "near":
+                words.append(f"[{self.surface[vid][a]} | -]")
+                a += 1
+            else:
+                far_word = self.surface[ovid][b] if ovid is not None else "?"
+                words.append(f"[- | {far_word}]")
+                if b is not None:
+                    b += 1
+        return " ".join(words)
+
+    def matched(self, length, gaps):
+        """How many words of a run the two places actually share."""
+        return length - sum(1 for pos, kind in gaps if kind != "far")
 
     def shared_in(self, corpus, vid, start, length):
         """How many verses of a corpus hold this run (the run's own verse included when it is there)."""
@@ -612,7 +709,6 @@ def vocabulary_sections(atlas, report, number, book):
 
 
 ENGLISH_MAX_VERSES = 4    # an English-bridged echo in at most this many verses of the Bible is tested against the Greek
-ENGLISH_ROWS = 15         # how many unconfirmed English echoes the footer lists
 
 
 def QUOTE_MIN_WORDS_OF(atlas):
@@ -630,29 +726,36 @@ def english_echoes_unconfirmed(atlas, book, chapters, testament, greek_pairs):
     [(phrase, here reference, there reference)], rarest first.
     """
     from atlas_pages import QUOTE_MIN_WORDS, STOPLIST
-    if chapters is None:
-        rows = atlas.db.execute(
-            "SELECT phrase, reference FROM echoes WHERE book = ? AND phrase LIKE 'en:%'", (book,)).fetchall()
-    else:
-        marks = ",".join("?" * len(chapters))
-        rows = atlas.db.execute(
-            "SELECT e.phrase, e.reference FROM echoes e JOIN verses v USING (verse_id) "
-            f"WHERE e.book = ? AND e.phrase LIKE 'en:%' AND v.chapter IN ({marks})", (book, *chapters)).fetchall()
+    # The English-bridged echoes of the whole Bible, read once and kept
+    # on the atlas (eleven thousand rows): a query per phrase cost Luke
+    # four seconds
+    cache = getattr(atlas, "_english_echoes", None)
+    if cache is None:
+        cache = atlas._english_echoes = defaultdict(list)
+        for phrase, bk, ref in atlas.db.execute(
+                "SELECT phrase, book, reference FROM echoes WHERE phrase LIKE 'en:%' ORDER BY rowid"):
+            if (bk, ref) not in cache[phrase]:
+                cache[phrase].append((bk, ref))
+    wanted = None if chapters is None else set(chapters)
     by_phrase = defaultdict(list)
-    for phrase, ref in rows:
-        if ref not in by_phrase[phrase]:
-            by_phrase[phrase].append(ref)
+    for phrase, places in cache.items():
+        for bk, ref in places:
+            if bk == book and (wanted is None or int(ref.rsplit(" ", 1)[1].split(":")[0]) in wanted):
+                by_phrase[phrase].append(ref)
     other = "Old" if testament == "New" else "New"
     found = {}
     for phrase, here in by_phrase.items():
-        there = [r[0] for r in atlas.db.execute(
-            "SELECT reference FROM echoes WHERE phrase = ? AND book <> ?", (phrase, book))]
+        there = [ref for bk, ref in cache[phrase] if bk != book]
         far = [t for t in there if atlas.book_info.get(t.rsplit(" ", 1)[0], {}).get("testament") == other]
         if not far or len(here) + len(there) > ENGLISH_MAX_VERSES:
             continue
         refs = here + there
-        strings = [r[0] for r in atlas.db.execute(
-            "SELECT word_string FROM verses WHERE reference IN (" + ",".join("?" * len(refs)) + ")", refs)]
+        # The verses' words by reference, read once: the verses table
+        # has no index on reference, so a query per phrase scanned it
+        words = getattr(atlas, "_word_string_by_ref", None)
+        if words is None:
+            words = atlas._word_string_by_ref = dict(atlas.db.execute("SELECT reference, word_string FROM verses"))
+        strings = [words[r] for r in refs if r in words]
         grown = atlas.grow_formula(phrase[3:], strings) if strings else phrase[3:]
         if len(grown.split()) < QUOTE_MIN_WORDS:
             continue
@@ -663,11 +766,86 @@ def english_echoes_unconfirmed(atlas, book, chapters, testament, greek_pairs):
                 # One row per verse pair: the longest grown phrase
                 if (h, e) not in found or len(grown) > len(found[(h, e)]):
                     found[(h, e)] = grown
+    roots = {}
+
     def rarity(phrase):
-        return sum(atlas.rarity(atlas.root_of(w)) for w in phrase.split() if w not in STOPLIST)
+        total = 0.0
+        for w in phrase.split():
+            if w in STOPLIST:
+                continue
+            if w not in roots:
+                roots[w] = atlas.rarity(atlas.root_of(w))
+            total += roots[w]
+        return total
     out = [(phrase, h, e) for (h, e), phrase in found.items()]
     out.sort(key=lambda r: (-rarity(r[0]), atlas.ref_key(r[1]), atlas.ref_key(r[2])))
     return out
+
+
+def longest_common_run(a, b):
+    """The longest run of keys two verses share: (length, start in a)."""
+    best, best_i = 0, 0
+    prev = [0] * (len(b) + 1)
+    for i in range(1, len(a) + 1):
+        cur = [0] * (len(b) + 1)
+        for j in range(1, len(b) + 1):
+            if a[i - 1] == b[j - 1]:
+                cur[j] = prev[j - 1] + 1
+                if cur[j] > best:
+                    best, best_i = cur[j], i - cur[j]
+        prev = cur
+    return best, best_i
+
+
+def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far_name):
+    """
+    4f: the English bridge's cross-testament echoes that no Greek run
+    confirms, each with the longest run of Greek the two verses do
+    share, so a real departure from the Septuagint's words ("departs":
+    two words or fewer in common) stands apart from a pair whose Greek
+    agrees but too briefly for 4e ("short run") or in a run 4e set aside
+    as a formula or for want of content words ("formula").  The
+    departures are shown whatever their rank.
+    """
+    far_col = "Septuagint" if far == "LXX" else "New Testament"
+    rows = []
+    for phrase, h, e in unconfirmed:
+        a_vid = texts.by_ref[near].get(h)
+        b_vid = texts.by_ref[far].get(e)
+        if a_vid is None or b_vid is None:
+            rows.append((2, phrase, h, e, "", 0, "no Greek verse mapped"))
+            continue
+        n, start = longest_common_run(texts.keys[a_vid], texts.keys[b_vid])
+        greek = " ".join(texts.surface[a_vid][start:start + n]) if n else ""
+        if n <= 2:
+            rank, test = 0, "departs"
+        elif n < ECHO_MIN_WORDS:
+            rank, test = 1, "short run"
+        else:
+            rank, test = 1, "formula"
+        rows.append((rank, phrase, h, e, greek, n, test))
+    rows.sort(key=lambda r: r[0])          # stable: rarity order kept within each kind
+    sec = report.section(
+        title, ["English echo", "here", far_col, "Greek shared", "words", "test"],
+        note=f"Section 4's English bridge finds echoes across the testaments by the King James wording; these are "
+             f"the ones ({QUOTE_MIN_WORDS_OF(atlas)} or more words when grown, in at most {ENGLISH_MAX_VERSES} verses "
+             f"of the Bible, section 4's 'by English' grade loosened by two verses so a saying the Synoptics share is "
+             f"not excluded) that no Greek run in 4e confirms between the same two verses.  'Greek shared' is the "
+             f"longest run of Greek, by root, that the two verses do share, and 'test' says what it means: 'departs' "
+             f"(two words or fewer in common) is a quotation not made in the Septuagint's words, a rendering of the "
+             f"Hebrew or a free one, or an echo the translators' English made on its own; 'short run' is Greek that "
+             f"agrees but for fewer than {ECHO_MIN_WORDS} words, an idiom or a quotation broken by a differing word; "
+             f"'formula' is a run 4e set aside as the language's common stock or for want of two content words.  "
+             f"Departures first, then the rest rarest first; every departure is shown.  Where the English bridge "
+             f"never paired a quotation (Matthew's Micah 5:2, Hosea 11:1, Isaiah 53:4, whose King James wording "
+             f"differs from the prophet's), there is nothing here to test: the method's edge.")
+    shown = rows[:top_n()] + [r for r in rows[top_n():] if r[0] == 0]
+    for rank, phrase, h, e, greek, n, test in shown:
+        sec.add([phrase, h, e, greek, n or "", test], refs=[h, e], link={"phrase": phrase, "key": "en:" + phrase})
+    if len(rows) > len(shown):
+        sec.footer.append(f"{len(rows) - len(shown)} more rows of commoner words not shown.")
+    kinds = Counter(r[6] for r in rows)
+    sec.footer.append("In all: " + ", ".join(f"{kinds[k]} {k}" for k in ("departs", "short run", "formula", "no Greek verse mapped") if kinds[k]) + ".")
 
 
 # --- 4e: the echoes ----------------------------------------------------------
@@ -700,38 +878,42 @@ def echoes_section(atlas, report, title, book, chapters=None):
     # an echo of a passage
     rows, formulas = [], 0
     by_verse = defaultdict(list)       # near verse -> its runs, for the nesting test
-    for (vid, start, length), places in found.items():
-        far_verses = sorted({ovid for ovid, j in places})
+    for (vid, start, length, gaps), places in found.items():
+        far_verses = sorted({ovid for ovid, j, fl in places})
+        gap_positions = {pos for pos, kind in gaps if kind != "far"}
         ks = texts.keys[vid][start:start + length]
-        content = [k for k, s in zip(ks, texts.stop[vid][start:start + length]) if not s]
+        content = [k for n_, (k, s) in enumerate(zip(ks, texts.stop[vid][start:start + length]))
+                   if not s and start + n_ not in gap_positions]
         if len(set(content)) < ECHO_MIN_CONTENT:
             continue
         if len(far_verses) > ECHO_MAX_PLACES:
             formulas += 1
             continue
-        by_verse[vid].append((start, length, far_verses, places))
+        by_verse[vid].append((start, length, far_verses, places, gaps))
     kept = []
     for vid, runs in by_verse.items():
         runs.sort(key=lambda r: (-r[1], r[0]))
         chosen = []
-        for start, length, far_verses, places in runs:
+        for start, length, far_verses, places, gaps in runs:
             # A shorter run inside a longer one of the same verse, whose
             # far verses the longer run already lists, is a piece of it
             covered = set()
-            for s2, l2, fv2, p2 in chosen:
+            for s2, l2, fv2 in chosen:
                 if s2 <= start and start + length <= s2 + l2:
                     covered.update(fv2)
             extra = [v for v in far_verses if v not in covered]
             if not extra:
                 continue
-            chosen.append((start, length, far_verses, places))
-            kept.append((vid, start, length, extra, places))
+            chosen.append((start, length, far_verses))
+            kept.append((vid, start, length, extra, places, gaps))
     # Rank by the rarity of the content words shared, then by length
-    def weight(vid, start, length):
+    def weight(vid, start, length, gaps):
+        gap_positions = {pos for pos, kind in gaps if kind != "far"}
         ks = texts.keys[vid][start:start + length]
         st = texts.stop[vid][start:start + length]
-        return sum(texts.rarity(k) for k in {k for k, s in zip(ks, st) if not s})
-    kept.sort(key=lambda r: (-weight(r[0], r[1], r[2]), -r[2], texts.order_key(r[0]), r[1]))
+        return sum(texts.rarity(k) for k in {k for n_, (k, s) in enumerate(zip(ks, st))
+                                             if not s and start + n_ not in gap_positions})
+    kept.sort(key=lambda r: (-weight(r[0], r[1], r[2], r[5]), -texts.matched(r[2], r[5]), texts.order_key(r[0]), r[1]))
     far_col = "Septuagint" if far == "LXX" else "New Testament"
     also_col = "also in NT" if far == "LXX" else "also in Septuagint"
     sec = report.section(
@@ -739,7 +921,10 @@ def echoes_section(atlas, report, title, book, chapters=None):
         note=f"Runs of {ECHO_MIN_WORDS} or more Greek words, by root, that {book}'s text in {near_name} shares "
              f"with {far_name} (lxx.db): the quotations and allusions in the words the writers used, found "
              f"by Strong's numbers rather than by English wording, so section 4's 'by English' echoes across "
-             f"the testaments are here tested in Greek.  Grown to the whole run the two places share; at least "
+             f"the testaments are here tested in Greek.  Grown to the whole run the two places share, across a gap "
+             f"of one word where the run goes on for {ECHO_BRIDGE_MIN} words or more beyond it (a word changed, "
+             f"shown as [here | there]; a word one side adds, shown with a dash; the grade then says 'one word "
+             f"apart', and 'words' counts the words shared); at least "
              f"{ECHO_MIN_CONTENT} content words; a run in more than {ECHO_MAX_PLACES} verses of {far_name} is a "
              f"formula of the language and set aside (footer).  Ranked by the rarity of the content words "
              f"shared.  'quotation' marks a run of {QUOTATION_MIN_WORDS} or more words found in "
@@ -764,21 +949,30 @@ def echoes_section(atlas, report, title, book, chapters=None):
         # being common ones
         return length >= QUOTATION_MIN_WORDS and (
             len(extra) <= QUOTATION_MAX_FAR[far] or (length >= QUOTATION_MIN_WORDS + 1 and len(extra) <= 3))
-    shown = kept[:ECHO_ROWS] + [r for r in kept[ECHO_ROWS:] if is_quotation(r[2], r[3])]
-    for vid, start, length, extra, places in shown:
-        greek = " ".join(texts.surface[vid][start:start + length])
+    shown = kept[:ECHO_ROWS] + [r for r in kept[ECHO_ROWS:] if is_quotation(texts.matched(r[2], r[5]), r[3])]
+    for vid, start, length, extra, places, gaps in shown:
+        # The far place the Greek is rendered against: the first listed
+        # verse among those this row is for
+        first = next((p for p in places if p[0] == sorted(extra, key=texts.order_key)[0]), places[0])
+        ovid, j, flength = first
+        greek = texts.render_run(vid, start, length, gaps, ovid, j)
         if near == "GNT":
             gloss = " ".join(g for g in texts.gloss[vid][start:start + length] if g)
         else:
             # The gloss comes from the New Testament side of the match
-            ovid, j = places[0]
-            gloss = " ".join(g for g in texts.gloss[ovid][j:j + length] if g)
-        grade = "quotation" if is_quotation(length, extra) else ""
-        own = texts.shared_in(near, vid, start, length) - {vid}
+            gloss = " ".join(g for g in texts.gloss[ovid][j:j + flength] if g)
+        n_matched = texts.matched(length, gaps)
+        grade = "quotation" if is_quotation(n_matched, extra) else ""
+        if gaps:
+            apart = f"{'one word' if len(gaps) == 1 else str(len(gaps)) + ' words'} apart"
+            grade = f"{grade}, {apart}" if grade else apart
+        # Other verses of the book's own testament with the same run:
+        # exact runs only; a bridged run has no single key sequence
+        own = (texts.shared_in(near, vid, start, length) - {vid}) if not gaps else set()
         own_refs = [texts.ref(v) for v in sorted(own, key=texts.order_key)]
         far_refs = [texts.ref(v) for v in sorted(extra, key=texts.order_key)]
         refs = [r for r in [texts.english_ref(vid)] + [texts.english_ref(v) for v in extra] if r]
-        sec.add([greek, gloss, length, grade, texts.ref(vid), ", ".join(far_refs),
+        sec.add([greek, gloss, n_matched, grade, texts.ref(vid), ", ".join(far_refs),
                  ", ".join(own_refs[:4]) + (f" and {len(own_refs) - 4} more" if len(own_refs) > 4 else "")],
                 refs=refs, link={"book": book})
     if len(kept) > len(shown):
@@ -801,7 +995,7 @@ def echoes_section(atlas, report, title, book, chapters=None):
     # of the Bible, section 4's 'by English' grade loosened by two
     # verses so a saying the Synoptics share is not excluded
     pairs = set()
-    for vid, start, length, extra, places in kept:
+    for vid, start, length, extra, places, gaps in kept:
         here_ref = texts.english_ref(vid)
         for v in extra:
             e = texts.english_ref(v)
@@ -809,15 +1003,13 @@ def echoes_section(atlas, report, title, book, chapters=None):
                 pairs.add((here_ref, e))
     unconfirmed = english_echoes_unconfirmed(atlas, book, chapters, testament, pairs)
     if unconfirmed:
-        sec.footer.append(
-            f"Found by English wording (section 4's bridge: {QUOTE_MIN_WORDS_OF(atlas)} or more words in at most "
-            f"{ENGLISH_MAX_VERSES} verses of the Bible) but by no Greek run here, so not in the Septuagint's words: "
-            f"a rendering of the Hebrew, a free quotation, or a run broken by a differing word: "
-            + "; ".join(f"{h} and {e} (\"{phrase}\")" for phrase, h, e in unconfirmed[:ENGLISH_ROWS])
-            + (f"; and {len(unconfirmed) - ENGLISH_ROWS} more" if len(unconfirmed) > ENGLISH_ROWS else "") + ".")
+        label = title[title.index("[") + 1:title.index("]")] if "[" in title and "]" in title else book
+        number = title.split(".")[0].rstrip("abcdefgh")
+        unconfirmed_section(atlas, report, number + f"f. Quoted by English, not in the Septuagint's words [{label}]",
+                            texts, unconfirmed, near, far, far_name)
     # Partners: which books of the far side the echoes come from
     partners = Counter()
-    for vid, start, length, extra, places in kept:
+    for vid, start, length, extra, places, gaps in kept:
         for v in extra:
             corpus, code, ch, vs, eb, ec, ev = texts.meta[v]
             partners[texts.book_of_code(code) if corpus == "LXX" else texts.atlas.books[eb - 1]] += 1

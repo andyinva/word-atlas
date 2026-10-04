@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.59. Andrew Hopkins, with Claude.
+For version 0.10.61. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -693,7 +693,9 @@ Greek: runs of four or more words, by Strong's number, that the
 book's Greek text shares with the other testament's, the Greek New
 Testament of lxx.db against the Septuagint for a New Testament book
 and the book's Septuagint text against the Greek New Testament for an
-Old Testament book. Each run is grown to its full length, needs two
+Old Testament book. Each run is grown to its full length, across a gap of one word where
+the run goes on for three words beyond it (the gap printed as
+[here | there] and the grade saying "one word apart"), needs two
 content words, and is set aside as a formula of the language when
 more than six verses of the far side hold it; the rows are ranked by
 the rarity of the content words shared, with the Greek as the book
@@ -713,6 +715,29 @@ Psalm 110:1 in fourteen, Psalm 102:25 to 27 in three runs, Psalm 104:4,
 Psalm 2:7 (with Acts 13:33 and Hebrews 5:5 in the last column), 2
 Samuel 7:14 beside 1 Chronicles 17:13, Deuteronomy 32:43. The chapter
 and section pages carry 4e over their own verses.
+
+**Section 4f, Quoted by English, not in the Septuagint's words**
+(0.10.60). The other half of 4e: the echoes section 4's English
+bridge found across the testaments (five or more words when grown, in
+at most four verses of the Bible) that no Greek run confirms between
+the same two verses, each with the longest run of Greek the two
+verses do share and a test column saying what that means: "departs"
+(two words or fewer in common) is a quotation not made in the
+Septuagint's words, from the Hebrew or from memory, or an echo the
+translators' English made on its own; "short run" is Greek that
+agrees for fewer than four words; "formula" a run 4e set aside as
+the language's common stock. Departures come first and are all
+shown. On Matthew this is where the non-Septuagintal formula
+quotations surface, Isaiah 42:3 behind 12:20, Zechariah 11:13 behind
+27:3, Deuteronomy 10:12 behind 22:37; on Hebrews, 8:8 against
+Jeremiah 31:31 and 12:29 against Deuteronomy 4:24 stand among the
+English finder's idiom pairs (Job 5:17's "despise not the
+chastening", which is Proverbs 3:11 in Hebrews), and the reader
+sorts the two kinds by eye, which the test column makes quick. A
+quotation the King James wording never let the English bridge pair
+(Matthew's Micah 5:2, Hosea 11:1, Isaiah 53:4) is not here, because
+there is nothing to test; that is the method's edge, and only a
+quotation list would carry it further.
 
 **Section 5, Reach and depth.** A chart with one point per signature
 word, reach across (how many chapters the word touches) and depth up
@@ -1967,22 +1992,30 @@ the English has but to which the catalogue's map (28b) has given no
 English verse yet, which is most of the Septuagint's Jeremiah 25 to
 51, prints as "Jeremiah (Rahlfs 30:12, no English verse mapped)", so
 that no reader opens English Jeremiah 30:12 for what is English
-49:18. A last footer lists the 'by English' rows of section 4 across
-the testaments that no Greek run confirms: quotations not in the
+49:18. Section 4f follows: the 'by English' echoes across the
+testaments that no Greek run confirms, quotations not in the
 Septuagint's words, a rendering of the Hebrew or a free quotation
 (Hebrews 8:8 against Jeremiah 31:31, where Hebrews has "I will make"
 and "upon the house" against the Septuagint's "I will covenant" and
-"with the house", though 8:9 to 12 follow it in four runs). The
-footer draws on the echoes table itself, section 4's candidates
-before its cap, taking an English-bridged echo when grown over its
-verses it is five or more words in at most four verses of the Bible
-(section 4's own grade loosened by two verses, so a saying the
-Synoptics share is not excluded); on Matthew, whose section 4 at
-book level is filled by Mark and Luke, that is what lets the
-non-Septuagintal quotations surface: Isaiah 42:3 behind 12:20,
-Zechariah 11:13 behind 27:3, Deuteronomy 10:12 behind 22:37, among
-idiom the English finder pairs on its own account (Esther 8:3's
-"fell down at his feet and besought"), which a reader sorts by eye. The last column lists
+"with the house", though 8:9 to 12 follow it in four runs). It draws
+on the echoes table itself, section 4's candidates before its cap,
+taking an English-bridged echo when grown over its verses it is five
+or more words in at most four verses of the Bible (section 4's own
+grade loosened by two verses, so a saying the Synoptics share is not
+excluded); on Matthew, whose section 4 at book level is filled by
+Mark and Luke, that is what lets the non-Septuagintal quotations
+surface: Isaiah 42:3 behind 12:20, Zechariah 11:13 behind 27:3,
+Deuteronomy 10:12 behind 22:37, among idiom the English finder pairs
+on its own account (Esther 8:3's "fell down at his feet and
+besought"). Each row carries the longest run of Greek the two verses
+do share and a test: 'departs' for two words or fewer in common,
+'short run' for Greek that agrees under four words, 'formula' for a
+run 4e set aside; the departures lead and are all shown, so the
+reader finds 8:8 and 12:29 before the idiom. It began as a footer of
+4e in 0.10.58 limited to the rows section 4 showed, which on Matthew
+were none, and became a table when the reviewer pointed out that
+for Matthew the hidden fifty-five rows were the list a reader came
+for. The last column lists
 other verses of the book's own testament holding the same run, which
 for a Gospel are the synoptic parallels of the quotation (Isaiah 40:3
 from Matthew 3:3 lists Mark 1:3 and Luke 3:4) and for a letter its
@@ -2009,19 +2042,39 @@ Euphrates" behind 9:14, Ezekiel 43:20's four horns of the altar
 behind 9:13, Jeremiah 44:13's sword, famine and plague behind 6:8,
 2 Kings 9:7's avenging of the blood of the servants behind 19:2; 400
 echoes, and the far side by echoes Psalms 79, Genesis 73, Daniel 61,
-Jeremiah 57, Isaiah 54, Deuteronomy 53, Exodus 50. Matthew 1:23 is
-the instructive row: by root the longer run (eleven words, "shall
-conceive and bear a son and they shall call his name") is Genesis
-16:11, the annunciation to Hagar, and Isaiah 7:14 follows with nine,
-because the Septuagint's tagging reads Isaiah's hexei as the noun
-hexis (G1838) where Genesis has echo (G2192), and a run breaks at a
-mistagged word. That is the limit to state: the matching is by
-number, so inflection is ignored (which is what lets Luke 1:31's
-"you will call" meet Isaiah's "you shall call") and a wrong number on
-either side breaks a run, as does a quotation that departs from the
-Septuagint's wording for a word (Matthew's "in the land and shadow of
-death" is six words, not the whole verse). A word apart is not yet
-bridged. The misses are the finding as often as the rows: of
+Jeremiah 57, Isaiah 54, Deuteronomy 53, Exodus 50.
+
+**A word apart.** Since 0.10.61 a run is grown across a gap of one
+word when it goes on for three words or more beyond the gap: a word
+changed, a word one side adds, or a word the other side adds, and
+leftwards as well as rightwards, so a short head cut off by a gap
+joins its run. The gap prints in brackets as [here | there], with a
+dash for the side that has no word, the grade says "one word apart"
+(or two), and the words column counts the words shared. Hebrews 10:5
+against Psalm 40:6 is the case the reviewer named before the
+bridging was built: the Septuagint's "ears" became Hebrews' "body"
+inside an otherwise verbatim run, and the row now reads θυσίαν καὶ
+προσφορὰν οὐκ ἠθέλησας [σῶμα | ὠτία] δὲ κατηρτίσω μοι, eight words
+shared, where before it was five with the tail of three lost.
+Hebrews 13:6 against Psalm 118:6 reads κύριος ἐμοὶ βοηθός [καὶ | -]
+οὐ φοβηθήσομαι τί ποιήσει μοι ἄνθρωπος, the Textus Receptus' added
+"and" bridged, nine words where before the head of three stood apart
+unseen; Hebrews 3:10 against Psalm 95:10 bridges [ταύτῃ | ἐκείνῃ],
+"this generation" against "that". Matthew 1:23 is the other
+instructive row, because the gap it bridges is not in the text but
+in the tagging: the Septuagint reads Isaiah 7:14's hexei as the noun
+hexis (G1838) where the TAGNT has echo (G2192), so the row prints
+[ἕξει | ἕξει], the same word on both sides with different numbers,
+fourteen words, and Isaiah 7:14 leads the verse where before Genesis
+16:11, the annunciation to Hagar, led it with eleven words unbroken.
+A bracket with the same word on both sides is a tagging split made
+visible, and a candidate for the equivalents table. The limit to
+state: the matching is by number, so inflection is ignored (which is
+what lets Luke 1:31's "you will call" meet Isaiah's "you shall call"),
+a wrong number on either side is a gap, and a gap of two words
+together, or a gap followed by fewer than three shared words, still
+breaks a run (Matthew's "in the land and shadow of death" is six
+words, not the whole verse). The misses are the finding as often as the rows: of
 Matthew's formula quotations the table finds the Septuagintal ones
 and not Micah 5:2, Hosea 11:1 ("my son" from the Hebrew where the
 Septuagint has "his children"), Isaiah 53:4, Isaiah 42:1 to 4 or
@@ -4344,6 +4397,18 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.61.** 4e grows a run across a gap of one word (changed, or
+added on either side) when the run goes on for three words beyond
+it, both ways, printing the gap as [here | there] and grading the
+row "one word apart": Hebrews 10:5's "body" for the psalm's "ears",
+13:6's added "and", Matthew 1:23's tagging split at hexei. 4f's
+lookups cached (Luke's 4e and 4f from four seconds to a third).
+
+**0.10.60.** 4f, Quoted by English, not in the Septuagint's words:
+the unconfirmed footer of 4e made a table, each row with the longest
+Greek run the two verses share and a test (departs, short run,
+formula), departures first and all shown.
 
 **0.10.59.** build_gnt.py files each word under its King James verse
 (Hebrews 3:10 had been filed as 3:9, so its Psalm 95 runs were
