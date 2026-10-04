@@ -1,5 +1,5 @@
 -- Word Atlas metadata.db backup (plain SQL; restore with atlas_backup.py)
--- written: 2026-10-02 17:42
+-- written: 2026-10-03 19:47
 BEGIN TRANSACTION;
 CREATE TABLE books (
     book_num       INTEGER PRIMARY KEY,     -- 1 = Genesis ... 66 = Revelation
@@ -84,6 +84,8 @@ CREATE TABLE corpora (
 INSERT INTO "corpora" VALUES('hebrew-ot','Hebrew','KJV Old Testament keyed by Hebrew Strong''s numbers (atlas.db)','seed');
 INSERT INTO "corpora" VALUES('greek-nt','Greek','KJV New Testament keyed by Greek Strong''s numbers (atlas.db)','seed');
 INSERT INTO "corpora" VALUES('greek-lxx','Greek','Rahlfs 1935 Septuagint keyed by Strong''s numbers or lemmas (read by septuagint_bridge.py; not yet in atlas.db)','seed');
+INSERT INTO "corpora" VALUES('greek-nt-tagnt','Greek','The Greek New Testament behind the KJV (Textus Receptus, Scrivener 1894) with every other major edition''s words marked, from STEPBible''s TAGNT, keyed by Strong''s numbers (lxx.db, corpus GNT)','build_gnt.py; text form: amalgamated, in_tr/in_na per word; CC BY 4.0, credit STEP Bible www.STEPBible.org');
+INSERT INTO "corpora" VALUES('hebrew-ot-tahot','Hebrew','The Hebrew Old Testament (Leningrad codex, Qere followed) tagged element by element with Strong''s numbers, prefixes and suffixes included, from STEPBible''s TAHOT (lxx.db, corpus TAHOT)','build_tahot.py; CC BY 4.0, credit STEP Bible www.STEPBible.org');
 CREATE TABLE feeling_words (
         root      TEXT PRIMARY KEY,   -- Strong's number, e.g. H2534
         category  TEXT NOT NULL,      -- anger, grief, ... (see atlas_feelings.py)
@@ -5538,6 +5540,17 @@ INSERT INTO "root_equivalents" VALUES('G5210','-','humeis ''you'' (plural)');
 INSERT INTO "root_equivalents" VALUES('G5209','-','humas, form of humeis');
 INSERT INTO "root_equivalents" VALUES('G5213','-','humin, form of humeis');
 INSERT INTO "root_equivalents" VALUES('G5216','-','humon, form of humeis');
+INSERT INTO "root_equivalents" VALUES('G756','G757','archomai / archo, began: 18 verses, tags splits');
+INSERT INTO "root_equivalents" VALUES('G6063','G1492','oida, the TAGNT''s extended number, against the KJV tagging''s G1492: 28 verses');
+INSERT INTO "root_equivalents" VALUES('G4412','G4413','proton / protos, first: 13 verses');
+INSERT INTO "root_equivalents" VALUES('G680','G681','haptomai / hapto, touch: 10 verses');
+INSERT INTO "root_equivalents" VALUES('G3440','G3441','monon / monos, only: 9 verses');
+INSERT INTO "root_equivalents" VALUES('G3187','G3173','meizon / megas, greater: 6 verses');
+INSERT INTO "root_equivalents" VALUES('G5305','G5306','hysteron / hysteros, afterward: 5 verses');
+INSERT INTO "root_equivalents" VALUES('G3765','-','ouketi, no more: a function word, as ou is');
+INSERT INTO "root_equivalents" VALUES('G2909','G2908','kreisson, better: the Septuagint''s number against the TR''s, 54/19');
+INSERT INTO "root_equivalents" VALUES('G3112','G3117','makran / makros, far and long: 26/11');
+INSERT INTO "root_equivalents" VALUES('G4240','G4236','prautes / praotes, meekness, one word in two spellings: 9/9');
 CREATE TABLE verse_tags (
     book_num    INTEGER NOT NULL REFERENCES books(book_num),
     chapter     INTEGER NOT NULL,

@@ -7,7 +7,7 @@ with the version that carried them. Add to it whenever a review or a
 conversation raises something; the manual's version history records
 what shipped, this records what has not.
 
-Last updated 2026-10-03, at version 0.10.37.
+Last updated 2026-10-03, at version 0.10.55.
 
 ## Standing work
 
@@ -21,9 +21,20 @@ Nehemiah, and the Poetry group against each other (Psalms, Proverbs,
 Ecclesiastes, Song of Solomon, Job), Lamentations, and the Twelve
 (Hosea, Amos, Obadiah, Micah, Nahum, Habakkuk, Zephaniah, Haggai,
 Zechariah, Malachi, Jonah; Joel and Malachi were read earlier), John,
-Acts, Romans, 1 Corinthians. Still to read: the rest of the Epistles. The three dossiers
+Acts, Romans, 1 and 2 Corinthians, Galatians, Ephesians, Philippians,
+Colossians, 1 and 2 Thessalonians, Hebrews, James, 1 and 2 Peter,
+1, 2 and 3 John, Jude: the Epistles group complete. Revelation's regenerated page read.
+Still to read: the Pastorals and Philemon as pages of their own. The three dossiers
 the Revelation reviewer asked for (Isaiah, Hebrews, Mark) are to be
 regenerated with the fixed 1b and read.
+
+**The canon-wide rerun (done 2026-10-03).** All 66 dossiers on
+0.10.50 read through: no traceback, NaN or None, every refusal as
+designed, Job's eight parts and the Psalter's five Books right. Four
+things fixed in 0.10.52 (a declined table's header, duplicate phrase
+rows, "ch None", 1d's run supply) and one footer added (1b's Aramaic
+baseline). Rerun the dossiers after the next change that touches a
+table.
 
 **The manual's own review (next).** Read one part of the manual against
 the program with a book open and note where a table's description does
@@ -60,6 +71,11 @@ atlas_sections.py, and every page that takes a section made to carry
 more than one book, with a decision about what "the rest of the book"
 means. Its own round, not a table entry.
 
+**A section-level 1d (idea).** Vocabulary richness by part, with the
+run figures for the part's size, so that 1 Timothy's hapax rate can
+be split between the qualification and vice lists and the rest, and
+the Pastorals' subject answered as their size now is.
+
 **The Compare page cap (idea).** A dossier takes five Compare pages;
 Deuteronomy's 2 Kings and Jeremiah's Deuteronomy fall off. Either raise
 the cap to six or let one section's "later" partner in.
@@ -70,10 +86,20 @@ beside the echo map, the shadow map and the reach-and-depth chart. It
 reads the same tables and the same catalogue, so the join is mostly
 plumbing.
 
-**Delta in the pages (idea).** atlas_delta.py (Burrows' Delta, style by
-the common words) for the questions the vocabulary tables cannot
-settle: Isaiah 1 to 39 against 40 to 66, the Succession Narrative
-against its frame, Luke against Acts.
+**Delta in the pages, and a function-word table by section (done
+0.10.40 for the New Testament, 0.10.55 for the Old from the TAHOT).** atlas_delta.py (Burrows' Delta, style by the
+common words) for the questions the vocabulary tables cannot settle:
+Isaiah 1 to 39 against 40 to 66, the Succession Narrative against its
+frame, Luke against Acts. The 2 Corinthians review (2026-10-03) made
+the case exact: 7b cannot tell a change of subject from a change of
+letter, since a block on another subject shares little phrasing with
+its neighbours either way (the collection, 8 to 9, shares 3 and 4 and
+is nobody's separate letter). What separates them is the vocabulary
+no subject drives, the particles, conjunctions and pronouns (gar, de,
+oun, ouk, the first-person plural), measured a section at a time: a
+7c table of function-word rates per section, with Delta between the
+sections. The same measurement is what Word Vault's writing-DNA idea
+needs, so it pays twice.
 
 **One voice-formula list (idea).** atlas_heat.py skips VOICE_ROOTS for
 hammer and atlas_text.py sets aside VOICE_TAGS for echoes; two lists of
@@ -132,7 +158,36 @@ Decided 2026-10-02: finish the book-by-book review, then import a
 Greek New Testament tagged with Strong's numbers, and only then take up
 the Septuagint pages.
 
-**Why the Greek New Testament first.** The root equivalents table (51
+**Done 0.10.51: the import.** build_gnt.py reads STEPBible's TAGNT
+(CC BY 4.0; the two files downloaded into data/tagnt/, not kept in
+git) into lxx.db beside the Septuagint: 7,958 verses, 142,096 words
+of every major edition with in_tr and in_na marks, every word keyed
+by a Strong's number, parsed and glossed; corpora row greek-nt-tagnt.
+Text form decided: amalgamated, with the Textus Receptus (the KJV's
+Greek) selectable by in_tr = 1 and Nestle-Aland by in_na = 1. 'tags
+splits' reads the splits off the text (47 rows at five verses or
+more) and 'equivalents import' takes the kept rows into the table.
+
+**Next: review the splits draft.** `python atlas_lxx.py tags splits
+--out splits_draft.tsv`, mark keep = y, `equivalents import`. The
+content-word pairs to decide: G756/G757, G1492/G6063, G4412/G4413,
+G680/G681, G3440/G3441, G3765/G3756, and the four lemma splits
+(G2909/G2908, G5531/G5530, G3117/G3112, G4240/G4236). After that the
+root equivalents table is as complete as the two taggings allow, and
+the Septuagint pages can start.
+
+**Done 0.10.55: the TAHOT.** build_tahot.py imports STEPBible's tagged
+Hebrew Old Testament (four files into data/tahot/) into lxx.db as
+corpus TAHOT, element by element, and the function-word layer measures
+every Old Testament book from it: 1c and 7d on Isaiah (1 to 39 against
+40 to 66: 0.94 with pronouns, 0.69 without), the Psalter's five Books,
+Daniel's Hebrew chapters. Aramaic chapters left out. Open from it: the
+Succession Narrative and the Elijah cycles still wait for the
+cross-book section; a vocabulary-richness (1d) and signature-words
+(1b) reading of the Hebrew elements themselves is possible now but not
+built, the KJV tagging remaining the atlas's measured text.
+
+**Why the Greek New Testament first (the reasoning, kept).** The root equivalents table (51
 rows) is small because the two taggings mostly agree, and it cannot be
 finished from the side the atlas has: the Septuagint tokens carry Greek
 forms, lemmas and numbers, the New Testament tokens carry English words
@@ -187,7 +242,9 @@ go, and the README says what a visitor must supply.
 
 ## DONE
 
-2026-10-03 the repository public with 0.10.37 pushed. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
+2026-10-03 the repository public with 0.10.37 pushed. 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
+splits. 0.10.50 1d a language at a time for Daniel and Ezra. 0.10.49 a run figure for the once-here share. 0.10.48 1c and 1d refusals and the sibling caution. 0.10.47 nearest beyond the kind under 1c and 1d. 0.10.46 1d's run figures cached. 0.10.45 1d's run columns. 0.10.44 vocabulary richness (1d); Hebrews in parts. 0.10.43 the kind's own size yardsticks. 0.10.42 nine-in-ten yardsticks and a no-pronoun Delta. 0.10.41 cautions and a size yardstick on 1c and 7d; three more
+letters in parts. 0.10.40 the function-word layer, 1c and 7d (New Testament). 0.10.39 section 7's leading words floored and ended early. 0.10.38 2 Corinthians, Galatians and Ephesians in parts. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
 words, 3 to 5). 0.10.34 1b stops at a keyness floor (6.63); three occurrences for a
 book under 2,000 words. 0.10.33 small book marked in 1 and 1b. 0.10.32 Job's parts and Elihu. 0.10.31 1b names unmeasured words apart. 0.10.30 a bilingual book measured a language at a time (1b, section
 7); "(small kind)" on 1b. 2026-10-03 the Persian-period baseline group (Ezra, Nehemiah, Esther,

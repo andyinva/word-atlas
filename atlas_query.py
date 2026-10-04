@@ -28,6 +28,7 @@ Any page can be trimmed for reading at a glance:
     python3 atlas_query.py book Joel --only 1,2 --top 8 --quiet
     python3 atlas_query.py dossier Ezekiel          everything about one book, one file
     python3 atlas_query.py dossier Ezekiel --brief  the same with chapter pages trimmed
+    python3 atlas_query.py dossier Ruth --time      ... printing the seconds each section of each page took
     python3 atlas_query.py ask "'day' + 'night' [Ezekiel]"     (any line of notation)
 
 Author: Andrew Hopkins (with Claude)
@@ -54,6 +55,13 @@ def render(report, atlas=None):
     if atlas is not None:
         lines.append(atlas.build_line())
     lines.extend(report.notes)
+    if TIMING:
+        # The seconds each section took, printed to the terminal as the
+        # page is laid out and kept in the file, so a slow page names
+        # its slow table in one run
+        line = report.timing_line()
+        print(f"  {report.title}: {line}")
+        lines.append(line)
 
     for sec in report.sections:
         lines.append("")
@@ -61,7 +69,10 @@ def render(report, atlas=None):
         lines.append("=" * len(sec.title))
         if sec.note:
             lines.append(sec.note)
-        if sec.columns:
+        # A section that declined (a 'Not measured' note and no rows)
+        # keeps its title and reason and prints no table: a lone header
+        # over a dash line said the opposite of what the note said
+        if sec.columns and sec.rows:
             lines.append("")
             # Column widths: wide enough for the header and every value
             cells = [[str(v) for v in row] for row in sec.rows]
@@ -118,8 +129,12 @@ def trim(report, top=None, only=None, quiet=False):
     return report
 
 
+TIMING = False      # --time: print the seconds each section of each page took
+
+
 def trim_options(argv):
-    """Pull --top N, --only LIST and --quiet out of the arguments; return (argv, top, only, quiet)."""
+    """Pull --top N, --only LIST, --quiet and --time out of the arguments; return (argv, top, only, quiet)."""
+    global TIMING
     top, only, quiet = None, None, False
     out = []
     i = 0
@@ -135,6 +150,8 @@ def trim_options(argv):
             only = a[7:]; i += 1; continue
         if a == "--quiet":
             quiet = True; i += 1; continue
+        if a == "--time":
+            TIMING = True; i += 1; continue
         out.append(a); i += 1
     return out, top, only, quiet
 

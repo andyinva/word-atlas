@@ -396,6 +396,76 @@ SECTIONS = {
             ("The collection and greetings", 16, 16),
         ],
     },
+    # 2 Corinthians: the standing question is compositional, whether
+    # 10-13, the self-defence, is the "severe letter" written apart from
+    # 1-9.  With the reconciliation (1-7), the collection (8-9) and the
+    # self-defence (10-13) as sections, 7.2b tests it the way Elihu was
+    # tested: low shared phrasing between 1-7 and 10-13 with the comfort
+    # and grief words in one and the boast and commend words in the
+    # other reproduces the two-letter case; high shared phrasing tells
+    # against it
+    "2 Corinthians": {
+        "Parts": [
+            ("The reconciliation", 1, 7),
+            ("The collection", 8, 9),
+            ("The self-defence", 10, 13),
+        ],
+    },
+    # Galatians and Ephesians in the halves their commentaries use: the
+    # autobiography, the argument and the ethics for Galatians; the
+    # doctrinal and the practical halves for Ephesians, where the second
+    # should lead with walk, put on and the household words
+    "Galatians": {
+        "Parts": [
+            ("The autobiography", 1, 2),
+            ("The argument from Abraham", 3, 4),
+            ("The ethics", 5, 6),
+        ],
+    },
+    "Ephesians": {
+        "Parts": [
+            ("The doctrine", 1, 3),
+            ("The practice", 4, 6),
+        ],
+    },
+    # The shorter Paulines in the halves their commentaries use.
+    # Philippians' question is compositional (whether 3:2 to 4:1 is a
+    # second letter), so the polemic stands as a part of one chapter
+    "Philippians": {
+        "Parts": [
+            ("Partnership and the hymn", 1, 2),
+            ("The polemic", 3, 3),
+            ("Thanks and farewell", 4, 4),
+        ],
+    },
+    "Colossians": {
+        "Parts": [
+            ("The doctrine", 1, 2),
+            ("The practice", 3, 4),
+        ],
+    },
+    "1 Thessalonians": {
+        "Parts": [
+            ("Thanksgiving and defence", 1, 3),
+            ("Exhortation and the coming", 4, 5),
+        ],
+    },
+    # Hebrews: Wrede (Das literarische Raetsel des Hebraeerbriefs, 1906)
+    # argued that chapter 13 was added to turn a homily into a letter,
+    # so 13 stands alone for 7d to measure against the rest; 11, the
+    # faith catalogue, stands alone because a catalogue inserted into
+    # an argument should show Genesis and Exodus as its partners and
+    # almost no shared phrasing with its neighbours
+    "Hebrews": {
+        "Parts": [
+            ("The Son and the rest", 1, 4),
+            ("Melchisedec", 5, 7),
+            ("Covenant and sacrifice", 8, 10),
+            ("The faith catalogue", 11, 11),
+            ("Endurance", 12, 12),
+            ("The letter ending", 13, 13),
+        ],
+    },
     "Matthew": {
         "Parts": [
             ("Birth and beginnings", 1, 4),

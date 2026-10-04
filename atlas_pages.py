@@ -26,8 +26,10 @@ import math
 import os
 import re
 import sqlite3
+import time
 from collections import Counter, defaultdict
 
+from atlas_function import book_table as function_book_table, section_table as function_section_table
 from atlas_sections import (FEW_WORDS, SMALL_WORDS, divisions_of, find_section, sections_of, section_date,
                             section_of, seam_chapters, span_text)
 from atlas_text import (ATLAS_PATH, ECHO_MAX_TOTAL, FOCUS_MIN_OCCURRENCES,
@@ -45,7 +47,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.37"   # the program version; the window title and every report print it
+VERSION = "0.10.55"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -136,6 +138,43 @@ class Section:
         self.refs.append(list(refs or []))
         self.links.append(link)
 
+    def merge_duplicates(self, key_column=0, score_column=None):
+        """
+        Merge rows whose text in key_column is identical, keeping the
+        row with the higher score (the column named score_column, or
+        the first numeric column) and the union of the verse references.
+        Two phrase keys can render to one display text (Deuteronomy 25's
+        "husband's brother" is a formula under H2993 and again under
+        H2992; an echo found by root and again by wording), and a
+        reader sees the same row twice with the same figures.
+        """
+        if score_column is None:
+            score = next((i for i, c in enumerate(self.columns) if c.startswith("keyness") or c == "weight"), None)
+        else:
+            score = self.columns.index(score_column) if score_column in self.columns else None
+        if score is None:
+            score = next((i for i, c in enumerate(self.columns)
+                          if self.rows and isinstance(self.rows[0][i], (int, float))), None)
+        seen = {}
+        rows, refs, links = [], [], []
+        for row, ref, link in zip(self.rows, self.refs, self.links):
+            key = str(row[key_column])
+            if key in seen:
+                i = seen[key]
+                kept = rows[i]
+                better = (score is not None and isinstance(row[score], (int, float))
+                          and isinstance(kept[score], (int, float)) and row[score] > kept[score])
+                merged_refs = list(dict.fromkeys(refs[i] + ref))
+                if better:
+                    rows[i], links[i] = row, link
+                refs[i] = merged_refs
+                continue
+            seen[key] = len(rows)
+            rows.append(row)
+            refs.append(ref)
+            links.append(link)
+        self.rows, self.refs, self.links = rows, refs, links
+
 
 class Report:
     """A whole page: title, notes, sections."""
@@ -145,12 +184,33 @@ class Report:
         self.title = title
         self.notes = []
         self.sections = []
+        self.started = time.perf_counter()
+        self.timings = []       # (section title, start time), for --time
 
     def section(self, title, columns, note="", kind="table"):
         """Create, attach and return a new Section."""
         s = Section(title, columns, note, kind)
         self.sections.append(s)
+        # When each section was begun, for --time: the gap to the next
+        # section's start is roughly what this one cost to build
+        self.timings.append((title, time.perf_counter()))
         return s
+
+    def timing_line(self, finished=None):
+        """
+        One line of seconds per section, for --time.  A section's time
+        is the gap from its start to the next section's start, the last
+        section's to the page's end (finished, or now).
+        """
+        if not self.timings:
+            return ""
+        end = finished if finished is not None else time.perf_counter()
+        starts = [t for _, t in self.timings] + [end]
+        parts = []
+        for (title, _), t0, t1 in zip(self.timings, starts, starts[1:]):
+            number = title.split(" ")[0].rstrip(".")
+            parts.append(f"{number} {t1 - t0:.2f}")
+        return f"Timing (seconds per section, page {end - self.started:.2f}): " + ", ".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -260,14 +320,42 @@ class Atlas:
             elif not spelling or not spelling[0].isalpha() or spelling.isupper():
                 cache[root] = spelling.isupper() if spelling else False
             else:
+                # Counted once for every word of the text in one pass
+                # (the verses holding the word with a capital inside the
+                # verse, and those holding it without), not with two
+                # scans of all 31,000 verses per word: at 20 milliseconds
+                # a scan, the 25 signature words of a chapter page cost
+                # most of a second each page, which was the chapter
+                # pages' doubled time in the canon-wide run
+                counts = self.capital_counts()
                 low, cap = spelling.lower(), spelling[0].upper() + spelling[1:]
-                ends = "[ ,.;:?!')]"
-                n_cap = self.db.execute("SELECT COUNT(*) FROM verses WHERE text GLOB ?",
-                                        (f"* {cap}{ends}*",)).fetchone()[0]
-                n_low = self.db.execute("SELECT COUNT(*) FROM verses WHERE text GLOB ?",
-                                        (f"* {low}{ends}*",)).fetchone()[0]
-                cache[root] = n_cap > n_low
+                cache[root] = counts.get(cap, 0) > counts.get(low, 0)
         return cache[root]
+
+    def capital_counts(self):
+        """
+        word -> the number of verses holding that exact spelling inside
+        the verse (after the first word, which the old test skipped too,
+        since every verse begins with a capital), capitalised and
+        uncapitalised counted apart.  Built once.
+        """
+        cache = self.__dict__.get("_capital_counts")
+        if cache is not None:
+            return cache
+        import re as _re
+        word_re = _re.compile(r"[A-Za-z][A-Za-z'-]*")
+        cache = Counter()
+        for (text,) in self.db.execute("SELECT text FROM verses"):
+            seen = set()
+            for m in word_re.finditer(text, 1):
+                if m.start() == 0:
+                    continue
+                w = m.group().rstrip("'-")
+                if w and w not in seen:
+                    seen.add(w)
+            cache.update(seen)
+        self._capital_counts = cache
+        return cache
 
     def form(self, root):
         """
@@ -962,6 +1050,17 @@ class Atlas:
 # Building blocks shared by the pages
 # ---------------------------------------------------------------------------
 
+def occurrence_floor(n_words):
+    """
+    How many occurrences a root needs before a keyness table measures
+    it, scaled to the text's size: one per WORDS_PER_OCCURRENCE words,
+    never under SHORT_BOOK_MIN_WEIGHT and never over HOME_MIN_WEIGHT.
+    Used by 1b for a book and by section 7 for a section, so a part of
+    900 words (Galatians' ethics) is treated as a small book is.
+    """
+    return min(HOME_MIN_WEIGHT, max(SHORT_BOOK_MIN_WEIGHT, round(n_words / WORDS_PER_OCCURRENCE)))
+
+
 def per_thousand(count, total):
     """Occurrences per 1,000 words."""
     return round(1000 * count / total, 2) if total else 0.0
@@ -1412,7 +1511,7 @@ def group_words_section(atlas, report, title, book, testament_top):
     # 3 up to Hosea, 4 for Ecclesiastes to Zechariah, 5 from Hebrews on.
     # The keyness floor below keeps the two rules honest with each
     # other: more words are let in, and only the ones that clear it stay
-    min_weight = min(HOME_MIN_WEIGHT, max(SHORT_BOOK_MIN_WEIGHT, round(n_here / WORDS_PER_OCCURRENCE)))
+    min_weight = occurrence_floor(n_here)
     left_out = 0
     scored = []
     measured = {}                    # every root the table measured, with its group keyness
@@ -1491,6 +1590,19 @@ def group_words_section(atlas, report, title, book, testament_top):
                 refs=atlas.verses_with(root, book), link={"word": root, "book": book})
         shown.append(root)
     sec.footer.append(f"The group: " + ", ".join(peers) + ".")
+    if bilingual:
+        # Which peers hold the Aramaic the Aramaic rows are measured
+        # against, and how much: "common to the kind" for Daniel's
+        # Aramaic means common to Ezra 4 to 7, and a root Ezra uses
+        # three times is already two per thousand of that baseline
+        holders = [(b, n) for b, n in atlas.db.execute(
+            f"SELECT book, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) - 1) FROM verses "
+            f"WHERE language = 'Aramaic' AND book IN ({marks}) GROUP BY book", peers) if n]
+        sec.footer.append(
+            f"The Aramaic baseline: {peer_aramaic_words} words, held by "
+            + ", ".join(f"{b} ({n})" for b, n in holders)
+            + f", beside the kind's {n_peers} words in all; 'common to the kind' for an Aramaic root means "
+            f"common to that baseline, where a root used three times is already two per thousand.")
     if len(scored) < TOP_N:
         # Say plainly that the table is short because the evidence is,
         # not because the book has few words worth measuring
@@ -1530,6 +1642,343 @@ def group_words_section(atlas, report, title, book, testament_top):
         sec.footer.append(f"Of section 1's words, still key against the kind but displaced from the top "
                           f"{TOP_N}: " + ", ".join(displaced[:12]) + ("..." if len(displaced) > 12 else "") + ".")
     return shown
+
+
+RICHNESS_MIN_RUNS = 5           # 1d's footer names the supplying books when fewer than this many could supply a run
+RICHNESS_CACHE = "richness_cache.json"   # 1d's run figures, kept beside the program, keyed by the build stamp
+
+
+def richness_cache_load(atlas):
+    """
+    The on-disk cache of 1d's run figures: {key: [roots, hapaxes, own,
+    runs]} under the build stamp, so a rebuild invalidates it and the
+    window never pays for a table twice.  Held on the atlas once read.
+    """
+    cache = getattr(atlas, "_richness_cache", None)
+    if cache is None:
+        stamp = f"{atlas.settings.get('roots', '')}|{atlas.settings.get('built', '')}|{VERSION}"
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), RICHNESS_CACHE)
+        cache = {"stamp": stamp, "path": path, "runs": {}, "dirty": False}
+        try:
+            import json
+            with open(path, encoding="utf-8") as f:
+                stored = json.load(f)
+            if stored.get("stamp") == stamp:
+                cache["runs"] = stored.get("runs", {})
+        except (OSError, ValueError):
+            pass
+        atlas._richness_cache = cache
+    return cache
+
+
+def richness_cache_save(atlas):
+    cache = getattr(atlas, "_richness_cache", None)
+    if not cache or not cache["dirty"]:
+        return
+    try:
+        import json
+        with open(cache["path"], "w", encoding="utf-8") as f:
+            json.dump({"stamp": cache["stamp"], "runs": cache["runs"]}, f)
+        cache["dirty"] = False
+    except OSError:
+        pass            # a read-only folder: the figures are still computed, only not kept
+
+
+def richness_runs(atlas, books, prefix):
+    """
+    The chapter-level material 1d's size yardstick is cut from: for each
+    book, its chapters in order with their word counts and the roots
+    each holds, plus the testament's hapax roots and each book's own
+    roots.  Built once per call of richness_section.
+    """
+    hapax = {r[0] for r in atlas.db.execute("SELECT root FROM words WHERE weight = 1 AND root GLOB ?",
+                                            (prefix + "[0-9]*",))}
+    # The runs are Hebrew (or Greek) text: an Aramaic chapter of Daniel
+    # or Ezra would put a run's own-root and hapax rates out of reach,
+    # since almost nothing else is in Aramaic, so Aramaic roots are left
+    # out of every chapter and a chapter mostly in Aramaic is skipped
+    aramaic = atlas.aramaic_roots() if prefix == "H" else set()
+    aramaic_chapters = set()
+    if aramaic:
+        for b2, ch, n_ar, n_all in atlas.db.execute(
+                "SELECT book, chapter, SUM(CASE WHEN language = 'Aramaic' THEN LENGTH(word_string) - "
+                "LENGTH(REPLACE(word_string, ' ', '')) + 1 ELSE 0 END), SUM(LENGTH(word_string) - "
+                "LENGTH(REPLACE(word_string, ' ', '')) + 1) FROM verses GROUP BY book, chapter"):
+            if n_all and n_ar > n_all / 2:
+                aramaic_chapters.add((b2, ch))
+    own = {}
+    chapters = {}
+    for b in books:
+        own[b] = {r[0] for r in atlas.db.execute(
+            "SELECT root FROM word_book wb JOIN words w USING (root) WHERE wb.book = ? AND w.books_reached = 1 "
+            "AND root GLOB ?", (b, prefix + "[0-9]*"))}
+        words = {r[0]: r[1] for r in atlas.db.execute(
+            "SELECT chapter, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) + 1) "
+            "FROM verses WHERE book = ? GROUP BY chapter", (b,))}
+        roots = {}
+        for ch, root, w in atlas.db.execute(
+                "SELECT chapter, root, weight FROM word_chapter WHERE book = ? AND root GLOB ?",
+                (b, prefix + "[0-9]*")):
+            if root not in aramaic:
+                roots.setdefault(ch, {})[root] = w
+        chapters[b] = [(ch, words.get(ch, 0), roots.get(ch, {})) for ch in sorted(words)
+                       if (b, ch) not in aramaic_chapters]
+    return hapax, own, chapters
+
+
+def richness_expected(material, n_words):
+    """
+    What a run of consecutive chapters of about n_words words, cut from
+    the books in the material, gives: the median roots per 1,000,
+    hapaxes per 1,000 and own roots per 1,000 over every such run, and
+    the median once-here share, and the number of runs.  A run is taken
+    from each starting chapter,
+    extended until it holds 0.8 n_words, and kept if it holds no more
+    than 1.25 n_words; a book shorter than 0.8 n_words gives none.
+    """
+    hapax, own, chapters = material
+    runs = []
+    by_book = {}                     # book -> its runs, so each supplying book counts once
+    for b, chs in chapters.items():
+        for start in range(len(chs)):
+            n, roots = 0, {}
+            for ch, w, rs in chs[start:]:
+                n += w
+                for r, wt in rs.items():
+                    roots[r] = roots.get(r, 0) + wt
+                if n >= 0.8 * n_words:
+                    break
+            if n < 0.8 * n_words or n > 1.25 * n_words:
+                continue
+            run = (per_thousand(len(roots), n), per_thousand(sum(1 for r in roots if r in hapax), n),
+                   per_thousand(sum(1 for r in roots if r in own[b]), n),
+                   round(sum(1 for w in roots.values() if w == 1) / len(roots), 2) if roots else 0)
+            runs.append(run)
+            by_book.setdefault(b, []).append(run)
+    if not runs:
+        return None
+    # The median of each supplying book's own median, so that a book
+    # with many short chapters (Matthew offers eight starting points
+    # for a 20,000-word run, John one) does not outvote the others; at
+    # the largest sizes only three or four books can supply a run at
+    # all, and the figure is then the median of those few, which the
+    # footer names
+    def med(values):
+        values = sorted(values)
+        return values[len(values) // 2]
+    book_medians = [tuple(med([r[i] for r in rs]) for i in range(4)) for rs in by_book.values()]
+    return (med([m[0] for m in book_medians]), med([m[1] for m in book_medians]),
+            med([m[2] for m in book_medians]), med([m[3] for m in book_medians]), len(runs),
+            sorted(by_book))
+
+
+def richness_section(atlas, report, title, book, peers, group):
+    """
+    1d: the measure 1b and 1c cannot see, how rich a book's vocabulary
+    is.  Hebrews has about 150 Greek words found nowhere else in the
+    New Testament, the highest rate of any book its size, which is what
+    the stylists meant when they called its author a man of letters;
+    James and 2 Peter are the other two.  Three figures per book, roots
+    only (Strong's numbers, the glossing rule's absorptions counted into
+    their roots): hapax legomena, the roots used once in the whole
+    testament (a Hebrew number never occurs in the Greek testament, so
+    a testament hapax and a Bible hapax are the same root here); the
+    book's own roots, used in no other book of the testament; and the
+    share of the book's roots used once in the book.  All three per
+    1,000 words or as a share, since the counts grow with the book.
+    The rates still lean on size (a long book has more room for a root
+    to recur), so beside each rate stands what a run of chapters of the
+    book's own size cut from the kind's other books gives, the same
+    run-cutting the Delta yardsticks use (Harrison's 1921 case on the
+    Pastorals rested on hapaxes per page, and his critics answered that
+    size and subject explain much of it; the run column is that answer
+    as a number).  Rows: the book, then the peers by size, largest
+    first, so that like sizes sit together.
+    """
+    testament = atlas.book_info[book]["testament"]
+    kin = [b for b in peers if atlas.book_info[b]["testament"] == testament]
+    prefix = "H" if testament == "Old" else "G"
+    alone = ("" if kin else
+             f"Not measured against the kind: the other books of '{group}' are all in the other testament, "
+             f"and a root of one testament never occurs in the other, so {book}'s row stands alone, its run "
+             f"figures come from its own testament's books (marked 't'), and the footer names its nearest "
+             f"books there.  ")
+    sec = report.section(
+        title, ["text", "words", "roots", "roots/1000", "run", "hapaxes", "hapaxes/1000", "run",
+                "own roots", "own/1000", "run", "once here", "once here (share)", "run"],
+        note=alone + f"How rich the vocabulary is, {book} beside each book of its kind, the baseline group "
+             f"'{group}' (own testament only).  Roots only (Strong's numbers).  'roots' is the distinct "
+             f"roots the book uses and 'roots/1000' that count per 1,000 words, a type-to-token figure; "
+             f"'hapaxes' is the book's roots used once in the whole testament (a root of one testament "
+             f"never occurs in the other, so a testament hapax is a Bible hapax); 'own roots' is the "
+             f"book's roots found in no other book of the testament, used once or many times; "
+             f"'once here' is the book's roots used once in the book, and the share of all its roots they "
+             f"are.  Every rate falls as a book grows (a long book has more room for a root to recur), so "
+             f"each 'run' column gives what a run of consecutive chapters of that row's size, cut from the "
+             f"testament's other books (every book but the row's own, Aramaic chapters left out), typically "
+             f"yields, the median over every such run; a rate well above its run figure is richness, a "
+             f"rate near it is size.  The runs come from the whole testament and not the kind alone, so "
+             f"that every row of a size is read against the same supply of text: in a four-book kind the "
+             f"books that happen to supply the runs move the figure more than the size does.  One caution: a hapax and an own root "
+             f"are measured against the other books of the testament, so a book with a sibling that shares "
+             f"its text scores low for a reason that is not poverty (a Synoptic Gospel beside the other two, "
+             f"Kings beside Chronicles, Ephesians beside Colossians, 2 Peter beside Jude); a shared tradition "
+             f"lowers the hapax rate as surely as a small vocabulary does, and for such a book the rate to "
+             f"read is 'once here (share)', which no sibling can touch.  Section 1b asks which words the book "
+             f"owns; 1c whose habits it has; this table how wide its vocabulary is, the second axis that "
+             f"separates Hebrews from Romans where the particles do not.  The peers are in order of size, "
+             f"largest first.  Click a row for the book's page.")
+    # The run figures depend only on the books cut and the size, so they
+    # are computed once and kept on disk under the build stamp; the
+    # chapter material is loaded only when a figure is missing
+    cache = richness_cache_load(atlas)
+    material = {}                    # "kind" / "testament" -> the chapter material, loaded on demand
+    testament_books = [b for b in atlas.books if atlas.book_info[b]["testament"] == testament]
+
+    # The ceiling: the largest run size at least RICHNESS_MIN_RUNS books
+    # of the testament can supply with a remainder.  Above it the rows
+    # were read against different supplies (a 24,000-word run can come
+    # only from Luke and Acts, a 26,000-word one from nothing), so a row
+    # larger than the ceiling is read against runs of the ceiling's
+    # size, which hapaxes and own roots per 1,000 allow, since they
+    # barely move with size; the footer says so for those rows
+    sizes = sorted((atlas.book_info[b]["words"] for b in testament_books), reverse=True)
+    ceiling = int(sizes[RICHNESS_MIN_RUNS - 1] / 1.25) if len(sizes) >= RICHNESS_MIN_RUNS else sizes[-1]
+    capped = []
+
+    def expected_for(which, books, b, n_words):
+        size = min(n_words, ceiling)
+        if size < n_words:
+            capped.append(b)
+        key = f"{which}|{b}|{size}"
+        if key in cache["runs"]:
+            return cache["runs"][key]
+        if which not in material:
+            material[which] = richness_runs(atlas, books, prefix)
+        hx, ow, chs = material[which]
+        found = richness_expected((hx, ow, {k: v for k, v in chs.items() if k != b}), size)
+        cache["runs"][key] = list(found) if found else None
+        cache["dirty"] = True
+        return cache["runs"][key]
+
+    # A book in two languages (Daniel, Ezra) is measured a language at a
+    # time: its Hebrew roots against its Hebrew words, with the run
+    # figures for that size, and its Aramaic roots as a row of their own
+    # with no run figure, since the Aramaic corpus (Daniel 2:4 to 7:28,
+    # Ezra 4:8 to 6:18 and 7:12 to 26) is too small to cut a yardstick
+    # from and its own-root and hapax rates are high by construction,
+    # almost nothing else being in Aramaic.  Before this, Daniel showed
+    # 35 own roots per 1,000 against a run figure of 4
+    aramaic = atlas.aramaic_roots() if prefix == "H" else set()
+    aramaic_rows = []
+
+    def figures(b, lang=None):
+        """(words, roots, hapax, own, once_here) for a book, or for one of its languages."""
+        if lang is None:
+            n_words = atlas.book_info[b]["words"]
+            where, args = "", ()
+        else:
+            n_words = atlas.db.execute(
+                "SELECT COALESCE(SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) + 1), 0) "
+                "FROM verses WHERE book = ? AND language = ?", (b, lang)).fetchone()[0]
+        rows_ = atlas.db.execute(
+            "SELECT wb.root, wb.weight, w.weight, w.books_reached FROM word_book wb JOIN words w USING (root) "
+            "WHERE wb.book = ? AND root GLOB ?", (b, prefix + "[0-9]*")).fetchall()
+        if lang == "Aramaic":
+            rows_ = [r for r in rows_ if r[0] in aramaic]
+        elif lang is not None:
+            rows_ = [r for r in rows_ if r[0] not in aramaic]
+        return (n_words, len(rows_), sum(1 for r in rows_ if r[2] == 1), sum(1 for r in rows_ if r[3] == 1),
+                sum(1 for r in rows_ if r[1] == 1))
+
+    rows = []
+    few_suppliers = []               # (row book, the books that supplied its runs) when under RICHNESS_MIN_RUNS
+    for b in [book] + kin:
+        lang = None
+        if aramaic:
+            n_ar = atlas.db.execute(
+                "SELECT COALESCE(SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) + 1), 0) "
+                "FROM verses WHERE book = ? AND language = 'Aramaic'", (b,)).fetchone()[0]
+            if n_ar >= FEW_WORDS:
+                lang = "Hebrew"
+                aw, ar, ah, ao, aonce = figures(b, "Aramaic")
+                aramaic_rows.append((b + " (Aramaic)", aw, ar, per_thousand(ar, aw), "-", ah, per_thousand(ah, aw),
+                                     "-", ao, per_thousand(ao, aw), "-", aonce, round(aonce / ar, 2) if ar else 0,
+                                     "-"))
+        n_words, roots, hapax, own, once_here = figures(b, lang)
+        roots = roots or 0
+        # The run figures for this size, always from the testament's
+        # other books.  Struck from the kind's books they depended on
+        # who supplied the runs: in NT Narrative, Matthew's hapax figure
+        # came from Luke and Acts (rich) at 9.4 while Luke's came from
+        # Matthew, Mark and John (sibling-depressed) at 3.5, a threefold
+        # difference at the same size.  The testament gives every row the
+        # same supply, and the footer names the books that gave runs
+        expected = expected_for("testament", testament_books, b, n_words)
+        if expected is None:
+            run = ("-", "-", "-", "-")
+        else:
+            run = tuple(f"{x:.1f}" for x in expected[:3]) + (f"{expected[3]:.2f}",)
+            if len(expected) > 5 and len(expected[5]) < RICHNESS_MIN_RUNS:
+                few_suppliers.append((b, expected[5]))
+        rows.append((b, n_words, roots, per_thousand(roots, n_words), run[0], hapax, per_thousand(hapax, n_words),
+                     run[1], own, per_thousand(own, n_words), run[2], once_here or 0,
+                     round((once_here or 0) / roots, 2) if roots else 0, run[3]))
+    first, rest = rows[0], sorted(rows[1:], key=lambda r: -r[1])
+    for r in [first] + rest:
+        label = r[0] + (" (small book)" if r[1] < BOOK_SMALL_WORDS else "")
+        if any(r[0] == a[0].replace(" (Aramaic)", "") for a in aramaic_rows):
+            label += " (Hebrew)"
+        sec.add([label] + list(r[1:]), link={"book": r[0]})
+    for a in aramaic_rows:
+        sec.add(list(a), link={"book": a[0].replace(" (Aramaic)", "")})
+    if aramaic_rows:
+        sec.footer.append(
+            "A book in two languages is measured a language at a time: its Hebrew row against the run "
+            "figures, and its Aramaic roots in a row of their own with no run figure, since the Aramaic "
+            "corpus (Daniel 2:4 to 7:28, Ezra 4:8 to 6:18 and 7:12 to 26) is too small to cut a yardstick "
+            "from and its own-root and hapax rates are high by construction, almost nothing else being "
+            "in Aramaic.  The runs themselves leave Aramaic chapters and roots out.")
+    sec.footer.append("Rates fall as books grow: read each rate beside its 'run' figure, what the testament's "
+                      "other books give at that size.")
+    if capped:
+        sec.footer.append(
+            f"Runs are cut no larger than {ceiling:,} words, the largest size at least {RICHNESS_MIN_RUNS} "
+            f"books of the testament can supply with a remainder, so that every row is read against the "
+            f"same supply of text; the rows larger than that ({', '.join(dict.fromkeys(capped))}) are read "
+            f"against runs of {ceiling:,} words, which hapaxes and own roots per 1,000 allow, since they "
+            f"barely move with size, and roots per 1,000 does not: for those rows read the hapax and "
+            f"own-root columns.")
+    if few_suppliers:
+        sec.footer.append(
+            f"Where fewer than {RICHNESS_MIN_RUNS} books are large enough to supply a run of the row's size, "
+            f"the run figure is the median of those few, and which they are matters: "
+            + "; ".join(f"{b} from {', '.join(bs)}" for b, bs in few_suppliers) + ".")
+    # The nearest books outside the kind on the two rates that do not
+    # lean on size, hapaxes and own roots per 1,000 (a hapax is a
+    # property of the root, not of the run it sits in), so that 1 John
+    # can be seen beside John's Gospel and Lamentations beside Psalms
+    own_row = rows[0]
+    outside = []
+    for b in testament_books:
+        if b == book or b in kin:
+            continue
+        n = atlas.book_info[b]["words"]
+        h = atlas.db.execute(
+            "SELECT COUNT(*) FROM word_book wb JOIN words w USING (root) WHERE wb.book = ? AND w.weight = 1 "
+            "AND root GLOB ?", (b, prefix + "[0-9]*")).fetchone()[0]
+        o = atlas.db.execute(
+            "SELECT COUNT(*) FROM word_book wb JOIN words w USING (root) WHERE wb.book = ? AND w.books_reached = 1 "
+            "AND root GLOB ?", (b, prefix + "[0-9]*")).fetchone()[0]
+        hr, orate = per_thousand(h, n), per_thousand(o, n)
+        outside.append((abs(hr - own_row[6]) + abs(orate - own_row[9]), b, n, hr, orate))
+    outside.sort(key=lambda r: r[0])
+    if outside:
+        sec.footer.append(
+            f"Nearest beyond the kind on hapaxes and own roots per 1,000 (the two rates that do not lean on "
+            f"size; {book} has {own_row[6]} and {own_row[9]}): " + "; ".join(
+                f"{b} {hr} and {orate} ({n} words)" for _, b, n, hr, orate in outside[:3]) + ".")
+    richness_cache_save(atlas)
 
 
 def lexicon_section(atlas, report, title, roots, book=None, chapter=None, scope_label="Bible"):
@@ -1632,6 +2081,7 @@ def signature_formulas_section(atlas, report, title, verses, book, n_scope):
         shown = atlas.display_of(phrase, refs) if by_roots else phrase
         sec.add([shown, a, times, b, round(g2, 1), where], refs=refs,
                 link={"phrase": shown, "key": phrase})
+    sec.merge_duplicates()
 
 
 def neighbors_section(atlas, report, title, scope, root, word, scope_label):
@@ -1790,6 +2240,8 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
             grade = ""
         sec.add([shown, grade, ", ".join(here), ", ".join(there)], refs=here + there,
                 link={"phrase": shown, "key": phrase})
+    # An echo found by root and again by wording shows once
+    sec.merge_duplicates(score_column="grade")
     if len(found) > ECHO_N:
         sec.footer.append(f"{len(found) - ECHO_N} more candidate echoes not shown; the tallies "
                           f"below count all of them.")
@@ -2295,6 +2747,14 @@ def book_page(atlas, book_name):
     # 1b: the same words against the book's own kind, the baseline group
     # from metadata.db, where the two lines of the project meet
     group_words_section(atlas, report, f"1b. Signature words against the book's kind [{book}]", book, top)
+    # 1c: the function-word profile against the same kind (atlas_function.py)
+    groups = atlas.baseline_groups()
+    if groups.get(book):
+        peers = [b for b in atlas.books if groups.get(b) == groups[book] and b != book]
+        function_book_table(atlas, report, f"1c. Function words against the book's kind [{book}]",
+                            book, peers, groups[book])
+        richness_section(atlas, report, f"1d. Vocabulary richness against the book's kind [{book}]",
+                         book, peers, groups[book])
 
     verses = atlas.verses_of(book)
     signature_formulas_section(atlas, report, f"2. Signature formulas [{book}]",
@@ -2381,7 +2841,10 @@ def sections_section(atlas, report, title, book, info):
             ["section", "chapters", "verses", "words", "leading words (count in N of M chapters, keyness against the rest of the book)"],
             note=f"The parts of {book} by the '{division}' division in atlas_sections.py (edit that file to "
                  f"change them).  Leading words are the words most key to the section against the rest "
-                 f"of the book, at least {HOME_MIN_WEIGHT} occurrences; 'in N of M chapters' says whether "
+                 f"of the book, up to six, each at keyness {GROUP_KEYNESS_FLOOR} or above (a shorter list "
+                 f"means the section has fewer words of its own, not that it was cut) and with at least "
+                 f"{HOME_MIN_WEIGHT} occurrences, or one per {WORDS_PER_OCCURRENCE} words of a short section "
+                 f"down to {SHORT_BOOK_MIN_WEIGHT}; 'in N of M chapters' says whether "
                  f"the word is the section's voice or one chapter's (Psalm 119 gives Book V its "
                  f"commandments, precepts and statutes).  A division that leaves chapters out gets a "
                  f"'Rest of {book}' row holding them.  A section under {FEW_WORDS} words is marked 'few': "
@@ -2397,10 +2860,11 @@ def sections_section(atlas, report, title, book, info):
             rest = book_words - n_words
             in_chs = set(chs)
             scored = []
+            floor = occurrence_floor(n_words)
             for root, by_ch in weight.items():
                 in_sec = {c: w for c, w in by_ch.items() if c in in_chs}
                 a = sum(in_sec.values())
-                if a < HOME_MIN_WEIGHT:
+                if a < floor:
                     continue
                 b = sum(by_ch.values()) - a
                 n1, n2 = n_words, rest
@@ -2414,7 +2878,12 @@ def sections_section(atlas, report, title, book, info):
                         b = (row["weight"] if row else a) - a
                         n2 = atlas.comparison_words(root) - n1
                 k = log_likelihood(a, b, n1, n2) if n2 > 0 and n1 > 0 else 0
-                if k > 0:
+                # The same floor as 1b: a word at keyness 0 is used at
+                # the rest of the book's rate, and printing it because
+                # the column fills to six ("jesus (5 in 2/2, 0)" on
+                # Galatians' ethics) made it look like a leading word.
+                # The list simply ends early
+                if k >= GROUP_KEYNESS_FLOOR:
                     scored.append((k, root, a, len(in_sec)))
             scored.sort(key=lambda t: -t[0])
             leading = ", ".join(f"{atlas.form(r)} ({a} in {n}/{len(chs)}, {k:.0f})" for k, r, a, n in scored[:6])
@@ -2466,7 +2935,12 @@ def sections_section(atlas, report, title, book, info):
                 ["section"] + [shown_name[n] for n in names],
                 note="Section 6 summed to sections: each cell the shared rare phrasing between two parts "
                      "of the book (summed rarity, per 1,000 words of the two parts together).  The "
-                     "diagonal is a part against itself, its own internal repetition.",
+                     "diagonal is a part against itself, its own internal repetition; a two-chapter "
+                     "part's diagonal is a single chapter pair, and a one-chapter part's is always 0.  "
+                     "A low cell between two parts says they share little phrasing, which a change of "
+                     "subject produces as surely as a change of hand (2 Corinthians' collection shares "
+                     "3 and 4 with its neighbours and nobody takes it for a separate letter), so the "
+                     "cell is evidence about a seam only beside the vocabulary that no subject drives.",
                 kind="heatmap")
             heat.value_label = "shared weight per 1000 words"
             for name_a, chs_a, rest_a in secs:
@@ -2487,6 +2961,11 @@ def sections_section(atlas, report, title, book, info):
         if len(secs) > 1:
             reach_depth_by_section(atlas, report, f"{prefix}c. Reach and depth by section [{book}]",
                                    book, secs, sec_words)
+        # d. The function words by section (atlas_function.py): the
+        # question 7b cannot answer, whether the hand changed
+        if len(secs) > 1:
+            function_section_table(atlas, report, f"{prefix}d. Function words by section [{book}]",
+                                   book, secs, chapters_of, shown_name, firsts)
 
 
 def reach_depth_by_section(atlas, report, title, book, secs, sec_words):
@@ -3543,7 +4022,10 @@ def word_page(atlas, word, book_name=None, exact=False):
     for book in shown_books:
         info = atlas.book_info[book]
         r = rows.get(book)
-        depth_cells = [round(r["depth"] or 0, 1), f"ch {r['depth_chapter']}"] if (r is not None and atlas.has_depth) else (["", ""] if atlas.has_depth else [])
+        # A word with no depth in a book has no deepest chapter: a dash,
+        # not Python's None
+        depth_cells = ([round(r["depth"] or 0, 1), f"ch {r['depth_chapter']}" if r["depth_chapter"] else "-"]
+                       if (r is not None and atlas.has_depth) else (["", ""] if atlas.has_depth else []))
         if r is None:
             sec.add([book, 0, "", "", f"0/{info['chapters']}"] + depth_cells + ["", ""], link=None)
             continue
@@ -3581,6 +4063,7 @@ def word_page(atlas, word, book_name=None, exact=False):
             (f"% {needle} %", TOP_N)):
         shown = r["display"] if atlas.has_display else r["phrase"]
         sec.add([shown, r["verses_total"], r["books_total"]], link={"phrase": shown, "key": r["phrase"]})
+    sec.merge_duplicates(score_column="verses")
     if not sec.rows:
         sec.note += "  (none stored: the word never ends a formula found in 2+ verses)"
     return report

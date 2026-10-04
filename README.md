@@ -34,7 +34,12 @@ The same pages print as text without the window:
 Word Atlas reads the same `bibles.db` that Bible Search Lite uses; it
 needs the `verse_strongs` table in it and the Strong's dictionary
 `strongs.csv` from the strongs3 project. Neither file is in this
-repository.
+repository. The Greek layer (`lxx.db`) is built separately from the
+Septuagint files (`build_lxx.py`), STEPBible's TAGNT Greek New
+Testament (`build_gnt.py`, two files downloaded into `data/tagnt/`)
+and STEPBible's TAHOT Hebrew Old Testament (`build_tahot.py`, four
+files into `data/tahot/`), both from github.com/STEPBible/STEPBible-Data
+under CC BY 4.0; the manual's section 28c says how.
 
 ## Reading further
 

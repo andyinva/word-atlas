@@ -143,6 +143,26 @@ COLUMN_HELP = {
                        "of metadata.db.",
     "keyness (testament)": "The same word's keyness against the rest of its testament, section 1's "
                            "figure, so the two baselines can be read side by side.",
+    "Delta": "Burrows' Delta: how far apart two texts are in their habits with the small words "
+             "(particles, conjunctions, prepositions, pronouns), each rate as a z-score against "
+             "the New Testament's books, then the mean absolute difference.  0 would be identical; "
+             "the footer's yardsticks say what two different books, and the two halves of one "
+             "book, typically score.",
+    "roots/1000": "Distinct roots per 1,000 words, a type-to-token figure; falls as a book grows, so "
+                  "compare books of like size.",
+    "hapaxes": "The book's roots used once in the whole testament (a root of one testament never occurs "
+               "in the other, so a testament hapax is a Bible hapax).",
+    "hapaxes/1000": "Hapaxes per 1,000 words of the book.",
+    "own roots": "The book's roots found in no other book of the testament, used once or many times: "
+                 "Hebrews' are about 150, the most of any book its size.",
+    "own/1000": "Own roots per 1,000 words of the book.",
+    "once here": "The book's roots used once in the book.",
+    "run": "What a run of consecutive chapters of this row's size, cut from the testament's other "
+           "books, typically gives for the rate to its left (the median over every such run).  A rate "
+           "well above its run figure is richness; a rate near it is size.",
+    "once here (share)": "Those as a share of all the book's roots.",
+    "tokens": "Every King James word of the text, stop words included: the denominator of the "
+              "function-word rates.",
     "keyness": "How much more often the word appears here than the rest of the Bible "
                "would predict (log-likelihood).  Above 10.8 is very unlikely by chance; "
                "a negative value means rarer here than expected.",
@@ -293,6 +313,13 @@ COLUMN_PATTERNS = [
 ]
 
 # Help for the pictures
+# The function-word columns of 1c and 7d: each feature's gloss, from
+# the one list in atlas_function.py
+from atlas_function import FUNCTION_WORDS, FUNCTION_WORDS_HEBREW
+for _label, _numbers, _gloss in FUNCTION_WORDS + FUNCTION_WORDS_HEBREW:
+    COLUMN_HELP[_label] = (f"{_label} ({', '.join(_numbers)}): {_gloss}.  Occurrences per 1,000 tokens of the "
+                           f"text (King James tokens for a Greek book, Hebrew elements for a Hebrew one).")
+
 PICTURE_HELP = {
     "heatmap": "A map: rows down the side, columns across, each cell shaded by its number "
                "(square-root scale, so the middle shows).  On a book page it is the echo map, "

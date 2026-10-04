@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.37. Andrew Hopkins, with Claude.
+For version 0.10.55. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -266,6 +266,11 @@ first eight rows of every table, `--only 1,2,4a` keeps only the
 sections numbered so, and `--quiet` drops the section notes and
 footers. `python atlas_query.py book Joel --only 1,2 --top 8 --quiet`
 is a book page on one screen. The saved file is the trimmed page.
+`--time` prints, as each page is laid out, the seconds every section
+of it took, and keeps the line in the file, so a slow page names its
+slow table in one run; a chapter page is under a second, a book page
+a few seconds with the Compare and echo work, and a dossier of a
+large book a minute or two, almost all of it the chapter pages.
 
 The pages are built once, as data, in `atlas_pages.py`: a Report made
 of Sections, each a table of columns and rows with the verse
@@ -363,6 +368,17 @@ rest of its own testament, because a Hebrew number cannot occur in the
 New Testament at all; an English stem is compared with the rest of the
 Bible. Section 20 explains why this matters.
 
+A section that declines (a "Not measured" note and no rows) prints
+its title and the reason and no table: the lone header over a dash
+line that 0.10.51 and earlier printed under a refusal said the
+opposite of what the note said. And a table never shows the same
+row twice: two phrase keys can render to one display text
+(Deuteronomy 25's "husband's brother" was a formula under H2993 and
+again under H2992; an echo found by root and again by wording), and
+since 0.10.52 the formula, echo and word-page phrase tables merge
+rows with identical text, keeping the stronger figures and the
+union of the verses.
+
 ## 12. The Book page
 
 The book page is the longest and the one to learn first. Its sections
@@ -444,7 +460,92 @@ Hebrew prophets (right as a kind), keeps the section header with the
 reason in place of the table, so the refusal is itself a finding on
 the page: the catalogue says what kind of book it is, the page says
 whether the measurement is defined, and the comparison with the
-prophets by vocabulary belongs to the Septuagint bridge. The same
+prophets by vocabulary belongs to the Septuagint bridge. **Section
+1c, Function words against the book's kind**, is 1b's companion for
+the other kind of word: the book's function-word profile (the same
+twenty-three features as 7d, rates per 1,000 tokens) beside each
+book of its kind, ordered by Delta from the book, nearest first,
+with the two yardsticks in the footer. 1b asks which content words
+the book owns; 1c asks whose habits it has, which is the authorship
+question as a table: 1 Timothy's nearest books are James 0.76,
+2 Timothy 0.78, 1 Peter and 1 Corinthians 0.81, with Romans at 0.97
+and Galatians at 1.05, and 2 Timothy's are Philippians 0.73,
+Hebrews 0.75, 1 Timothy 0.78 and Romans 0.80. On twenty-three
+features and two thousand tokens that is a coarse instrument, and
+it does not sort the Pastorals from the undisputed letters cleanly
+in either direction; the table prints what the King James tagging
+can measure, and the manual says what it cannot. A footer names the
+three nearest books beyond the kind, with and without pronouns,
+since the kind-scoped table cannot otherwise show 1 John its
+Gospel or Acts its Luke. **Section 1d,
+Vocabulary richness against the book's kind**, is the third axis:
+roots only, the book's distinct roots per 1,000 words, its hapax
+legomena (roots used once in the whole testament, which for a
+Strong's number is the same as once in the Bible) per 1,000, its
+own roots (found in no other book of the testament) per 1,000, and
+the share of its roots used once in the book, beside each book of
+its kind in order of size, largest first, because the first of
+these rates falls steeply as a book grows. Beside each rate stands
+a "run" column: what a run of consecutive chapters of that row's
+size, cut from the testament's other books, typically gives (each
+supplying book's median run, then the median of those, by the same
+run-cutting the Delta yardsticks use). The runs come from the whole
+testament and not the kind, because in a four-book kind the books
+that happen to supply the runs move the figure more than the size
+does: struck within NT Narrative, Matthew's hapax figure came from
+Luke and Acts at 9.4 while Luke's came from Matthew, Mark and John
+at 3.5, a threefold difference at the same size. At the largest
+sizes only three or four books of the testament are large enough to
+supply a run at all, and a 26,000-word run comes from nothing, so
+the runs are cut no larger than the largest size at least five books
+of the testament can supply with a remainder (12,132 words in the
+New Testament, 29,628 in the Old), and a row larger than that is
+read against runs of the ceiling's size; the footer says so and
+names the rows. Hapaxes and own roots per 1,000 allow it, since they
+barely move with size, and roots per 1,000 does not, so for a capped
+row the hapax and own-root columns are the ones to read. With the
+ceiling the four Gospels and Acts all read against the same runs
+(hapaxes 6.8 to 7.5 per 1,000), where before Matthew's figure came
+from Luke and Acts at 9.4 and Luke's from Matthew and John at 3.5. A rate well above its run figure is richness, a
+rate near it is size. The run figures are computed once per kind
+and size and kept beside the program in richness_cache.json under
+the build stamp, so a rebuild invalidates them and the window never
+pays for the table twice. 1b asks which words the book owns, 1c
+whose habits it has, 1d how wide its vocabulary is; Hebrews' 153 own
+roots, 22 per 1,000 where a 6,900-word run of the Epistles gives
+10, is the figure the stylists meant. A footer names the three
+nearest books beyond the kind on the two rates that do not lean on
+size, hapaxes and own roots per 1,000. One caution is in the note,
+because the Synoptics' rows need it before anything else does: a
+hapax and an own root are measured against the other books of the
+testament, so a book with a sibling that shares its text scores low
+for a reason that is not poverty (Matthew's 3.8 hapaxes per 1,000
+and John's 3.8 are depressed by the tradition that puts most of a
+Gospel's words in two other books, and the same holds for Kings
+beside Chronicles, Ephesians beside Colossians, 2 Peter beside
+Jude); a shared tradition lowers the hapax rate as surely as a
+small vocabulary does, and for such a book the rate to read is the
+once-here share, which no sibling can touch, read beside its own
+run figure, which it has had since 0.10.49 because it leans on size
+like the rest (1 John's 0.47 where a run of its size gives 0.63 is
+poverty; 1 Corinthians' 0.47 against 0.56 is mostly size; Matthew's
+0.40 against 0.48 is a Gospel with two siblings). A book whose kind lies wholly in the other testament
+(Revelation against the Hebrew prophets) keeps 1c and 1d with a
+note saying so, its own row, and the nearest-beyond-the-kind lines
+naming its nearest Greek books. A book in two languages (Daniel,
+Ezra) is measured a language at a time, as 1b measures it: a Hebrew
+row against the run figures, and an Aramaic row of its own with no
+run figure, since the Aramaic corpus (Daniel 2:4 to 7:28, Ezra 4:8
+to 6:18 and 7:12 to 26) is too small to cut a yardstick from and
+its own-root and hapax rates are high by construction, almost
+nothing else being in Aramaic; the runs themselves leave Aramaic
+chapters and roots out. Before this Daniel showed 35 own roots per
+1,000 against a run figure of 4, which was the Aramaic and not the
+book; its Hebrew chapters have 5.2 against 9.0, 3.5 hapaxes against
+6.2, and a once-here share of 0.48 against 0.57, a Hebrew
+vocabulary narrower than its kind's at that size, where its Aramaic
+has 54 own roots per 1,000 for the reason given. Both testaments.
+The same
 rule runs a root at a time inside a testament: an Aramaic root has no
 peer in a Hebrew kind, so when the group holds under a thousand words
 of Aramaic the book's Aramaic roots are left out and counted in a
@@ -457,7 +558,12 @@ two languages is measured a language at a time, each with its own
 denominators, its Aramaic roots against the kind's Aramaic words and
 its Hebrew roots against the kind's Hebrew, and the note says which a
 row is; with one denominator for both, the smaller language won every
-row. A kind under 30,000 words is marked "(small kind)" in the title,
+row. The footer gives the Aramaic baseline's size and who holds it
+(for Daniel, Ezra's 2,265 words beside the kind's 23,553 in all),
+because "common to the kind" for an Aramaic root means common to
+Ezra 4 to 7, where a root used three times is already two per
+thousand: Nebuchadnezzar, heaven and men fall as common to the kind
+on that arithmetic, which is right and needs saying. A kind under 30,000 words is marked "(small kind)" in the title,
 as a small section is: the keyness is sound, the lower rows are not to
 be quoted as firmly as Isaiah's. A book under 5,000 words is marked
 "(small book)" the other way round, in section 1 and 1b both: most of
@@ -642,14 +748,53 @@ of the section, one row per section and the chief partners across; on
 a Gospel a note warns that a row where Matthew and Mark run level is
 the triple tradition and says nothing about which is the source. **7b**
 is the sections against each other, the within-book map summed to
-parts, the diagonal being each part against itself. **7c** is the
+parts, the diagonal being each part against itself; a two-chapter
+part's diagonal is a single chapter pair, and its note says that a
+low cell between parts is what a change of subject produces as
+surely as a change of hand. **7c** is the
 reach-and-depth chart with the section as its unit: reach the share of
 sections a word occurs in, depth its highest keyness in one section,
 and "depth/1000" the same per 1,000 words of the section, which
 removes the size (a word spread through Ezekiel is otherwise always
 deepest in its 19,848-word first part). A book with a second division
 (the Psalter's collections, Jeremiah's Mowinckel sources) repeats the
-four tables as 7.2, 7.2a, 7.2b and 7.2c, and so on.
+tables as 7.2, 7.2a, 7.2b and so on. **7d, Function words by
+section**, is the table 7b cannot be: the words no subject drives,
+the particles, conjunctions, prepositions and pronouns (de, kai,
+gar, oun, alla, ou, me, hoti, hina, ei, en, eis, ek, dia, kata,
+pros, autos, hos, pas, and the pronouns grouped by person and
+number), as rates per 1,000 King James tokens for each part, with a
+Delta column, Burrows' Delta between the part and the rest of the
+book (the measure of atlas_delta.py, described in section 24a: each
+rate as a z-score against the New Testament's books, Delta the mean
+absolute difference). 7b's shared phrasing falls between two parts
+whenever the subject changes; 7d asks whether the hand changed. Two
+yardsticks are printed with every Delta, the median between two
+different books (1.08) and the median between the two halves of one
+book (0.51), and a footer gives the Delta between every pair of
+parts. Delta rises as a text shrinks, so a part's figure is read
+beside parts of the same size elsewhere (Romans' five parts run 0.56
+to 0.97 from the rest, Acts' four 0.34 to 0.51, John's three 0.54 to
+1.12) and against the size yardsticks in the footer (a run of about
+1,000 tokens cut from one book is typically 0.73 from the rest of
+it, of 2,000 0.53, of 3,000 0.47); a part under 1,500 tokens is
+marked "low". The note carries the two cautions of section 24a,
+discourse mode and size, because the table will be quoted. 7d
+appears only on a book with a Parts division, which is why a short
+letter without one shows 1c and not 7d. For the New Testament the particles come from
+the King James tagging; for the Old Testament, where that tagging
+gives the Hebrew particles no number, they come from STEPBible's
+TAHOT once it is imported (build_tahot.py, section 28c), element by
+element: the prefixes wa- (the vav of the narrative verb chain), we-
+(the plain conjunction), ha-, be-, le-, ke- and mi-, the particles et,
+ki, lo, al, asher, al, el, ad, im, kol, gam and hinneh, the
+independent pronouns, and the pronominal suffixes grouped by person,
+twenty-seven features, with the rate per 1,000 elements (prefixes,
+roots and suffixes all counted). The Aramaic chapters of Daniel and
+Ezra are left out, since Aramaic has its own particles and no
+narrative vav or prefixed article, and a footer names them. Without
+the TAHOT an Old Testament book keeps the header with the reason and
+the instruction.
 
 ## 13. The Chapter page
 
@@ -1298,6 +1443,111 @@ the rest of its testament, and a book's home words are the ones whose
 home it is; a home needs at least five occurrences, so two in Jude are
 not a second home.
 
+## 24a. Function words and Delta
+
+Everything above measures content: which words a text owns. The
+function-word layer (atlas_function.py, sections 1c and 7d) measures
+habit: how often a writer reaches for the small words nobody chooses
+on purpose. The features are twenty-three groups of Strong's numbers,
+the Greek particles, conjunctions and prepositions (de, kai, gar,
+oun, alla, ou, me, hoti, hina, ei, en, eis, ek, dia, kata, pros), the
+pronoun autos, the relative hos, pas, and the first and second person
+pronouns grouped by person and number, since "I", "me" and "my" are
+one habit. A rate is the count per 1,000 King James tokens, every
+token counted, so a rate means the same on every row. The article is
+untagged in the King James and cannot be a feature. For the Old
+Testament the features are Hebrew and the source is the TAHOT
+(section 28c), which tags every element of a word: twenty-seven
+features, the seven prefixes, eleven particles, five independent
+pronouns and the pronominal suffixes grouped by person, as rates per
+1,000 elements. The two vavs are kept apart on purpose, wa- (H9001)
+being the vav of the narrative verb chain and we- (H9002) the plain
+conjunction, since their ratio is the mark of narrative against
+everything else: Jonah has wa- at 80 per 1,000 and Lamentations 13.
+The first result the layer gave on the Hebrew side was the one it was
+built for. Isaiah 1 to 39 against 40 to 66 are 0.94 apart with the
+pronouns, beyond the nine-in-ten line for runs of their size (0.89
+for the testament, 0.85 within the prophets), and 0.69 without them,
+under it: wa- 36 against 19, ha- 39 against 20, I 0.9 against 8.6
+and the second-person suffixes 19 against 43 per 1,000. The two
+halves differ in habit by about what two halves of one prophetic book
+differ, once the "I am the LORD" and the "thou" of the consolation
+are set aside; what remains above the line is the pronouns, which is
+to say the mode. The Psalter's five Books sit at 0.37 to 0.82 from
+the rest of the Psalter, Book IV highest.
+
+**Delta** is Burrows' Delta (2002), the standard measure of
+stylometry. Each feature's rate is turned into a z-score against a
+reference set, the New Testament's books of 1,500 tokens or more:
+z = (rate here minus the average rate across the books) divided by
+the spread across the books, so z = 0 is an ordinary rate, +2 far
+above ordinary, minus 2 far below. Delta between two texts is the
+mean of the absolute differences of their z-scores over all the
+features; 0 would be identical. A Delta has no fixed scale, so every
+table prints two yardsticks from the same reference set: the median
+Delta between two different books (1.08 on this build), and the
+median between the first and second halves of one book (0.51, over
+the books large enough to halve). A pair near the second is as alike
+as one book's halves; near or above the first, as different as two
+unrelated books. Delta rises as a text shrinks, because small counts
+wobble, so a short part's Delta is read beside parts of the same
+size (section 12 gives Romans', Acts' and John's), and a text under
+1,500 tokens is marked "low".
+
+A third yardstick answers the size problem directly. For runs of
+consecutive chapters of about 500, 1,000, 2,000, 3,000 and 5,000
+tokens cut from one reference book, the footer prints the median
+Delta from the rest of that book (0.90, 0.73, 0.53, 0.47, 0.35) and
+beside it the figure nine in ten such runs fall under (1.33, 1.04,
+0.83, 0.76, 0.54), so a part or a "low" book is read against the
+pair nearest its own size, never against the halves' 0.51: above
+the median is common, beyond nine in ten is unusual. They are
+struck on the books large enough to spare a run and keep a
+remainder, which for the larger sizes means the Gospels, Acts,
+Romans, the Corinthians and Hebrews; and since the Gospels and Acts
+are narrative that keeps one register from chapter to chapter,
+while an epistle changes register inside itself as a matter of form
+(thanksgiving, argument, exhortation, greetings), a line struck on
+Mark makes an epistle's parts look more unusual than they are. So a
+second line strikes the same yardsticks within the book's own kind,
+where the kind holds twenty runs or more at a size: for the Epistles
+the medians are 0.98, 0.81, 0.66 and 0.62 at 500 to 3,000 tokens and
+the nine-in-ten lines 1.35, 1.07, 0.90 and 0.81, wider than the
+testament's 1.33, 1.04, 0.83 and 0.76 at every size above 500; for
+NT Narrative they are narrower (0.94, 0.72, 0.64 at 1,000 to 3,000).
+An epistle's parts are read against the Epistles' line.
+
+A second Delta column, "Delta (no pronouns)", is the same measure
+over the nineteen features that are not pronouns, with its own
+yardsticks in the same footer line. The pronouns swing by twenty or
+thirty per thousand with the mode of a short passage (a
+self-defence is in the first person; a co-written letter says "we"),
+so where a distance falls to the yardstick without them it was the
+pronouns, and where it holds it was not. 2 Corinthians'
+self-defence is 0.88 from the rest of the letter with the pronouns
+and 0.86 without; Philippians' polemic 1.26 and 1.31. Both hold.
+
+What the layer can and cannot say. It finds resemblance of habit,
+not authorship. Discourse mode drives these words as surely as hands
+do: gar, ou and de are the particles of argument, and a liturgical
+or hortatory text drops them whoever wrote it, so a distance
+measures a change of register before it measures a change of
+author; Colossians' distance from Romans (1.34) is first the loss of
+the argumentative particles and the piling up of "in" phrases (de
+3.5 per thousand against Romans' 14.9, gar 3.0 against 15.3, ou 4.0
+against 12.8, en 44.7 against 18.4), which is the handbook's
+description of Colossians' style as a row of numbers, and only after
+that a question about the hand. The test that separates the two
+compares like with like, an ethical half against an ethical half,
+which 7d on each book makes possible. The pronouns are partly
+subject (a self-defence is in the first person singular because of
+what it is, not only who wrote it). Twenty-three features
+is a small set beside the hundred or more a stylometric study would
+use, and the King James tagging, not the Greek text, is what is
+counted, so a feature is only as good as its tagging. The layer is
+New Testament only for that reason: the Hebrew particles are mostly
+untagged, and an Old Testament rate would measure the tagging.
+
 ## 25. Parallels, the sharing table and the synopsis
 
 Two verses are **parallel** when the content roots they share in the
@@ -1438,6 +1688,97 @@ any verse ranges in any books, in the catalogue, and gets the tables
 that do not need a book. The third meeting, the Septuagint experiment
 set aside earlier, has its verse map and root equivalents waiting in
 the catalogue.
+
+## 28c. The Greek New Testament in lxx.db
+
+The atlas's New Testament is the King James tagged with Strong's
+numbers; the Greek behind it was not in any table until 0.10.51,
+which imports one. The source is STEPBible's TAGNT, the Translators
+Amalgamated Greek New Testament (Tyndale House Cambridge, CC BY
+4.0), two tab-separated files that hold every word of every major
+edition, NA27/28, the Textus Receptus of Scrivener 1894 (the Greek
+the King James translators had), SBLGNT, Tregelles, Westcott-Hort,
+the Byzantine text and the Tyndale House GNT, each word marked with
+the editions that carry it, parsed, glossed, and tagged with a
+disambiguated Strong's number. That is why this text and no other:
+the atlas needs the Textus Receptus to line up with the King James
+tagging, and a reader who wants the critical text has it in the
+same rows. The licence asks that the data be fetched from
+github.com/STEPBible/STEPBible-Data (folder "Translators
+Amalgamated OT+NT"), so the two files are not in this repository:
+download them into data/tagnt/ and run
+
+    python build_gnt.py
+
+which writes them into lxx.db beside the Septuagint in two seconds.
+The verses table gains a corpus column ('GNT' or 'LXX'); the Greek
+New Testament's verses carry the TAGNT's book codes (Mat, Mrk ...
+Rev) and the King James reference in eng_book, eng_chapter and
+eng_verse (the TAGNT numbers verses as the NRSV does and marks the
+King James's numbering in square brackets where it differs, as at
+2 Corinthians 13:13[14] and Revelation 12:18[13:1], and the import
+follows the brackets, since that is the numbering the atlas uses).
+The tokens table gains five columns for these rows: word_type (the
+TAGNT marker, NKO for a word in every edition, K for a word only in
+the Textus Receptus, N(k)O and the rest for the variants), editions,
+morph (the Robinson-style parsing), gloss (the English rendering),
+and in_tr and in_na, 1 when the word is in the Textus Receptus or in
+Nestle-Aland. A query for the King James's Greek is WHERE in_tr = 1;
+for the critical text, in_na = 1. Of the 142,096 words, 140,917 are
+in the Textus Receptus and 137,646 in Nestle-Aland. The root column
+is the simple Strong's number, the atlas's key; every word has one.
+The roots table gains the roots the Septuagint lacked and a
+gnt_weight column, and the catalogue's corpora table a row,
+greek-nt-tagnt.
+
+What the import gives at once is the answer to the question the
+root equivalents table was waiting for. The King James tagging
+numbers many words by their inflected form (G2076 esti, G2258 en,
+G5213 "to you", G5124 "this") where the TAGNT numbers the dictionary
+word (G1510 eimi, G4771 su, G3778 houtos), and until now the splits
+could only be guessed from rates. Now they are read off the text:
+`python atlas_lxx.py tags splits` lays the King James tags and the
+Textus Receptus side by side verse by verse, and where a verse's two
+taggings differ by one number on each side the two numbers are a
+pair; a pair that recurs is a split. The list has 47 rows at five
+verses or more. Most are the inflected forms, and the table already
+had them; the new ones are the content words, archomai G756 against
+archo G757 (18 verses, the pair IMPROVEMENTS.md had predicted),
+G1492 against G6063 (the TAGNT's extended number for oida), proton
+G4412 against protos G4413, haptomai G680 against hapto G681, monon
+G3440 against monos G3441, ouketi G3765 against ou G3756, and four
+lemma splits between the Septuagint's tagging and the TR's (kreisson
+G2909 / G2908, chrao G5531 / G5530, makros G3117 / G3112, prautes
+G4240 / G4236). `tags splits --out FILE` writes the rows as a TSV
+with a keep column, and `equivalents import FILE` takes the rows
+marked y into the table and refreshes the catalogue's backup, the
+feeling-word pattern. The 'tags check' command by rates remains for
+the words the verse alignment cannot pair.
+
+Two things the import does not do yet. It does not put the Greek on
+the pages: the KJV New Testament's tables still rest on the King
+James tagging, as they should, since that is the text the atlas
+measures; the Greek is there for the Septuagint work (the quotations
+of the Old Testament in the New can now be matched Greek to Greek)
+and for anything that needs the parsing, which the King James tagging
+does not carry. The Hebrew came next, in 0.10.55: build_tahot.py
+imports the TAHOT, STEPBible's Translators Amalgamated Hebrew Old
+Testament (the same folder and licence, four files into data/tahot/),
+the Leningrad codex with the Qere followed, every word tagged element
+by element, the prefixes and the pronominal suffixes under
+STEPBible's affix numbers H9001 to H9049 and the root with its
+disambiguated number, with ETCBC morphology. It writes 23,261 verses,
+305,652 words and 469,306 elements into lxx.db as corpus TAHOT, one
+token row per element with an element column (prefix, root, suffix)
+and a word_no so the word can be put back together, the King James
+reference in eng_book, eng_chapter and eng_verse (a Psalm title,
+verse 0 in the English numbering, belongs to verse 1 in the King
+James), and a corpora row hebrew-ot-tahot. That is what the
+function-word layer needed for the Old Testament, and 1c and 7d
+measure every Hebrew book from it (sections 12 and 24a). lxx.db is
+now the atlas's original-language layer in three corpora, the
+Septuagint, the Greek New Testament and the Hebrew Old Testament,
+under a file name that records where it began.
 
 ## 29. What the atlas cannot see
 
@@ -2299,6 +2640,438 @@ page, with Colossians 4 (3 of its 27 verses); Colossians is not among
 the twelve partner columns of 7a, which are chosen by the whole
 book's echoes.
 
+## 36c. 2 Corinthians, Galatians, Ephesians: a compositional question as a table
+
+Against the Epistles, 2 Corinthians reads as a précis of the letter's
+apologetic register, and there is no page in the New Testament where
+a group table more nearly reproduces the commentary's list of a
+letter's characteristic words: sorry G3076 (lypeo, the grief of
+chapters 2 and 7) at the top, boast (kauchaomai) and boasting,
+commend G4921 (synistano, seven of the New Testament's sixteen),
+consolation and comforted (the paraklesis of chapter 1), perils,
+ourselves (the reflexive of the self-defence), bold, absent G548
+(the present-and-absent of 10 and 13), letters G1992, minds G3540
+(noema, the blinded and captured minds of 3, 4, 10 and 11), vail,
+and the collection's vocabulary of 8 to 9 intact: ministration,
+readiness G4288, simplicity G572 ("liberality"), abound, abundance,
+Titus and Macedonia. Galatians keeps law at the top with the Hagar
+allegory beneath it (bondwoman, free, liberty, promise, Abraham), the
+circumcision words and justified, with Peter, James, Barnabas and
+Jerusalem new for chapter 2's autobiography; and the pair gospel
+G2097 and gospel G2098 says something exact: the verb euangelizo
+stays key against the Epistles (chapter 1 preaches and perverts and
+preaches again) while the noun euangelion falls as common, because
+every letter has the noun and only Galatians works the verb. Faith
+and Christ survive the kind in Galatians (10.9 and 10.6) where Romans
+lost them, the density of 3,100 words that argue nothing else.
+Ephesians is the thin table, and the thinness is the finding:
+twenty-one rows, 72 of 93 roots under the floor, a top keyness of
+17.9, and grace, agape and Lord falling as common. Against the
+Epistles, Ephesians has almost no vocabulary the other letters lack,
+which is the standing observation about the book, that it reads as
+a compendium of Pauline themes; what remains is its furniture,
+mystery, saints, riches, fulness, heavenly G2032 ("in the heavenly
+places", five of six New Testament uses), working G1753, walk,
+inheritance and redemption. Part of the thinness has a structural
+cause: Colossians is in the baseline and carries mystery, fulness,
+principalities and the heavenly register nearly verbatim, so
+Ephesians' twin is subtracting Ephesians' words. That is correct for
+a kind table, and it is why the Ephesians against Colossians Compare
+page, not 1b, is where the pair should be read.
+
+Version 0.10.38 gave the three letters Parts divisions, and 2
+Corinthians' carries a test. The standing question about the book is
+compositional: whether 10 to 13, the self-defence, is the "severe
+letter" written apart from 1 to 9. With the reconciliation (1 to 7),
+the collection (8 to 9) and the self-defence (10 to 13) as sections,
+the test set in advance was the Elihu test: if the grief and comfort
+vocabulary concentrates in 1 to 7 and the boast vocabulary in 10 to
+13, with low shared phrasing between them, the table has reproduced
+the two-letter case; if the shared phrasing is high, it has told
+against it. The vocabulary divides as the case predicts. The
+reconciliation leads with sorry (15 uses, keyness 20), glory G1391
+(doxa), life, God and Spirit; the self-defence with glory G2744
+(kauchaomai, "boast", 18 uses, keyness 24), perils, weak,
+infirmities, fool and present; the collection with grace, abound,
+brethren and churches. Behind the leading words, lypeo has all 16 of
+its uses in 1 to 7, paraklesis 9 of 11, and kauchaomai 20 of 23 in
+10 to 13. Section 7b gives the phrasing: the reconciliation shares 75
+with itself and the self-defence 33 with itself, against 10 between
+them, and the collection shares 3 and 4 with its neighbours, which
+everyone grants. The vocabulary and the phrasing both fall as
+the two-letter reading predicts, with one word holding the halves
+together: commend G4921 (synistano) is spread 5 in 1 to 7 and 4 in
+10 to 13, "commending ourselves" being the business of the whole
+letter, which is the point the unity reading makes. But the result
+is more instructive than a pass, because the collection shares 3 and
+4 with its neighbours and nobody takes 8 to 9 for a separate letter
+on that account. So 7b cannot tell a change of subject from a change
+of letter: a block that talks about something else shares little
+rare phrasing with its neighbours whether or not the same hand wrote
+it on the same day, and the Elihu test met the same limit. What
+would separate the two is the vocabulary no subject drives, the
+particles, conjunctions and pronouns, measured a section at a time:
+if 10 to 13 uses gar, de, oun, ouk and the first-person plural at
+the rates of 1 to 7, the low phrasing share is the subject changing;
+if its function-word profile shifts too, the two-letter case has
+something lexical behind it. That is a section-level function-word
+table, and 0.10.40 built it as 7d (section 24a). On 2 Corinthians it
+puts the reconciliation 0.92 from the self-defence, with the
+collection 0.90 and 1.19 from each; the two-book yardstick is 1.08
+and the one-book halves 0.51, and Romans' parts run 0.56 to 0.97
+from the rest of Romans. Against the size yardsticks of 0.10.42
+the figure reads more sharply: a run of 2,000 to 3,000 tokens cut
+from one book is typically 0.53 to 0.47 from the rest of it, and
+nine in ten such runs fall under 0.83 to 0.76, so 0.92 is beyond
+nine in ten of the testament's runs; but against the Epistles' own
+line of 0.10.43 (nine in ten under 0.90 at 2,000 tokens and 0.81 at
+3,000, struck on letters that change register inside themselves) it
+sits at the line rather than beyond it, which is the honest place
+for it. It holds without the pronouns (0.88 between the
+two parts; the self-defence 0.88 from the rest of the letter with
+them and 0.86 without), so it is not the "I" of the fool's speech
+(we/us 24 per thousand in the reconciliation against 8 in the
+self-defence, I/me 7 against 17). What remains is the mode caution:
+a self-defence argues, and gar, ou and de are the particles of
+argument (ou is 22 per thousand in 10 to 13 against 13 in 1 to 7),
+so the figure leans toward the seam no further than the kind's own
+variation allows, and the register question is the one it cannot
+close. The note under
+7b says that a low cell cannot tell the two apart, so it is not read
+as a seam on its own. Two of the letter's
+section partners are single quotations: the collection's top partner
+is Exodus at 96, which is 8:15 citing Exodus 16:18 ("he that had
+gathered much had nothing over"), the only Old Testament quotation
+in those two chapters; and the self-defence's Matthew at 66 is 13:1,
+"in the mouth of two or three witnesses", against Matthew 18:16. Galatians divides as the
+autobiography (1 to 2: gospel as verb and noun, Peter, went), the
+argument from Abraham (3 to 4: promise, Abraham, free, son, seed,
+bondwoman) and the ethics (5 to 6: one another G240, Spirit, reap,
+circumcised, bear, cross), with the ethics marked "few" at 894
+words, and the partner map is the argument's map: the Abraham
+section's partners are Romans 237, Genesis 101 and Hebrews 67; the
+ethics' partner is 1 Corinthians at 333, the vice list of 5:19 to 21
+against 6:9 to 10 and "a little leaven" of 5:9 verbatim from
+1 Corinthians 5:6; the autobiography's are Romans 124, Philippians
+106 (Philippians 3 is Paul's other autobiography) and Ephesians 97.
+The diagonals of 0 for the first two parts are real: a two-chapter
+part's diagonal is a single chapter pair, and chapters 1 and 2, like
+3 and 4, share no rare phrasing at the threshold, while 5 and 6
+share a great deal (flesh and Spirit, 5:16 to 26 and 6:8); the note
+under 7b says so. Ephesians divides as the doctrine (1 to 3: glory,
+Jesus, riches, aion, Christ, grace) and the practice (4 to 6: wife
+and husbands, and nothing else above the keyness floor; Lord, love,
+truth and body were printed in 0.10.38 because the column filled to
+six, and sit at keyness 2 to 5), and 7b says the first half repeats
+itself (133) far more than the second (31), the liturgical,
+participial style of chapters 1 to 3 showing up as a number. The
+practice's partner is Colossians at 312, the household code and the
+put-off, put-on of Colossians 3 against Ephesians 4 to 6, the
+strongest section-to-book figure of the three letters and the
+quantitative form of the Colossians-Ephesians relationship. Its
+second partner is Mark at 142, well ahead of Matthew at 76, and 4d
+says why: Ephesians 5 and Mark 10 share five phrases (86) on "leave
+his father and mother", Ephesians 5 and Matthew 19 four (57) on
+"shall a man leave". Ephesians 5:31 quotes Genesis 2:24 with "his
+father", as Mark 10:7 does and Matthew 19:5 does not. The page
+found this on its own, and it needs one caveat printed beside it:
+the page reads the King James, which translates the Textus
+Receptus, where Ephesians has autou as Mark does; the critical text
+of Ephesians 5:31 drops the pronoun, so in a modern edition the
+agreement with Mark is weaker than the English shows. The
+observation stands as a fact about the text the atlas measures.
+
+Version 0.10.39 brought the two floors of 1b to section 7's leading
+words: a word needs keyness 6.63 and the occurrence floor scaled to
+the section's size (one per 1,500 words, three to five), and the
+list ends early rather than filling to six. Galatians' ethics had
+printed "jesus (5 in 2/2, 0)" as a leading word; the scaled floor
+let reap, bear and cross in.
+
+## 36d. The shorter Paulines: habit as a row of numbers
+
+Philippians, Colossians and the Thessalonian letters have the 1b
+tables their size allows, each the handbook's short list: Philippians
+keeps mind G5426 (phroneo, the letter's verb) and rejoice at the
+top, with Epaphroditus, bonds, count G2233 and confidence;
+Colossians is thin, like Ephesians and for the same reason, with
+Laodicea, humility, wisdom, complete G4137 (pleroo), mystery and
+knowledge G1922 (epignosis); 1 Thessalonians has night, sleep and
+asleep (4 and 5), without ceasing, comfort, coming G3952 (parousia)
+and sanctification; 2 Thessalonians has eight rows, Lord, command
+G3853, epistle, work G2038, revealed and coming. The echo partners
+are as expected, Colossians to Ephesians at 66 times expectation,
+the two Thessalonian letters to each other at over 100.
+
+The new table on these pages is 1c, and it finds things. Colossians'
+nearest neighbour is Ephesians at 0.54, which is the halves-of-one-
+book yardstick almost exactly: in their particles and pronouns the
+two letters are as alike as one letter cut in two. The undisputed
+Paulines sit far off, Romans at 1.34, Galatians 1.35, 1 Corinthians
+1.37, farther than Hebrews and 1 Peter at 1.02, and the columns say
+why (section 24a): de, gar and ou at a quarter of Romans' rates, en
+at more than double. 2 Thessalonians' nearest are Ephesians 0.84
+and 1 Thessalonians 0.85, with the shared mark of the two
+Thessalonian letters in the pronoun columns, I/me at 0.0 and 0.5,
+we/us at 26 and 28, ye/you at 41 and 46, the co-authored "we"
+against Philippians' I/me at 23.7 and Philemon's at 41. 1 John
+stands apart from everyone on hoti 29.4 and autos 40.5, its style in
+two numbers. The cautions apply with their full weight here:
+Colossians' distance from Romans is a change of register before it
+is anything else, and 2 Thessalonians at 1,032 tokens is "low", so
+its 0.85 from 1 Thessalonians is read against the 1,000-token
+yardstick of 0.73 and not the halves' 0.51, and says nothing about
+its authorship.
+
+Version 0.10.41 gave the three longer letters Parts divisions so
+that 7d appears: Philippians as partnership and the hymn (1 to 2),
+the polemic (3) and thanks and farewell (4), since the question
+about Philippians is whether 3:2 to 4:1 is a second letter;
+Colossians and 1 Thessalonians in their halves. What 7d shows is
+mostly the size caution at work. Philippians' polemic, 483 tokens,
+is 1.26 from the rest against a 500-token yardstick of 0.90, and
+1.31 and 1.46 from the other two parts; Colossians' halves are 1.02
+from each other at 1,159 and 830 tokens against yardsticks of 0.73
+and 0.90; 1 Thessalonians' halves 1.06 at about 1,000 and 800. All
+three run above their size medians but under the nine-in-ten line
+(1.04 at 1,000 tokens, 1.33 at 500), and all three are short
+letters whose halves differ in mode (thanksgiving against
+exhortation, hymn against polemic), so the table repeats what the
+cautions say rather than deciding anything. The one figure that
+stands out for its size is the polemic's, 1.26 against a 500-token
+median of 0.90, which holds without the pronouns (1.31) and so was
+not the "I" of the autobiography; it is the figure the compositional
+question predicted, and it sits under the nine-in-ten line (1.33
+for the testament, 1.35 for the Epistles at 500 tokens), so it is a
+lean and not a finding.
+
+## 36e. Hebrews and James: habit, richness, and Wrede's chapter 13
+
+Hebrews' 1b is the priestly lexicon as the handbooks have it, chief
+priest, offered, priest, covenant, enter, sacrifices, tabernacle,
+blood, Melchisedec, rest, with today, sware, draw near and Moses
+new, and only faith falling as common to the kind; goats, oath,
+priesthood and continually are in the not-measured footer, where
+they belong. Its 1c says something the authorship tradition would
+not have predicted and the cautions explain. Its nearest neighbours
+are 2 Peter at 0.66 and Romans at 0.67, then 2 Timothy, 1 Peter,
+1 Timothy, Galatians and James in the 0.75 to 0.85 band, with
+Colossians at 1.02, 1 Thessalonians at 1.25 and 1 John at 1.61 the
+farthest. By its particles Hebrews is nearer Romans than Colossians
+or Ephesians is, and nearer Romans than James is. The columns say
+why, and it is mode: gar at 13.2 and Romans' 15.3 are the two
+highest rates of argument in the group, autos at 21.1 is the "he" of
+exposition about God and Christ in the third person, and the two
+rates that set Hebrews apart from everyone, en at 9.8 (the lowest in
+the New Testament; Hebrews has no "in Christ") and ye/you at 4.8
+(lower even than 1 Timothy), are the marks of a treatise that
+addresses its hearers rarely and argues from Scripture continuously.
+2 Peter at 0.66 is the same mode without the argument, low ye/you,
+high autos and hos, and that row is the clearest case on any page of
+two books the Delta puts together by register and nothing else. So
+the table does not decide the old question; it says that in the
+words no subject drives, Hebrews writes argument the way Romans
+writes argument, and that what everyone has always felt to be
+un-Pauline about it is not in the particles.
+
+It is in the vocabulary, and 0.10.44 added the table that sees it,
+1d, Vocabulary richness against the book's kind: the book's distinct
+roots per 1,000 words, its hapax legomena (roots used once in the
+testament) per 1,000, its own roots (found in no other book of the
+testament) per 1,000, and the share of its roots used once in the
+book, beside each book of its kind in order of size, since every one
+of these rates falls as a book grows and the kind must be read a
+size at a time. Hebrews has 153 own roots, the "about 150 words
+found nowhere else in the New Testament" of the literature, which
+is 22.2 per 1,000 against 2 Corinthians' 16.4, Romans' 14.5 and
+1 Corinthians' 10.2 among the books of its size, and 18.0 hapaxes
+per 1,000 against 11.3, 12.5 and 7.4. That is the second axis, and
+it separates Hebrews from Romans where the particles do not. The
+run columns of 0.10.45 say how much of it is size: a 6,900-word run
+of chapters cut from the other Epistles gives 105 roots per 1,000,
+7.5 hapaxes and 10.1 own roots, so Hebrews' 139, 18.0 and 22.2 are
+above the size line on all three, Romans' 106, 12.5 and 14.5
+(against a 9,400-word run's 95, 6.9 and 9.7) above it on the second
+two, and 1 Corinthians' 94, 7.4 and 10.2 at the line on all three.
+Hebrews' gap from Romans is not size. The same columns reproduce,
+in rate form, the oldest statistical argument in the field:
+Harrison's 1921 case about the Pastorals rested on their hapaxes
+per page, and here 1 Timothy, 2 Timothy and Titus run 27, 33 and 32
+hapaxes per 1,000 where a run of their size cut from the other
+letters gives 10 or 11, beside Galatians 9, Ephesians 11,
+1 Thessalonians 7.6 and 2 Thessalonians 6.8 at or under their run
+figures; Harrison's critics answered that size and subject explain
+much of it, and the run column answers size, which leaves subject.
+James (26 against 9.7) and 2 Peter (27 against 11) sit with the
+Pastorals, as the stylists said. The run column also shows why
+Harrison's instinct was the right instrument: roots per 1,000 falls
+from 244 for a run of 400 words to 95 for one of 9,400, while
+hapaxes and own roots per 1,000 sit between 7 and 14 across the
+whole range. A testament hapax is a property of the root, not of
+the run it is found in, so its rate does not depend on how much
+text surrounds it; a type-to-token ratio is a property of the run
+and collapses as the run grows. Counting hapaxes per page rather
+than vocabulary per page was right, and the critics who answered
+with size were answering the wrong column; what the run figures
+leave them is subject (1 Timothy's 27 includes the qualification
+lists of chapter 3 and the vice lists, and a section-level 1d would
+say how much of the rate is those lists). Two rows at the other end
+are findings the table produces without being asked: 1 John at 78
+roots per 1,000 where a run of its size gives 154, and 0.8 hapaxes
+per 1,000 against 9.9, is the poorest vocabulary in the New
+Testament by a wide margin for its size, half the expected roots
+and a twelfth of the expected hapaxes, the number for a style that
+circles a small set of words; and the Thessalonians are the only
+other letters under the hapax line (7.6 and 6.8 against 10.8 and
+12.1), two short pastoral letters in plain words. James
+and 2 Peter, the other two books the stylists named, are at 28.2 and
+32.8 own roots per 1,000 among the books of two thousand words,
+where 1 Peter has 22.6, Philippians 20.1 and Colossians 19.1;
+1 John, at the other end, has 4 own roots in 2,517 words, 1.6 per
+1,000, and 78 roots per 1,000 against James's 215, the narrowest
+vocabulary in the New Testament, which is also a thing the
+handbooks say.
+
+James reads as James: doer and hearer, works with faith held at 7.3,
+tongue, rich men and poor, kill and commit adultery (the two
+commandments of 2:11), speak evil (katalaleo), tamed (the tongue and
+the beasts of 3:7 to 8), apparel, perfect (teleios), patient,
+offend, destitute, draw nigh and from above. Its 1c neighbours are
+2 Peter 0.75, 1 Timothy 0.76, 1 Corinthians and Hebrews at 0.85,
+with Colossians, Ephesians and 1 John farthest; the imperatives of
+paraenesis show in me at 9.1 and ou at 11.7, the diatribe's
+negatives.
+
+Hebrews' Parts division, added in 0.10.44, puts two old questions to
+the section tables. Wrede argued in 1906 (Das literarische Rätsel
+des Hebräerbriefs) that chapter 13 was added to turn a homily into
+a letter; with 1 to 4 (the Son and the rest), 5 to 7 (Melchisedec),
+8 to 10 (covenant and sacrifice), 11 (the faith catalogue), 12
+(endurance) and 13 (the letter ending) as parts, 7d measures chapter
+13 against the rest. The expected result was a high Delta driven by
+the pronouns, since 13 is where the book finally says "you", and
+the no-pronoun column would say whether anything remained. The
+result is the opposite in both halves. Chapter 13, at 509 tokens,
+is 0.88 from the rest of the book with the pronouns and 0.92
+without, so the distance is not the pronouns (ye/you is 27.5 per
+thousand against the book's 4.8, but gar at 19.6 is the book's
+argument carrying on); and 0.88 is under the Epistles' 500-token
+median of 0.98 and far under its nine-in-ten line of 1.35, so
+chapter 13 is as like the rest of Hebrews in its habits as a typical
+run of its size cut from any epistle is like its own letter. The
+function words give Wrede nothing against the same hand, and that
+is Wrede's own position: he held that the author added the ending
+himself to turn a treatise into a letter, and the tables say
+exactly that, a change of form in the pronouns with no change in
+the habits. Chapter 13's partners on 7a are Acts 116, Jeremiah 113
+and Romans 101, the Pauline letter ending's formulae ("the God of
+peace", "pray for us", "grace be with you all") as echoes of Romans
+15 and 16. Chapter 12 at 696 tokens runs a little high (0.98, 1.06
+without pronouns, me at 11.5 for the exhortation's prohibitions)
+and is under its nine-in-ten line; the two expository blocks, 1 to
+4 and 8 to 10, are 0.63 and 0.54 from the rest, where a uniform
+book's parts of that size sit. Hebrews is, by every one of these
+measures, a single hand writing in one register for twelve chapters
+and in another for one. With 1d the book page has four axes for a
+book against its kind, which words it owns (1b), whose habits it
+has (1c), how wide its vocabulary is (1d) and how its parts behave
+(7d), and Hebrews was the test of all four: apart from the Epistles
+in its words and its vocabulary, beside Romans in its particles,
+uniform across its parts, and letter-shaped only in chapter 13's
+pronouns, which is the whole of what the literature says about the
+book, reached from the tables alone. Chapter 11 behaves as a catalogue
+inserted into an argument should on 7b, sharing 4, 5, 5, 0 and 0
+with the other parts (its diagonal is a single chapter and so 0),
+and it addresses no one (ye/you 0.0, I/me 1.1); but its 7a partners
+are Romans 91, Luke 74, Acts 55, Genesis 44 and Matthew 42, with
+Exodus at 0, not the Genesis and Exodus the expectation named,
+because the catalogue retells the patriarchs ("by faith Abraham")
+in its own words and quotes none of them, and the echo layer sees
+shared wording; its Romans partner is "by faith" itself. The leading
+words are faith (24 uses in one chapter, keyness 63), Isaac, Jacob,
+obtained and report. The other parts come out as their names:
+Melchisedec, order, priest, tithes and priesthood for 5 to 7;
+covenant (18 in 3 of 3), first, offering, blood and sacrifices for 8
+to 10 with Jeremiah at 288 on 7a (the new covenant of Jeremiah 31
+quoted in chapter 8); rest, angels and "today" for 1 to 4 with
+Psalms at 484; chastening and shaken for 12 with Deuteronomy at 89
+(the mount that might be touched).
+
+## 36f. The Catholic letters: the floors and marks at the limit
+
+The six short letters are what the floors and marks were built for,
+and three things stand out. The signatures hold. 1 Peter's 1b is
+the suffering letter: pascho at the top (13 uses in 2,476 words),
+evildoers, well-doing, the living stone of 2:4 to 8 new,
+conversation (anastrophe, "manner of life", six of the New
+Testament's thirteen), begotten again (anagennao, found nowhere
+else), gold, guile, sober, incorruptible and the grass of 1:24.
+2 Peter's is the polemic and the end: destruction (apoleia, six
+times), follow and escaped (exakoloutheo and apopheugo, both only
+here), corruption, dissolved (the elements of 3:10 to 12), day,
+Saviour, virtue, godliness and epignosis; its top echo partner is
+Revelation, which the new heavens of 3:13 and the thief of 3:10
+account for. 1 John's is the Johannine lexicon without a word out
+of place: agapao at 82, abideth (meno), world, Son, hereby (en
+touto, the "hereby we know" formula, nine times), know (ginosko),
+commandment, little children (teknia), darkness, born, witness,
+overcome, sin. Jude's four rows are reserved (tereo, the kept chains
+and the kept ungodly), ungodly, judgment and gone after.
+
+1 John is apart from everything, on both axes. In 1c its nearest
+neighbour within the kind is 1 Corinthians at 1.30, beyond the
+two-different-books yardstick, so 1 John is farther from every
+epistle than any two other epistles are from each other; the
+columns are hoti 29.4, autos 40.5, ou 18.7, kai 52.4 and gar 1.2,
+the particles of "and hereby we know that he abideth in us". In 1d
+it has 78 roots per thousand where a run of its size gives 154, and
+2 hapaxes in 2,517 words against an expected 25. The two tables say
+the same thing from two sides, a very small vocabulary rotated
+through a very small set of connectives, which is the stylistic
+description of the letter in every commentary. Version 0.10.47
+added the line both tables wanted, the nearest books beyond the
+kind, so that the Johannine corpus is visible to 1 John: its
+nearest book in the whole testament is John's Gospel at 1.36 (1.19
+without pronouns), with Revelation at 1.48 and Mark at 1.49 behind
+it. Nearest, and still far: John's Gospel is a narrative that says
+"he" and "they", and the letter's circling is its own.
+
+The two Peters and Jude. 1 Peter's nearest in 1c is 2 Peter at 0.78
+(0.85 without pronouns), then Romans 0.80 and 1 Timothy 0.81;
+2 Peter's nearest is Hebrews at 0.66, then James 0.75 and 1 Peter
+0.78. At 1,500 to 2,500 tokens the kind's yardsticks are 0.66 and
+0.90, so the two Peters sit above the same-book median and under
+the nine-in-ten line: the function words neither join them nor part
+them, and a reader should take nothing from the row either way,
+since the two letters differ in mode (exhortation against polemic)
+by as much as they could differ in hand. Jude's nearest is 2 Peter
+at 0.80, and the echo table gives the real relationship: 2 Peter is
+Jude's partner at 87 times expectation and 6.4 echoes per thousand
+words of partner, the densest book-to-book dependence in the New
+Testament after the Synoptics, with the time column reading
+"later" for 2 Peter, as the catalogue holds. 1d puts Jude, 2 Peter
+and James together above the hapax line (25, 27 and 26 against 12,
+11 and 10), the stylists' grouping of the three as the letters with
+the richest Greek, now as a column. 2 Peter's nearest-beyond-the-
+kind lines confirm the measure from the other side: its particles
+put it nearest Matthew at 0.77 (0.69 without pronouns), then Acts
+and Luke, the narrative books, which fits a letter whose second
+chapter is a narrative catalogue of judgments and whose third is a
+prophecy told in the third person; and its richness neighbours are
+Acts, Luke and Revelation, the three New Testament narratives with
+the widest vocabularies, Acts at 15.8 hapaxes per thousand being
+the one book that keeps anything like 2 Peter's company on that
+rate. Both lines say what the stylists have said of 2 Peter, that
+its Greek is the most ambitious in the testament and its mode
+narrative and prophetic rather than epistolary.
+
+2 and 3 John are the limit the marks exist for: 300 tokens each,
+every Delta above every yardstick, five and eight rows in 1b, and
+the page marks all of it "low" rather than measuring it anyway.
+Their one firm result is in 4a, 3 John to 2 John at a thousand
+times expectation on "I rejoiced greatly", "walk in truth" and the
+ink and paper, the shared template of the two letters.
+
 ## 37. Ezekiel and Revelation: across the testaments
 
 Ezekiel was the book that tested most rules, because a prophet shares
@@ -2382,6 +3155,20 @@ The dating footer is worth reading on Daniel too: with the book at 530 (its sett
 Nehemiah and the Psalms are later; at 165 they are earlier, and every
 one is marked "(disputed)", which is the right answer to a question
 the book does not settle.
+
+Revelation's regenerated page, read last of the New Testament,
+shows 1b with its header and one-line refusal, and 1c and 1d
+refused against the Prophecy group on the same ground, with the
+nearest-beyond-the-kind lines doing what the group tables cannot.
+On the particles its nearest Greek books are Mark at 0.70, Matthew
+0.82 and Luke 0.86, the Gospels, as the narrative "and he" of the
+visions (kai at 96 per thousand, the highest in the New Testament,
+de at 0.6, the lowest) would predict; on the richness rates its
+neighbours are Galatians, 1 Corinthians and Luke rather than the
+rich letters, since its 8.0 hapaxes per 1,000 are middling for the
+testament, and its once-here share of 0.37 is the lowest in the New
+Testament, a book that says the same things again in the same
+words, which is its style and its structure at once.
 
 ## 38. What each book tested
 
@@ -3293,6 +4080,67 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.55.** build_tahot.py imports STEPBible's TAHOT Hebrew Old
+Testament into lxx.db; the function-word layer (1c, 7d) measures the
+Old Testament from it, Aramaic chapters left out.
+
+**0.10.54.** The names test counted once for the whole text instead
+of two scans of every verse per word, which halves a chapter page;
+--time prints the seconds each section of each page took.
+
+**0.10.53.** 1d's runs capped at the size five books can supply.
+
+**0.10.52.** From the canon-wide read: a declined table prints no
+header; duplicate phrase rows merged; 'ch None' a dash; 1d's runs from
+the testament with the supplying books named; 1b's Aramaic baseline
+size in the footer.
+
+**0.10.51.** build_gnt.py imports STEPBible's TAGNT Greek New
+Testament into lxx.db beside the Septuagint; 'tags splits' and
+'equivalents import' in atlas_lxx.py; section 28c.
+
+**0.10.50.** 1d measures a bilingual book a language at a time, and
+its runs leave Aramaic out.
+
+**0.10.49.** A run figure beside the once-here share on 1d.
+
+**0.10.48.** 1c and 1d keep their headers with the reason when the
+kind lies in the other testament; the sibling caution on 1d.
+
+**0.10.47.** The nearest books beyond the kind under 1c and 1d;
+section 36f, the Catholic letters.
+
+**0.10.46.** 1d's run figures cached on disk under the build stamp
+(richness_cache.json).
+
+**0.10.45.** 1d's run columns: each rate beside what a run of that
+size cut from the kind gives.
+
+**0.10.44.** Section 1d, vocabulary richness against the kind;
+Hebrews in parts and Wrede's chapter 13 on 7d; section 36e.
+
+**0.10.43.** The size yardsticks struck within the book's own kind
+beside the testament's.
+
+**0.10.42.** The size yardsticks print the nine-in-ten figure beside
+the median; a second Delta without the pronouns on 1c and 7d.
+
+**0.10.41.** The function-word tables carry the two cautions (mode
+and size) and a size yardstick; Parts for Philippians, Colossians
+and 1 Thessalonians; section 36d.
+
+**0.10.40.** The function-word layer (atlas_function.py): 1c the
+book against its kind and 7d the parts against each other, by the
+particles and pronouns, with Burrows' Delta; New Testament only;
+section 24a.
+
+**0.10.39.** Section 7's leading words take 1b's two floors and end
+early; 7b's note on what a low cell can and cannot say; the Ephesians
+5:31 observation in section 36c.
+
+**0.10.38.** Parts divisions for 2 Corinthians, Galatians and
+Ephesians; the severe-letter test; section 36c.
 
 **0.10.37.** Parts divisions for Romans and 1 Corinthians; section
 36b.

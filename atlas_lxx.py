@@ -23,7 +23,10 @@ Usage:
     python atlas_lxx.py equivalents add G3708 G1492 --note "horao / eidon"
     python atlas_lxx.py equivalents add G4675 -  --note "sou, a pronoun form"   ("-" = function word)
     python atlas_lxx.py equivalents remove G3708
-    python atlas_lxx.py tags check              look for further tagging splits
+    python atlas_lxx.py tags check              look for further tagging splits by rates
+    python atlas_lxx.py tags splits             the splits found from the Greek NT itself (after build_gnt.py)
+    python atlas_lxx.py tags splits --out splits_draft.tsv     ... as a TSV to review (keep = y)
+    python atlas_lxx.py equivalents import splits_draft.tsv   take the kept rows into the table
 
 The verse map is built from STEPBible's TVTMS file, which you download
 once (it is not copied into this project; its licence asks that it be
@@ -398,6 +401,127 @@ class LxxTool:
               "sacrifice, the NT about faith). A split shows as a pair: one number common "
               "in each text for the same meaning.")
 
+    def tags_splits(self, lxx: Path, atlas: Path, minimum: int, out: Path | None) -> None:
+        """
+        The tagging splits found from the Greek New Testament itself
+        (build_gnt.py), not guessed from rates.  Two lists.
+
+        The first is the KJV tagging against the Textus Receptus, verse
+        by verse: where a verse's KJV tags and its TR words differ by one
+        number on each side, the two numbers are a pair, and a pair that
+        recurs is a split.  Nearly all are the KJV tagging's numbers for
+        inflected forms against the TR's numbers for the dictionary word:
+        G2076 "esti" against G1510 "eimi", G5213 "to you" against G4771
+        "you", G5124 "this" against G3778 "houtos", G1492 against G6063
+        "oida"; and among the content words G756 archomai against G757
+        archo, G3391 mia against G1520 heis, G680 haptomai against G681
+        hapto.  The group root is the TR's number, the dictionary word.
+
+        The second is the Septuagint tagging against the TR by lemma: a
+        dictionary form that carries one number in the Septuagint and
+        another in the TR (kreisson G2909 / G2908, chrao G5531 / G5530).
+
+        With --out, the rows go to a TSV with a 'keep' column (y to take
+        the pair into root_equivalents; blank or n to leave it) for
+        'equivalents import FILE'.  Pairs already in the table are marked.
+        """
+        for path in (lxx, atlas):
+            if not path.exists():
+                raise SystemExit(f"Not found: {path}")
+        import unicodedata
+        from collections import Counter, defaultdict
+        from build_gnt import BOOK_NAMES
+        conn = sqlite3.connect(lxx)
+        conn.execute(f"ATTACH DATABASE '{atlas}' AS atlas")
+        if not conn.execute("SELECT COUNT(*) FROM verses WHERE corpus = 'GNT'").fetchone()[0]:
+            raise SystemExit("lxx.db holds no Greek New Testament yet: run build_gnt.py first.")
+        glosses = dict(conn.execute("SELECT root, form FROM atlas.words WHERE root GLOB 'G[0-9]*'"))
+        lemmas = dict(conn.execute("SELECT root, lemma FROM roots"))
+        # 1. KJV tags against TR words, verse by verse
+        kjv: dict[tuple, Counter] = {}
+        for book, ch, v, strongs in conn.execute(
+                "SELECT v.book, v.chapter, v.verse, t.strongs FROM atlas.tokens t JOIN atlas.verses v "
+                "USING (verse_id) WHERE t.strongs GLOB 'G*' OR t.strongs GLOB '~G*'"):
+            for num in strongs.split("+"):
+                kjv.setdefault((book, ch, v), Counter())[num.lstrip("~")] += 1
+        tr: dict[tuple, Counter] = {}
+        for code, ch, v, root in conn.execute(
+                "SELECT v.code, v.eng_chapter, v.eng_verse, t.root FROM tokens t JOIN verses v USING (verse_id) "
+                "WHERE v.corpus = 'GNT' AND t.in_tr = 1 AND t.root != 'G3588'"):
+            tr.setdefault((BOOK_NAMES[code], ch, v), Counter())[root] += 1
+        pairs: Counter = Counter()
+        for key in set(kjv) & set(tr):
+            a, g = kjv[key] - tr[key], tr[key] - kjv[key]
+            if sum(a.values()) == 1 and sum(g.values()) == 1:
+                pairs[(next(iter(a)), next(iter(g)))] += 1
+        # 2. Septuagint against TR by lemma
+        def plain(text):
+            return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn").lower()
+        by_lemma: dict[str, dict[str, Counter]] = defaultdict(lambda: defaultdict(Counter))
+        for lemma, root, corpus, n in conn.execute(
+                "SELECT t.lemma, t.root, v.corpus, COUNT(*) FROM tokens t JOIN verses v USING (verse_id) "
+                "WHERE t.root GLOB 'G[0-9]*' AND t.is_stop = 0 AND (v.corpus = 'LXX' OR t.in_tr = 1) "
+                "GROUP BY 1, 2, 3"):
+            by_lemma[plain(lemma)][corpus][root] += n
+        lemma_splits = []
+        for lemma, sides in by_lemma.items():
+            if "LXX" in sides and "GNT" in sides:
+                (lr, ln), (gr, gn) = sides["LXX"].most_common(1)[0], sides["GNT"].most_common(1)[0]
+                if lr != gr and min(ln, gn) >= minimum:
+                    lemma_splits.append((ln + gn, lemma, lr, ln, gr, gn))
+        lemma_splits.sort(reverse=True)
+        conn.close()
+        known = RootEquivalents(self.metadata).mapping()
+        stop_like = {"G1510", "G4771", "G3165", "G1473", "G3778", "G846", "G3588", "G5100", "G3739", "G3754"}
+
+        rows = []
+        for (a, g), n in pairs.most_common():
+            if n < minimum:
+                break
+            note = ("in the table" if known.get(a) == g else f"table says {known[a]}" if a in known else "")
+            kind = "form" if g in stop_like else "word"
+            rows.append(("", kind, a, g, n, glosses.get(a, ""), lemmas.get(g, glosses.get(g, "")), note))
+        for total, lemma, lr, ln, gr, gn in lemma_splits:
+            note = ("in the table" if known.get(lr) == gr or known.get(gr) == lr else "")
+            rows.append(("", "lexicon", lr, gr, f"{ln}/{gn}", glosses.get(lr, ""), lemma, note))
+
+        header = ["keep", "kind", "root", "group_root", "verses", "root gloss", "group lemma", "note"]
+        if out:
+            with open(out, "w", encoding="utf-8") as f:
+                f.write("\t".join(header) + "\n")
+                for r in rows:
+                    f.write("\t".join(str(x) for x in r) + "\n")
+            print(f"{len(rows)} rows written to {out}.  Set keep = y on the rows to take, then "
+                  f"'python atlas_lxx.py equivalents import {out}'.")
+        else:
+            print(f"{'kind':<8}{'root':<8}{'group':<8}{'verses':>7}  {'root gloss':<16}{'group lemma':<16}note")
+            print("-" * 78)
+            for r in rows[:80]:
+                print(f"{r[1]:<8}{r[2]:<8}{r[3]:<8}{str(r[4]):>7}  {r[5][:15]:<16}{r[6][:15]:<16}{r[7]}")
+            print(f"\n{len(rows)} rows in all ('kind' form = an inflected form's number against the "
+                  f"dictionary word's, word = two numbers for one content word, lexicon = the Septuagint's "
+                  f"number against the TR's for one lemma).  --out FILE writes them for review.")
+
+    def equivalents_import(self, path: Path) -> None:
+        """Take the rows marked keep = y from a splits TSV into root_equivalents."""
+        store = RootEquivalents(self.metadata)
+        taken = 0
+        with open(path, encoding="utf-8") as f:
+            header = f.readline().rstrip("\n").split("\t")
+            cols = {name: i for i, name in enumerate(header)}
+            for line in f:
+                cells = line.rstrip("\n").split("\t")
+                if len(cells) < len(header) or cells[cols["keep"]].strip().lower() != "y":
+                    continue
+                root, group = cells[cols["root"]].strip().upper(), cells[cols["group_root"]].strip().upper()
+                note = (f"{cells[cols['kind']]}: {cells[cols['root gloss']]} / {cells[cols['group lemma']]}, "
+                        f"{cells[cols['verses']]} verses; tags splits from build_gnt.py")
+                store.add(root, group, note)
+                taken += 1
+        print(f"{taken} rows taken into root_equivalents.")
+        if taken:
+            self.refresh_backup()
+
     def corpora(self) -> None:
         """The text sources and their languages."""
         conn = sqlite3.connect(self.metadata.path)
@@ -465,6 +589,13 @@ def main() -> None:
     tcheck.add_argument("--atlas", type=Path, default=SCRIPT_DIR / "atlas.db")
     tcheck.add_argument("--minimum", type=int, default=100)
     tcheck.add_argument("--ratio", type=float, default=15)
+    tsplits = tc.add_parser("splits", help="the splits found from the Greek NT itself (build_gnt.py)")
+    tsplits.add_argument("--lxx", type=Path, default=SCRIPT_DIR / "lxx.db")
+    tsplits.add_argument("--atlas", type=Path, default=SCRIPT_DIR / "atlas.db")
+    tsplits.add_argument("--minimum", type=int, default=5, help="verses (or uses) a pair needs to be listed")
+    tsplits.add_argument("--out", type=Path, default=None, help="write a TSV with a keep column for review")
+    eimport = ec.add_parser("import", help="take the keep = y rows of a splits TSV into the table")
+    eimport.add_argument("path", type=Path)
 
     args = parser.parse_args()
     tool = LxxTool(args.metadata)
@@ -473,11 +604,16 @@ def main() -> None:
             tool.equivalents_list()
         elif args.equiv_command == "add":
             tool.equivalents_add(args.root, args.group_root, args.note)
+        elif args.equiv_command == "import":
+            tool.equivalents_import(args.path)
         else:
             tool.equivalents_remove(args.root)
         return
     if args.command == "tags":
-        tool.tags_check(args.lxx, args.atlas, args.minimum, args.ratio)
+        if args.tags_command == "splits":
+            tool.tags_splits(args.lxx, args.atlas, args.minimum, args.out)
+        else:
+            tool.tags_check(args.lxx, args.atlas, args.minimum, args.ratio)
         return
     if args.command == "corpora":
         tool.corpora()
