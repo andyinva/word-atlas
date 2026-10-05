@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.68. Andrew Hopkins, with Claude.
+For version 0.10.69. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -334,6 +334,7 @@ English ones.
 | `build_gnt.py`, `build_tahot.py` | Import STEPBible's TAGNT Greek New Testament and TAHOT Hebrew Old Testament into `lxx.db` (section 28c) |
 | `atlas_lift.py`, `atlas_lxx.py`, `build_lxx.py`, `septuagint_bridge.py` | The command-line line of work on fair baselines, passages and the Septuagint; `METADATA_IN_WORD_ATLAS.md` and `NORMALIZATION_IN_WORD_ATLAS.md` describe it |
 | `atlas_report.py` | The reporting module: Report and Section, the text layout, trimming, the dossier's head, and the results database writer (section 11a) |
+| `atlas_results.py` | Questions across the canon asked of reports/results.db, each answer saved as a text file under reports/ (section 19) |
 | `test_atlas.py` | The check before a commit: smoke, determinism, guards and housekeeping (section 41) |
 | `WORD_ATLAS_MANUAL.md` | This manual |
 | `HOW_WORD_ATLAS_GREW.md` | The story of how the program was built |
@@ -1188,6 +1189,25 @@ rather than a search through sixty-six files; the schema is in
 `atlas_report.py` and the standard in section 11a. The full canon
 comes to a few hundred megabytes of rows; `--brief --results` is a
 fraction of that.
+
+The questions are asked with `atlas_results.py` (0.10.69), which
+prints its answer and saves it as a text file under reports/, so a
+reader who works from the text files, the reviewer in particular,
+reads an answer the way they read a dossier: `results_shares.txt`,
+`results_deltas.txt`, `results_seams.txt`, `results_declined.txt`.
+The questions it knows are `runs` (what the database holds),
+`shares` (every New Testament book's share of Septuagint words from
+1f, ranked), `deltas` (every part's function-word Delta from its
+rest, from 7d and its repeats, largest first, beside the yardsticks),
+`seams` (the seams between the two taggings that 4e found, counted
+across the canon, the list the equivalents and lemma-repair work
+starts from), `declined` (every table that declined to measure, with
+its reason), `section Isaiah 7d` (one section of one page as stored),
+`diff 1 2` (the cells that differ between two runs, pages matched by
+title, sections by number and rows by their first cell, which is the
+reviewer's diff of two dossiers made exact), and `sql "SELECT ..."`
+for anything else. `--run N` reads a run other than the latest;
+`--out NAME` names the saved file.
 With `--brief` (the button's Yes) each chapter page keeps only its
 leading words, signature words, formulas and synopsis, and each section
 page its signature words, formulas and echo tables, which is what a
@@ -4653,6 +4673,11 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.69.** atlas_results.py: the first questions of the results
+database (runs, shares, deltas, seams, declined, section, diff, sql),
+each answer printed and saved under reports/ as text, so the reviewer
+reads it as a dossier.
 
 **0.10.68.** The reporting module, atlas_report.py: Report and Section,
 the text layout, trimming, saving and the dossier's head moved into
