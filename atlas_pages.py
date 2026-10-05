@@ -51,7 +51,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.66"   # the program version; the window title and every report print it
+VERSION = "0.10.68"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -108,114 +108,10 @@ NARROW_PARTNER_SHARE = 0.8      # a partner with this share of its echo weight i
 WHO_READS_N = 3                 # rarest echoes cited per partner in the who-reads-whom table
 
 
-# ---------------------------------------------------------------------------
-# Report and Section: what a page is made of
-# ---------------------------------------------------------------------------
-
-class Section:
-    """One table on a page."""
-
-    def __init__(self, title, columns, note="", kind="table"):
-        self.title = title
-        self.note = note
-        self.columns = list(columns)
-        self.rows = []      # list of lists, one value per column
-        self.refs = []      # per row: verse references behind it
-        self.links = []     # per row: dict describing where a click can lead, or None
-        self.footer = []    # lines printed under the table
-        # How a display should draw it.  "table" is the default.  The
-        # text renderer prints every kind as a table; the window draws
-        # "heatmap" (rows x columns of numbers, colour for size) and
-        # "bars" (one bar per row from the column named value_column)
-        # as pictures, with the table beneath.
-        self.kind = kind
-        self.value_column = None    # bars: which column holds the bar length
-        self.cell_refs = {}         # heatmap: (row index, column index) -> verse refs
-        self.cell_links = {}        # heatmap: (row, column) -> link dict, looked up on click
-        self.value_label = "weight" # heatmap: what a cell's number is (tooltips, help)
-        self.x_column = None        # scatter: which columns give the point's place
-        self.y_column = None
-
-    def add(self, row, refs=None, link=None):
-        """Add a row with its verse references and link."""
-        self.rows.append(list(row))
-        self.refs.append(list(refs or []))
-        self.links.append(link)
-
-    def merge_duplicates(self, key_column=0, score_column=None):
-        """
-        Merge rows whose text in key_column is identical, keeping the
-        row with the higher score (the column named score_column, or
-        the first numeric column) and the union of the verse references.
-        Two phrase keys can render to one display text (Deuteronomy 25's
-        "husband's brother" is a formula under H2993 and again under
-        H2992; an echo found by root and again by wording), and a
-        reader sees the same row twice with the same figures.
-        """
-        if score_column is None:
-            score = next((i for i, c in enumerate(self.columns) if c.startswith("keyness") or c == "weight"), None)
-        else:
-            score = self.columns.index(score_column) if score_column in self.columns else None
-        if score is None:
-            score = next((i for i, c in enumerate(self.columns)
-                          if self.rows and isinstance(self.rows[0][i], (int, float))), None)
-        seen = {}
-        rows, refs, links = [], [], []
-        for row, ref, link in zip(self.rows, self.refs, self.links):
-            key = str(row[key_column])
-            if key in seen:
-                i = seen[key]
-                kept = rows[i]
-                better = (score is not None and isinstance(row[score], (int, float))
-                          and isinstance(kept[score], (int, float)) and row[score] > kept[score])
-                merged_refs = list(dict.fromkeys(refs[i] + ref))
-                if better:
-                    rows[i], links[i] = row, link
-                refs[i] = merged_refs
-                continue
-            seen[key] = len(rows)
-            rows.append(row)
-            refs.append(ref)
-            links.append(link)
-        self.rows, self.refs, self.links = rows, refs, links
-
-
-class Report:
-    """A whole page: title, notes, sections."""
-
-    def __init__(self, name, title):
-        self.name = name        # file-safe name used for reports/<name>.txt
-        self.title = title
-        self.notes = []
-        self.sections = []
-        self.started = time.perf_counter()
-        self.timings = []       # (section title, start time), for --time
-
-    def section(self, title, columns, note="", kind="table"):
-        """Create, attach and return a new Section."""
-        s = Section(title, columns, note, kind)
-        self.sections.append(s)
-        # When each section was begun, for --time: the gap to the next
-        # section's start is roughly what this one cost to build
-        self.timings.append((title, time.perf_counter()))
-        return s
-
-    def timing_line(self, finished=None):
-        """
-        One line of seconds per section, for --time.  A section's time
-        is the gap from its start to the next section's start, the last
-        section's to the page's end (finished, or now).
-        """
-        if not self.timings:
-            return ""
-        end = finished if finished is not None else time.perf_counter()
-        starts = [t for _, t in self.timings] + [end]
-        parts = []
-        for (title, _), t0, t1 in zip(self.timings, starts, starts[1:]):
-            number = title.split(" ")[0].rstrip(".")
-            parts.append(f"{number} {t1 - t0:.2f}")
-        return f"Timing (seconds per section, page {end - self.started:.2f}): " + ", ".join(parts)
-
+# Report and Section, what a page is made of, live in atlas_report.py
+# (the reporting module) and are imported here, so that atlas_pages.Report
+# and atlas_pages.Section keep working for the window and the scripts
+from atlas_report import Report, Section  # noqa: E402,F401
 
 # ---------------------------------------------------------------------------
 # Atlas: read-only access to atlas.db
@@ -3190,6 +3086,11 @@ def cross_section_page(atlas, name, group=None):
     report.notes.append(f"{name} ({group}: {division}), {parts_text(parts)}: {len(verses)} verses, "
                         f"{n_scope} words in {n_chapters} chapters.  The rest of {rest_name}: "
                         f"{n_touched - n_scope} words.")
+    # A reader can reach this page without passing through a book page
+    # (the section command lands them on it), and its numbering, 4e and
+    # 4f per part, 7 and 7d for the division, is no more guessable than
+    # the book page's, so the renderer lists its sections at the head
+    report.list_sections = True
     report.notes.append(f"A section across a book boundary, from CROSS_SECTIONS in atlas_sections.py.  Its "
                         f"parts are measured as one text; where a table says 'the rest', it means the books "
                         f"the division touches ({rest_name}) taken together less the section, the frame the "

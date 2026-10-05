@@ -21,6 +21,7 @@ Usage:
     python3 atlas_query.py section 2 Samuel: The Succession Narrative   a section across a book boundary (CROSS_SECTIONS)
     python3 atlas_query.py passage Harlot city           a named passage of the catalogue (metadata.db)
     python3 atlas_query.py dossier Isaiah, Hebrews, Mark  several dossiers, one file each (--brief for the short form; "all" for every book)
+    python3 atlas_query.py dossier all --results         ... and every page as rows in reports/results.db, one run (atlas_report.py)
 
 Any page can be trimmed for reading at a glance:
     --top 8            the first 8 rows of every table
@@ -39,105 +40,21 @@ import os
 import re
 import sys
 
+import atlas_report
 from atlas_ask import AskError, parse
 from atlas_pages import (Atlas, book_page, chapter_page, chief_partners, compare_page, kin_page,
                          passage_page, section_page, testament_page, word_page)
 from atlas_sections import divisions_of, section_date, cross_sections_of_book
 
 
+# The text layout lives in atlas_report.py, the reporting module; this
+# script passes its --time flag through and keeps the names it always had
 def render(report, atlas=None):
-    """
-    Lay a Report out as plain text.  With the atlas given, the build
-    line (program version, build label and date, roots rule, window)
-    is printed under the title, so the file says what made it.
-    """
-    lines = ["WORD ATLAS  -  " + report.title]
-    lines.append("#" * len(lines[0]))
-    if atlas is not None:
-        lines.append(atlas.build_line())
-    lines.extend(report.notes)
-    if TIMING:
-        # The seconds each section took, printed to the terminal as the
-        # page is laid out and kept in the file, so a slow page names
-        # its slow table in one run
-        line = report.timing_line()
-        print(f"  {report.title}: {line}")
-        lines.append(line)
-    # The book page lists its sections by number and title at the head,
-    # since it is the page a first reader opens and its numbering (1 to
-    # 1f, 3.1 to 3.5, 4 to 4f, 7 and its letters, 7x) is not one a
-    # reader can guess; the shorter, regular pages do without
-    if report.title.startswith("Book page") and report.sections:
-        lines.append("")
-        lines.append("Sections on this page:")
-        for sec in report.sections:
-            number, _, rest = sec.title.partition(" ")
-            lines.append(f"  {number:<6} {rest}")
-
-    for sec in report.sections:
-        lines.append("")
-        lines.append(sec.title)
-        lines.append("=" * len(sec.title))
-        if sec.note:
-            lines.append(sec.note)
-        # A section that declined (a 'Not measured' note and no rows)
-        # keeps its title and reason and prints no table: a lone header
-        # over a dash line said the opposite of what the note said
-        if sec.columns and sec.rows:
-            lines.append("")
-            # Column widths: wide enough for the header and every value
-            cells = [[str(v) for v in row] for row in sec.rows]
-            widths = [len(c) for c in sec.columns]
-            for row in cells:
-                for i, v in enumerate(row):
-                    widths[i] = max(widths[i], len(v))
-            # Numbers right-aligned, text left-aligned
-            numeric = [all(isinstance(row[i], (int, float)) or row[i] == ""
-                           for row in sec.rows) for i in range(len(sec.columns))]
-
-            def fmt(values):
-                out = []
-                for i, v in enumerate(values):
-                    out.append(v.rjust(widths[i]) if numeric[i] else v.ljust(widths[i]))
-                return "  ".join(out).rstrip()
-
-            lines.append(fmt(sec.columns))
-            lines.append("-" * min(sum(widths) + 2 * len(widths), 110))
-            for row in cells:
-                lines.append(fmt(row))
-        lines.append("")
-        lines.extend(sec.footer)
-    return "\n".join(lines).rstrip() + "\n"
+    return atlas_report.render(report, atlas, timing=TIMING)
 
 
-def trim(report, top=None, only=None, quiet=False):
-    """
-    Cut a page down for reading at a glance: --top N keeps the first N
-    rows of every table, --only 1,2,4a keeps only the sections whose
-    number begins so (the number is what stands before the first dot
-    or space in the title: 1, 1a, 4a2, 6b), and --quiet drops the
-    section notes and footers.  The saved file is the trimmed page too.
-    """
-    if only:
-        wanted = [s.strip().lower().rstrip(".") for s in only.split(",") if s.strip()]
-
-        def number_of(title):
-            return title.split(".")[0].split(" ")[0].lower()
-        report.sections = [s for s in report.sections if number_of(s.title) in wanted]
-    for sec in report.sections:
-        if top is not None:
-            sec.rows = sec.rows[:top]
-        if quiet:
-            # A section with no rows is a header with its reason in the
-            # note (Revelation's 1b: the kind is in the other testament),
-            # and the reason is the finding; --quiet keeps it and drops
-            # the rest.  Without this the quiet page showed an empty table
-            if sec.rows:
-                sec.note = ""
-            sec.footer = []
-    if quiet:
-        report.notes = report.notes[:1]
-    return report
+trim = atlas_report.trim
+save = atlas_report.save
 
 
 TIMING = False      # --time: print the seconds each section of each page took
@@ -165,16 +82,6 @@ def trim_options(argv):
             TIMING = True; i += 1; continue
         out.append(a); i += 1
     return out, top, only, quiet
-
-
-def save(report, text):
-    """Write the page under reports/ beside this script and return the path."""
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
-    os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, report.name + ".txt")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(text)
-    return path
 
 
 def ask(atlas, line, top=None, only=None, quiet=False):
@@ -266,7 +173,7 @@ def testament_slice(atlas, book):
     return full
 
 
-def dossier(atlas, book_name, brief=False):
+def dossier(atlas, book_name, brief=False, writer=None, run_id=None):
     """
     Everything the atlas can say about one book, in one text file:
     the book page, the book's rows of its testament page (home words,
@@ -316,7 +223,11 @@ def dossier(atlas, book_name, brief=False):
     pages = []                      # (title, rendered text)
 
     def add(report):
-        pages.append((report.title.replace(f" ({atlas.settings['translation']})", ""), render(report)))
+        pages.append((atlas_report.plain_title(report, atlas.settings["translation"]), render(report)))
+        # With a results writer, the same report goes to the results
+        # database as rows (--results)
+        if writer is not None:
+            writer.write(report, run_id)
 
     report = book_page(atlas, book)
     add(report)
@@ -371,21 +282,9 @@ def dossier(atlas, book_name, brief=False):
             add(word_page(atlas, root, book, exact=True))
         except ValueError:
             continue
-    # The contents by line: the head's own length is known before the
-    # numbers are, since it is the fixed lines plus one per page, so
-    # each page's first line is the head, the separators and the pages
-    # before it added up.  A reader with the file in an editor goes to
-    # the line; a program reading the dossier finds the page the same way
-    separator = "\n\n" + "=" * 110 + "\n\n"
-    sep_lines = separator.count("\n")
-    n_head = len(head) + 2 + len(pages)           # the blank line and the heading, then one line per page
-    contents = ["", "Pages, by the line each begins on:"]
-    line = n_head + sep_lines
-    for title, text in pages:
-        contents.append(f"  line {line:>7}: {title}")
-        line += text.count("\n") + sep_lines
-    parts = ["\n".join(head + contents)] + [text for title, text in pages]
-    text = separator.join(parts)
+    # The head, the page list by line and the pages, laid out by the
+    # reporting module
+    text = atlas_report.dossier_text(head, pages)
     name = f"dossier_{book.lower().replace(' ', '_')}" + ("_brief" if brief else "")
     out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
     os.makedirs(out_dir, exist_ok=True)
@@ -411,20 +310,32 @@ def main(argv):
         # "all" writes every book.  A book that fails is reported and the
         # rest go on
         brief = "--brief" in argv
-        words = [a for a in argv[2:] if a != "--brief"]
+        results = "--results" in argv
+        words = [a for a in argv[2:] if a not in ("--brief", "--results")]
         names = [n.strip() for n in " ".join(words).split(",") if n.strip()]
         if names == ["all"]:
             names = list(atlas.books)
         if not names:
             raise SystemExit("dossier needs a book: dossier Ezekiel, or several: dossier Isaiah, Hebrews, Mark")
+        # --results: every page of every dossier written to reports/results.db
+        # as rows too, one run for the whole command, so a question across
+        # the books is a query (atlas_report.py)
+        writer = run_id = None
+        if results:
+            writer = atlas_report.ResultsWriter(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                             "reports", "results.db"))
+            run_id = writer.begin(atlas, note="dossier " + ", ".join(names) + (" --brief" if brief else ""))
+            print(f"(results run {run_id} in reports/results.db)")
         for i, name in enumerate(names, start=1):
             try:
-                path = dossier(atlas, name, brief)
+                path = dossier(atlas, name, brief, writer, run_id)
             except (ValueError, SystemExit) as e:
                 print(f"{name}: {e}")
                 continue
             prefix = f"[{i}/{len(names)}] " if len(names) > 1 else ""
             print(f"{prefix}(written to {path}, {os.path.getsize(path) // 1000} KB)")
+        if writer is not None:
+            writer.close()
         return
     try:
         if command == "book":

@@ -188,7 +188,7 @@ def test_dossier(atlas, only):
     lines = text.split("\n")
     pointed = 0
     for l in lines[:80]:
-        m = re.match(r"  line\s+(\d+): (.*)", l)
+        m = re.match(r"  line\s+(\d+),\s+\d+ lines: (.*)", l)
         if m:
             pointed += 1
             n = int(m.group(1))
@@ -198,6 +198,36 @@ def test_dossier(atlas, only):
     if not pointed:
         problems.append("no contents by line at the head")
     report(name, not problems, "; ".join(problems) if problems else f"{len(text) // 1000} KB, {pointed} pages listed")
+
+    # The results writer stores the same pages as rows (atlas_report.py):
+    # a page per listed page, a section per table, a cell per value
+    name = "smoke: results database (atlas_report.ResultsWriter)"
+    if only and only not in name:
+        return
+    import tempfile
+    import atlas_report
+    try:
+        tmp = os.path.join(tempfile.mkdtemp(), "results.db")
+        writer = atlas_report.ResultsWriter(tmp)
+        run = writer.begin(atlas, note="test")
+        rep = atlas_pages.book_page(atlas, "Jude")
+        writer.write(rep, run)
+        n_pages = writer.db.execute("SELECT COUNT(*) FROM pages").fetchone()[0]
+        n_sections = writer.db.execute("SELECT COUNT(*) FROM sections").fetchone()[0]
+        n_cells = writer.db.execute("SELECT COUNT(*) FROM cells").fetchone()[0]
+        n_numbers = writer.db.execute("SELECT COUNT(*) FROM cells WHERE number IS NOT NULL").fetchone()[0]
+        writer.close()
+        expected = sum(len(sec.rows) * len(sec.columns) for sec in rep.sections)
+        problems = []
+        if n_pages != 1 or n_sections != len(rep.sections):
+            problems.append(f"{n_pages} pages and {n_sections} sections stored for 1 page of {len(rep.sections)}")
+        if n_cells != expected:
+            problems.append(f"{n_cells} cells stored for {expected} values")
+        if not n_numbers:
+            problems.append("no cell stored as a number")
+        report(name, not problems, "; ".join(problems) if problems else f"{n_sections} sections, {n_cells} cells")
+    except Exception:
+        report(name, False, traceback.format_exc().strip().splitlines()[-1])
 
 
 # --- determinism ----------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.66. Andrew Hopkins, with Claude.
+For version 0.10.68. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -333,6 +333,7 @@ English ones.
 | `atlas_septuagint.py` | The Septuagint layer of the pages: 1e, 1f and 4e, the Greek New Testament against the Septuagint by shared roots (section 28d) |
 | `build_gnt.py`, `build_tahot.py` | Import STEPBible's TAGNT Greek New Testament and TAHOT Hebrew Old Testament into `lxx.db` (section 28c) |
 | `atlas_lift.py`, `atlas_lxx.py`, `build_lxx.py`, `septuagint_bridge.py` | The command-line line of work on fair baselines, passages and the Septuagint; `METADATA_IN_WORD_ATLAS.md` and `NORMALIZATION_IN_WORD_ATLAS.md` describe it |
+| `atlas_report.py` | The reporting module: Report and Section, the text layout, trimming, the dossier's head, and the results database writer (section 11a) |
 | `test_atlas.py` | The check before a commit: smoke, determinism, guards and housekeeping (section 41) |
 | `WORD_ATLAS_MANUAL.md` | This manual |
 | `HOW_WORD_ATLAS_GREW.md` | The story of how the program was built |
@@ -382,6 +383,79 @@ since 0.10.52 the formula, echo and word-page phrase tables merge
 rows with identical text, keeping the stronger figures and the
 union of the verses.
 
+## 11a. How a report is laid out: the standard
+
+Since 0.10.68 one module, `atlas_report.py`, knows what a report is
+and how it is laid out, and the text pages, the dossier, the test
+script and the results database all read it. This section states
+the standard the module keeps, so that a new table or a new page kind
+can be judged against it.
+
+A report is a page: a file-safe name, a title, a few note lines under
+the title, and a list of sections. The title names the page kind and
+its subject in square brackets, "Book page [Isaiah]", "Chapter page
+[Isaiah 40]", "Section page [Isaiah: Second Isaiah]", "Compare
+[Isaiah] x [2 Kings]", "Word page 'day H3117'", and the text form
+adds the translation in round brackets. Under the title come the
+build line (the program version, the build's label and date, the
+roots rule and the window, so a file read weeks later says what made
+it) and the notes: the subject's size (verses, chapters, words, and
+the rest of the Bible or the book for comparison), the divine-name
+line, the Languages line where a book has Aramaic, and any caution
+that applies to the whole page. A book page and a cross-book section
+page then list their sections by number and title.
+
+A section is one table. Its title begins with its number, which is
+what stands before the first space: a digit for the main tables, a
+letter after it for a companion table (1a the words behind 1, 1b the
+same words against the kind, 4a the echo partners), a digit after a
+dot for a repeated table (3.1 to 3.5 for the neighbors of each focus
+word, 7.2 for a second division), and 7x for a pointer to pages
+elsewhere; the number is what `--only` selects and what the results
+database stores. Its note says, in one paragraph, what the table
+measures, what each column is, what floor or cap it applies and why,
+and what a click does; a reader who has only the note should be able
+to read the table. Its columns are named in lower case as the measures
+are (count, keyness, rest/1000, Delta), with the unit in the name
+where the number has one (here/10k, roots/1000, words). Numbers are
+printed to the precision the measure earns: counts whole, rates to
+one decimal, keyness to one, Delta to two, shares to two; a cell that
+has no value is a dash. A verse is written as the King James names it,
+"Isaiah 40:3", with a second numbering in brackets where another
+text numbers it otherwise, "Psalms 110:1 (Rahlfs 109:1)". Every row
+carries the verses behind it, which the window shows on a click and
+the results database stores. Footers are whole sentences and come
+after the table: the rows not shown and why, what was set aside and
+how many, the yardsticks, and the lines that answer a question the
+table raises ("Nearest beyond the kind", "Seams between the two
+taggings"); a footer never repeats the note.
+
+A table that cannot be measured is not left off: it keeps its title
+and number, says in its note why it declined (the kind in the other
+testament, the Aramaic without a baseline, lxx.db missing) and what to
+read instead, and prints no table, since a header over an empty
+table says the opposite of what the note says. A table that measures
+but finds nothing says so in a footer.
+
+Trimming is the same on every page: `--top N` keeps the first N rows
+of every table, `--only 1,2,4a` keeps the sections whose number is
+listed, `--quiet` drops the notes and footers; a trimmed page is
+saved as trimmed, and a section list follows the trim. A dossier is
+pages joined by a rule, headed by the build line, a sentence saying
+what pages it holds and a list of the pages by the line each begins
+on and its length. The results database (section 19) stores a page
+as one row of pages, a section as one row of sections with its
+number, note, columns and row count, every value as a row of cells
+with the text as printed and the number when it is one, every verse
+behind a row in refs, and every footer in footers; a run is one
+version, one build and one start time, so two runs compare row by
+row.
+
+The window draws the same reports, but with its own layout code,
+which is the one piece the module does not yet own; the heat script
+and the lift report print their own heads too. Bringing them under
+the module is the remaining half of this item.
+
 ## 12. The Book page
 
 The book page is the longest and the one to learn first. Its sections
@@ -391,7 +465,9 @@ against itself and its own parts. On the command line and in a
 dossier the page opens with a list of its sections by number and
 title (since 0.10.66), because the numbering, 1 to 1f, 3.1 to 3.5,
 4 to 4f, 7 and its letters, 7x, is not one a first reader can guess;
-the shorter pages, which are regular, do without.
+the shorter pages, which are regular, do without, except the page of
+a cross-book section, which a reader can reach without passing
+through a book page and whose numbering is as full.
 
 **Section 1, Signature words.** The words far more common in this book
 than in the rest of the testament, ranked by keyness (section 20).
@@ -1085,7 +1161,8 @@ A dossier is everything the atlas can say about one book in one text
 file, written by `atlas_query.py dossier Ezekiel` or the Save dossier
 button. In order, it holds: one build line, a contents line and,
 since 0.10.66, a list of every page in the file by the line it begins
-on ("line 4668: Section page [Isaiah: Second Isaiah]"), so that a
+on and its length ("line 4668, 638 lines: Section page [Isaiah:
+Second Isaiah]"), so that a
 reader with the file open in an editor, or a program reading it, goes
 straight to the page wanted instead of searching a title through
 three megabytes; the book page with every section; the book's rows of its testament page
@@ -1102,6 +1179,15 @@ as the book page counted it.
 
 Several books separated by commas write one file each, and `all`
 writes every book; a book that fails is reported and the rest go on.
+With `--results` every page of every dossier in the command is also
+written as rows to `reports/results.db`, one run for the whole
+command (`dossier all --results` is the canon in one database), so
+that a question across the books, every 7d Delta, every 1f share,
+every seam of 4e, every declined table with its reason, is a query
+rather than a search through sixty-six files; the schema is in
+`atlas_report.py` and the standard in section 11a. The full canon
+comes to a few hundred megabytes of rows; `--brief --results` is a
+fraction of that.
 With `--brief` (the button's Yes) each chapter page keeps only its
 leading words, signature words, formulas and synopsis, and each section
 page its signature words, formulas and echo tables, which is what a
@@ -4567,6 +4653,18 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.68.** The reporting module, atlas_report.py: Report and Section,
+the text layout, trimming, saving and the dossier's head moved into
+it from atlas_pages.py and atlas_query.py, and a results writer that
+stores the same reports as rows of reports/results.db (dossier
+--results). The standard it keeps is written down as section 11a. The
+window's own layout and the heat and lift heads remain to bring under
+it.
+
+**0.10.67.** The dossier's page list carries each page's length, and
+the cross-book Section page lists its sections at the head as the
+book page does.
 
 **0.10.66.** A dossier lists its pages by the line each begins on,
 and a book page lists its sections by number and title, at the head;
