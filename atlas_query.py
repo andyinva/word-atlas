@@ -18,6 +18,7 @@ Usage:
     python3 atlas_query.py testament New
     python3 atlas_query.py compare Exodus x Leviticus    two books, chapter against chapter
     python3 atlas_query.py section Psalms: Book II       one section of a book (see atlas_sections.py)
+    python3 atlas_query.py section 2 Samuel: The Succession Narrative   a section across a book boundary (CROSS_SECTIONS)
     python3 atlas_query.py passage Harlot city           a named passage of the catalogue (metadata.db)
     python3 atlas_query.py dossier Isaiah, Hebrews, Mark  several dossiers, one file each (--brief for the short form; "all" for every book)
 
@@ -41,7 +42,7 @@ import sys
 from atlas_ask import AskError, parse
 from atlas_pages import (Atlas, book_page, chapter_page, chief_partners, compare_page, kin_page,
                          passage_page, section_page, testament_page, word_page)
-from atlas_sections import divisions_of, section_date
+from atlas_sections import divisions_of, section_date, cross_sections_of_book
 
 
 def render(report, atlas=None):
@@ -293,6 +294,7 @@ def dossier(atlas, book_name, brief=False):
     n_sections = sum(1 for d_index, (division, secs) in enumerate(divisions_of(book, n_chapters))
                      for name, chapters, is_rest in secs
                      if not is_rest and (d_index == 0 or section_date(book, name) is not None))
+    n_sections += len(cross_sections_of_book(book, {b: atlas.book_info[b]["chapters"] for b in atlas.books}))
     head.append(f"Contents: the book page; the {book} rows of its testament page; the Compare page "
                 f"against {', '.join(partners[:-1]) + ' and ' + partners[-1] if len(partners) > 1 else partners[0]}"
                 + (f"; {n_sections} section pages" if n_sections else "")
@@ -327,6 +329,16 @@ def dossier(atlas, book_name, brief=False):
             section_report.sections = [sec for sec in section_report.sections
                                        if sec.title.startswith(keep)]
         parts.append(render(section_report))
+    # The sections that cross this book's boundary (the Succession
+    # Narrative in 2 Samuel's and 1 Kings' dossiers both), with their
+    # division tables kept in the brief form, since those are the point
+    n_chapters_of = {b: atlas.book_info[b]["chapters"] for b in atlas.books}
+    for group, division, name, cparts in cross_sections_of_book(book, n_chapters_of):
+        cross_report = section_page(atlas, group, name)
+        if brief:
+            keep = ("1.", "1a", "2.", "4", "7")
+            cross_report.sections = [sec for sec in cross_report.sections if sec.title.startswith(keep)]
+        parts.append(render(cross_report))
     top_words = [r["root"] for r in atlas.db.execute(
         "SELECT root FROM word_book WHERE book = ? AND weight >= 3 ORDER BY keyness DESC LIMIT 10", (book,))]
     for chapter in range(1, atlas.book_info[book]["chapters"] + 1):

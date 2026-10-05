@@ -7,7 +7,7 @@ with the version that carried them. Add to it whenever a review or a
 conversation raises something; the manual's version history records
 what shipped, this records what has not.
 
-Last updated 2026-10-04, at version 0.10.62.
+Last updated 2026-10-05, at version 0.10.64.
 
 ## Standing work
 
@@ -64,12 +64,18 @@ appendix uses them.
 
 ## The pages
 
-**A section that crosses a book boundary (waiting).** The Succession
-Narrative (2 Samuel 9 to 20 with 1 Kings 1 to 2) and the Elijah and
-Elisha cycles across 1 and 2 Kings. A book-qualified chapter list in
-atlas_sections.py, and every page that takes a section made to carry
-more than one book, with a decision about what "the rest of the book"
-means. Its own round, not a table entry.
+**A section that crosses a book boundary (done 0.10.64).** CROSS_SECTIONS
+in atlas_sections.py, book-qualified chapter lists; the Succession
+Narrative and the Elijah and Elisha cycles as its first entries; a
+Section page of their own with 7 and 7d against the rest of the
+touched books ("the rest" decided as the books the division touches,
+less the section). Findings: the Succession Narrative's Delta from
+its frame 0.52, the cycles' 0.85 and 0.79 with 0.67 between them.
+Not done, and open: the book-against-itself tables (6, 6c, 6d) across
+books; 7a (the echo map by section) for a cross-book division; a
+cross-book Compare (the Succession Narrative against 1 Chronicles
+chapter by chapter); more entries (Luke and Acts as one text is the
+New Testament case, and the Chronicler's Ezra and Nehemiah).
 
 **A section-level 1d (idea).** Vocabulary richness by part, with the
 run figures for the part's size, so that 1 Timothy's hapax rate can
@@ -278,9 +284,16 @@ numbering, still to be set by hand.
 
 ## 1.0
 
-**A test script.** Determinism (two runs under different hash seeds
-give the same dossier) and a smoke test of every page kind on a few
-books, run before every commit.
+**A test script (done 0.10.63).** test_atlas.py: smoke test of every
+page kind on a few books, determinism under two hash seeds, guards for
+the mistakes the reviews found (names test, build_gnt verse filing,
+equivalents lemma keys, pronouns), and version and em-dash
+housekeeping; run before every commit, exit 1 on a failure. To add
+to it as mistakes are found: a guard is a dozen lines, and the point
+is that each mistake is caught once by a person and ever after by the
+program. Not yet in it: a comparison of a dossier against a kept
+copy (the reviewer's diff as a test), which wants the reporting
+module's canon-wide run to be quick enough.
 
 **The repository (done 2026-10-03).** andyinva/word-atlas is public,
 with everything through 0.10.37 pushed. The catalogue goes as
@@ -289,7 +302,7 @@ go, and the README says what a visitor must supply.
 
 ## DONE
 
-2026-10-03 the repository public with 0.10.37 pushed. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
+2026-10-03 the repository public with 0.10.37 pushed. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
 splits. 0.10.50 1d a language at a time for Daniel and Ezra. 0.10.49 a run figure for the once-here share. 0.10.48 1c and 1d refusals and the sibling caution. 0.10.47 nearest beyond the kind under 1c and 1d. 0.10.46 1d's run figures cached. 0.10.45 1d's run columns. 0.10.44 vocabulary richness (1d); Hebrews in parts. 0.10.43 the kind's own size yardsticks. 0.10.42 nine-in-ten yardsticks and a no-pronoun Delta. 0.10.41 cautions and a size yardstick on 1c and 7d; three more
 letters in parts. 0.10.40 the function-word layer, 1c and 7d (New Testament). 0.10.39 section 7's leading words floored and ended early. 0.10.38 2 Corinthians, Galatians and Ephesians in parts. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
 words, 3 to 5). 0.10.34 1b stops at a keyness floor (6.63); three occurrences for a

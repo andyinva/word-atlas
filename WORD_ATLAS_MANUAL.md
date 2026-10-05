@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.62. Andrew Hopkins, with Claude.
+For version 0.10.64. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -333,6 +333,7 @@ English ones.
 | `atlas_septuagint.py` | The Septuagint layer of the pages: 1e, 1f and 4e, the Greek New Testament against the Septuagint by shared roots (section 28d) |
 | `build_gnt.py`, `build_tahot.py` | Import STEPBible's TAGNT Greek New Testament and TAHOT Hebrew Old Testament into `lxx.db` (section 28c) |
 | `atlas_lift.py`, `atlas_lxx.py`, `build_lxx.py`, `septuagint_bridge.py` | The command-line line of work on fair baselines, passages and the Septuagint; `METADATA_IN_WORD_ATLAS.md` and `NORMALIZATION_IN_WORD_ATLAS.md` describe it |
+| `test_atlas.py` | The check before a commit: smoke, determinism, guards and housekeeping (section 41) |
 | `WORD_ATLAS_MANUAL.md` | This manual |
 | `HOW_WORD_ATLAS_GREW.md` | The story of how the program was built |
 
@@ -915,6 +916,20 @@ then a book, then the section from the Section box), from the Ask line
 as [Psalms: Book II], or on the command line as `section Psalms: Book
 II`. A split section (Asaph, Psalms 50 and 73 to 83) runs over its own
 chapters.
+
+A section that crosses a book boundary (section 28, CROSS_SECTIONS)
+has a page of the same kind with its parts measured as one text:
+signature words against the testament and the words behind them,
+formulas, echoes with the partner table (the partners are the books
+outside the ones the section takes), the Septuagint echoes of each
+part, and then the division's tables at section scale, 7 with each
+section's leading words against the rest of the touched books and 7d
+with its function-word profile and Delta from that rest, with a
+footer giving the touched books' own Delta from one another so the
+seam between the books can be read beside the seam the section
+makes. It is reached as `section 2 Samuel: The Succession Narrative`
+or `section Samuel and Kings: The Succession Narrative`, from the
+Section box of any book it takes, or from the Ask line.
 
 Two things are particular to it. The partner table prints only the
 partners above the "few" line, plus any with a quotation-grade echo,
@@ -1715,6 +1730,30 @@ source). A section under 1,000 words is marked "few" and under 3,000
 "small". The tables of section 7, the section page, the "at the seams"
 and "sections" columns of 6b, and the Compare pages a dossier chooses
 all come from this table, and section 43 shows how to edit it.
+
+**Sections across a book boundary** (0.10.64). A few of the units a
+reader knows run across the seam the canon put between two books: the
+Succession Narrative is 2 Samuel 9 to 20 with 1 Kings 1 to 2 (Rost's
+division of 1926), the Elijah cycle runs from 1 Kings 17 into 2 Kings
+1, and the Elisha cycle fills 2 Kings 2 to 8 and 13. These are a
+second table in `atlas_sections.py`, CROSS_SECTIONS, where a group
+names the books it spans (Samuel and Kings) and its divisions, and a
+section's chapters are written book by book: ("2 Samuel", 9, 20),
+("1 Kings", 1, 2). Such a section has a Section page of its own
+(section 14), reached by its group or by any book it takes
+(`section 2 Samuel: The Succession Narrative`), listed in the Section
+box of every book it takes and in the dossier of each, and named in
+a short table 7x on those books' pages. The decision the layer needed
+was what "the rest of the book" means for a text in two books, and
+the answer is the frame the scholarly question sets the section
+against: the books its division touches, taken together, less the
+section, so the Succession Narrative's leading words and function
+words are measured against the rest of 2 Samuel and 1 Kings, and the
+prophetic cycles' against the rest of 1 and 2 Kings. Sections of a
+division need not cover the touched books; what they leave out is
+the "Rest of 2 Samuel and 1 Kings" row. The book-against-itself
+tables (6, 6c, 6d) are not drawn across books; they stay on each
+book's own page.
 
 ## 28a. The English bridge
 
@@ -2580,11 +2619,24 @@ parts are Samuel and the ark (1 to 7), the rise of kingship (8 to 15)
 and Saul and David (16 to 31), with the Ark Narrative (4 to 6) as a
 second division; Saul and David draws on 2 Samuel 284 and 1 Chronicles
 215 as one narrative idiom, the first two parts on Judges 180 and 159.
-One thing the layer cannot yet express is a section that crosses a
-book boundary, and the Succession Narrative is the case for it (2
-Samuel 9 to 20 with 1 Kings 1 to 2, as the Elijah and Elisha cycles
-cross 1 and 2 Kings); for now 1 Kings carries its own two chapters as
-a division. Samuel also extended the joined renderings to the local
+The Succession Narrative crosses a book boundary (2 Samuel 9 to 20
+with 1 Kings 1 to 2), which the layer could not express until 0.10.64
+gave it CROSS_SECTIONS (section 28); 2 Samuel's own division keeps
+its part as "The Succession Narrative in 2 Samuel", and the whole has
+a page of its own. Read whole, against the rest of 2 Samuel and 1
+Kings together, its leading words are Absalom (104 times, keyness
+215), king, Joab, lord (the courtier's "my lord"), Amnon and
+Adonijah, and its partners by echo are 1 Chronicles at 5.8 times the
+expected rate (the parallel account), 1 Samuel at 4.0, then
+2 Chronicles, 2 Kings, Judges and Joshua, the narrative idiom of the
+Former Prophets. The function-word table is the finding Rost's
+question wanted: the narrative's Delta from the rest of 2 Samuel and
+1 Kings is 0.52 (0.55 without pronouns), under the 0.67 that one
+book's two halves typically show, and the two books themselves stand
+0.36 apart. Whatever its origin, the Succession Narrative is written
+in the grammatical habits of its frame; its difference from Samuel
+and Kings is in what it tells and how, the court seen from inside,
+not in its particles. Samuel also extended the joined renderings to the local
 renderings line: 1 Samuel 18 tags "son in law" on H2859, which the
 Bible otherwise renders father-in-law, and the line now reads
 "'son-in-law' for H2859 (5 of the Bible's 5; father-in-law elsewhere)".
@@ -2758,6 +2810,27 @@ that is in the critical literature: 20 and 22 share their war
 vocabulary across the Naboth chapter, and the Septuagint places
 chapter 21 before 20, so that in the Greek order 20 and 22 stand
 together. The table has, in effect, voted for the Greek order.
+
+The prophetic cycles read whole (0.10.64, section 28: the Elijah
+cycle as 1 Kings 17 to 19 and 21 with 2 Kings 1, the Elisha cycle as
+2 Kings 2 to 8 and 13) give the opposite result from the Succession
+Narrative. Against the rest of 1 and 2 Kings together, the Elijah
+cycle's function-word Delta is 0.85 (0.76 without pronouns) and the
+Elisha cycle's 0.79 (0.89 without), both nearer the 1.10 of two
+different books than the 0.67 of one book's halves, while the two
+cycles are 0.67 from each other (0.44 without pronouns), as alike as
+one book's halves. The rates say where the difference lies: the
+cycles open their clauses with the narrative vav at 86 and 92 per
+thousand against the frame's 58, and use "el" (unto) at 26 and 22
+against 12 and "asher" (which) at 14 and 10 against 20, the plain
+storytelling grammar of the northern narratives against the annalistic
+and Deuteronomistic prose of the frame. The leading words are what a
+reader expects (Elijah, Naboth, Ahab, fifty, Jezebel; Elisha, Syria,
+Gehazi, Naaman, the child), and the table adds that the two cycles
+share their grammar with each other and not with the book that holds
+them, which is what the hypothesis of a northern prophetic source
+behind Kings predicts, and what a reader of the Succession Narrative,
+whose grammar is its frame's, should set beside it.
 
 ## 34. Chronicles: a source's silence as a row of numbers
 
@@ -3667,6 +3740,43 @@ rounds a review was itself a piece of writing about the book, with the
 fixes at the end, and several of those reviews are the worked examples
 of Part IV.
 
+**The check before a commit.** The loop had one gap, which the
+Septuagint fortnight showed three times: the names test's clipped
+first word (0.10.56), the Greek verses filed under the wrong number
+(0.10.59) and the equivalents table's upper-cased lemma key (0.10.62)
+were each found by the reviewer's diff of two dossier runs, never by
+the program, and two of the three were of a kind a program can catch.
+Since 0.10.63 `test_atlas.py` is run before every commit:
+
+    python3 test_atlas.py            every test, about two minutes
+    python3 test_atlas.py --quick    without the determinism test
+    python3 test_atlas.py smoke      only the tests whose name holds a word
+
+It prints one line per test, ok or FAIL with the reason, and exits 1
+if anything failed, so it can stand in a git pre-commit hook. Four
+kinds of test. The smoke test builds every kind of page (book,
+chapter, word, kin, testament, section, passage, compare, and a brief
+dossier) on a few books chosen to reach every branch, Jude for a
+one-chapter book, Daniel for two languages, Revelation for the kind
+in the other testament, Hebrews for a Parts division and Septuagint
+quotations, and fails on a traceback, on "None" or "nan" in the text,
+on a table with no rows and no reason, or on a row with the wrong
+number of cells. The determinism test runs the same commands in two
+fresh processes under different PYTHONHASHSEED values and compares
+the text, since a table that depends on set or dict order changes
+from run to run with no change in the program, as the Compare page's
+refrains footer did until 0.10.57. The guards keep the mistakes the
+reviews found from coming back: Er, Ur, Ezer and Sheba are names and
+"ur" is not a word; the Greek New Testament holds one verse for each
+of the King James's 7,957, none missing and none doubled; every lemma
+key of the equivalents table is in the tokens' form; no pronoun
+number is counted as a content word. The housekeeping tests ask that
+the program, the manual's first line and its Appendix C, and the
+improvements list all name the same version, that every module
+compiles, and that no file of the project holds an em dash. A test
+that needs lxx.db is skipped with a note when the file or its corpora
+are missing, so a visitor with the atlas alone can still run it.
+
 ## 42. The rules, one by one
 
 Each rule below is given the same way: what it decides, the setting
@@ -4417,6 +4527,20 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.64.** Sections across a book boundary (CROSS_SECTIONS in
+atlas_sections.py; section 28): the Succession Narrative as 2 Samuel
+9 to 20 with 1 Kings 1 to 2, the Elijah and Elisha cycles across
+1 and 2 Kings, each with a Section page measured as one text, its
+division's leading words and function-word Delta against the rest of
+the touched books, a 7x table on the books' pages, and a place in
+their Section boxes and dossiers; 2 Samuel's own part renamed "The
+Succession Narrative in 2 Samuel".
+
+**0.10.63.** test_atlas.py, the check before a commit: every kind of
+page built on a few books, the same pages built twice under different
+hash seeds, guards for the mistakes the reviews found, and the version
+and em-dash housekeeping (section 41).
 
 **0.10.62.** 4e's quotation grade needs three distinct content words
 (a bridged stock pair, "their iniquities and their sins", had reached

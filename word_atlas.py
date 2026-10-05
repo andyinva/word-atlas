@@ -939,6 +939,12 @@ class WordAtlasWindow(QMainWindow):
         for division, secs in atlas_sections.divisions_of(book, n_chapters):
             for name, chapters, is_rest in secs:
                 self.section_box.addItem(f"{name}  ({atlas_sections.span_text(chapters)}, {division})", name)
+        # The sections that cross this book's boundary (CROSS_SECTIONS):
+        # opened by name through section_page, which finds them in any
+        # book they take
+        n_chapters_of = {b: self.atlas.book_info[b]["chapters"] for b in self.atlas.books}
+        for group, division, name, parts in atlas_sections.cross_sections_of_book(book, n_chapters_of):
+            self.section_box.addItem(f"{name}  ({atlas_sections.parts_text(parts)}, {group})", name)
         if self.section_box.count() == 0:
             self.section_box.addItem("(no sections in atlas_sections.py)", "")
 

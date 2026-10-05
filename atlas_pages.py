@@ -33,7 +33,9 @@ from atlas_function import book_table as function_book_table, section_table as f
 from atlas_septuagint import vocabulary_sections as septuagint_vocabulary_sections, \
     echoes_section as septuagint_echoes_section
 from atlas_sections import (FEW_WORDS, SMALL_WORDS, divisions_of, find_section, sections_of, section_date,
-                            section_of, seam_chapters, span_text)
+                            section_of, seam_chapters, span_text, cross_divisions, find_cross_section,
+                            cross_sections_of_book, is_cross_group, parts_text)
+from atlas_function import cross_section_table as function_cross_section_table
 from atlas_text import (ATLAS_PATH, ECHO_MAX_TOTAL, FOCUS_MIN_OCCURRENCES,
                         FORMULA_LENGTHS, PARALLEL_METHOD, PARALLEL_MIN_SHARED,
                         PARALLEL_RUN, PARALLEL_RUN_CONTENT, PARALLEL_SHARE, STOPLIST,
@@ -49,7 +51,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.62"   # the program version; the window title and every report print it
+VERSION = "0.10.64"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -2804,6 +2806,21 @@ def book_page(atlas, book_name):
         shared_vocabulary_section(atlas, report, f"6d. Shared vocabulary [{book}]: chapters drawing on the same uncommon words", book)
     if sections_of(book, None, info["chapters"]):
         sections_section(atlas, report, f"7. Sections [{book}]", book, info)
+    # The sections that take chapters of this book and of another
+    # (the Succession Narrative runs from 2 Samuel into 1 Kings): named
+    # here, measured on their own Section page
+    n_chapters_of = {b: atlas.book_info[b]["chapters"] for b in atlas.books}
+    crossing = cross_sections_of_book(book, n_chapters_of)
+    if crossing:
+        sec = report.section(
+            f"7x. Sections crossing the book's boundary [{book}]",
+            ["section", "parts", "division"],
+            note=f"Sections of CROSS_SECTIONS (atlas_sections.py) that take chapters of {book} and of another "
+                 f"book, measured as one text on their own Section page (section {book}: <name>), where "
+                 f"'the rest' is the books the division touches taken together less the section.")
+        for group, division, name, parts in crossing:
+            sec.add([name, parts_text(parts), f"{group}: {division}"],
+                    link={"book": book, "chapter": next(chs[0] for b, chs in parts if b == book), "section": name})
     return report
 
 
@@ -3052,13 +3069,23 @@ def section_page(atlas, book_name, section_name):
     against itself, and its kin at the head.  The section is named as
     atlas_sections.py names it.
     """
+    # A cross-book section is asked for by its group ("Samuel and Kings:
+    # The Succession Narrative") or by any book it takes ("2 Samuel: The
+    # Succession Narrative"); the group is not a book
+    if is_cross_group(book_name):
+        return cross_section_page(atlas, section_name, book_name)
     book = atlas.find_book(book_name)
     n_chapters = atlas.book_info[book]["chapters"]
     hit = find_section(book, section_name, n_chapters)
     if hit is None:
+        n_chapters_of = {b: atlas.book_info[b]["chapters"] for b in atlas.books}
+        if find_cross_section(section_name, n_chapters_of) is not None:
+            return cross_section_page(atlas, section_name)
         names = ", ".join(sec[0] for d, secs in divisions_of(book, n_chapters) for sec in secs)
+        crossing = ", ".join(n for g, d, n, p in cross_sections_of_book(book, n_chapters_of))
         raise ValueError(f"{book} has no section '{section_name}'"
-                         + (f"; its sections are: {names}." if names else "; it has no sections in atlas_sections.py."))
+                         + (f"; its sections are: {names}" if names else "; it has no sections in atlas_sections.py")
+                         + (f"; and across its boundary: {crossing}." if crossing else "."))
     division, (name, chapters, is_rest) = hit
     in_chs = set(chapters)
     first, last = chapters[0], chapters[-1]
@@ -3119,6 +3146,165 @@ def section_page(atlas, book_name, section_name):
     return report
 
 
+def cross_section_page(atlas, name, group=None):
+    """
+    The page of a section that crosses a book boundary (the Succession
+    Narrative, 2 Samuel 9 to 20 with 1 Kings 1 to 2), from CROSS_SECTIONS
+    in atlas_sections.py.  Its verses from every book it takes are one
+    text: signature words against the testament, the words behind
+    them, formulas, echoes (partners outside the books the section
+    touches), the Septuagint echoes of each part, and then the
+    division's tables at section scale, where "the rest" is the books
+    the division touches taken together less the section: the leading
+    words of each section against that rest, and the function-word
+    profile with its Delta from that rest.  The book-against-itself
+    tables (6, 6c, 6d) stay on the pages of the books themselves.
+    """
+    n_chapters_of = {b: atlas.book_info[b]["chapters"] for b in atlas.books}
+    hit = find_cross_section(name, n_chapters_of, group)
+    if hit is None:
+        names = ", ".join(sec[0] for g, d, t, secs in cross_divisions(n_chapters_of) for sec in secs if not sec[2])
+        raise ValueError(f"No cross-book section named '{name}'; the cross-book sections are: {names}.")
+    group, division, touched, (name, parts, is_rest) = hit
+    secs = next(secs for g, d, t, secs in cross_divisions(n_chapters_of) if g == group and d == division)
+    books = [b for b, chs in parts]
+    verses = []
+    for book, chs in parts:
+        in_chs = set(chs)
+        verses.extend(v for v in atlas.verses_of(book) if v["chapter"] in in_chs)
+    atlas.use_scope(books[0])
+    ids = [v["verse_id"] for v in verses]
+    n_scope = sum(len(v["word_string"].split()) for v in verses)
+    n_chapters = sum(len(chs) for b, chs in parts)
+    rest_name = " and ".join(touched)
+    n_touched = sum(atlas.book_info[b]["words"] for b in touched)
+    label = f"{name}: {parts_text(parts)}"
+    report = Report("section_" + re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_"),
+                    f"Section page [{label}] ({atlas.settings['translation']})")
+    report.notes.append(f"{name} ({group}: {division}), {parts_text(parts)}: {len(verses)} verses, "
+                        f"{n_scope} words in {n_chapters} chapters.  The rest of {rest_name}: "
+                        f"{n_touched - n_scope} words.")
+    report.notes.append(f"A section across a book boundary, from CROSS_SECTIONS in atlas_sections.py.  Its "
+                        f"parts are measured as one text; where a table says 'the rest', it means the books "
+                        f"the division touches ({rest_name}) taken together less the section, the frame the "
+                        f"question about the section sets it against.  Echo partners are the books outside "
+                        f"{' and '.join(books)}.  The book-against-itself tables (6, 6c, 6d) are on each "
+                        f"book's own page.")
+
+    top = verses_signature_section(atlas, report, f"1. Signature words [{label}]", verses, label, books,
+                                   n_scope, n_chapters, "section")
+    lexicon_section(atlas, report, f"1. Signature words [{label}]", top, books[0], None, "section")
+    signature_formulas_section(atlas, report, f"2. Signature formulas [{label}]", verses, books[0], n_scope)
+    if len(books) > 1:
+        report.sections[-1].note += ("  The 'elsewhere' count leaves out the first book of the section "
+                                     "only, so a formula shared by its books may be counted there.")
+    echoes_section(atlas, report, f"4. Echoes [{label}] -> other books", books[0], None,
+                   scope_name=label, verse_ids=ids, books=books)
+    testament = atlas.book_info[books[0]]["testament"]
+    far = "Greek Old Testament" if testament == "New" else "New Testament, in Greek"
+    for book, chs in parts:
+        septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{name}: {book} {span_text(chs)}] -> {far}",
+                                  book, chs)
+
+    # 7. The division at section scale: every section of it, with its
+    # leading words against the rest of the touched books
+    words_by = {}                    # (book, chapter) -> words
+    verses_by = {}
+    for b in touched:
+        for r in atlas.db.execute(
+                "SELECT chapter, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) + 1), COUNT(*) "
+                "FROM verses WHERE book = ? GROUP BY chapter", (b,)):
+            words_by[(b, r[0])] = r[1]
+            verses_by[(b, r[0])] = r[2]
+    weight = {}                      # root -> {(book, chapter): weight}
+    marks = ",".join("?" * len(touched))
+    for root, b, ch, w in atlas.db.execute(
+            f"SELECT root, book, chapter, weight FROM word_chapter WHERE book IN ({marks})", touched):
+        weight.setdefault(root, {})[(b, ch)] = w
+    total_words = sum(words_by.values())
+    sec7 = report.section(
+        f"7. Sections [{group}: {division}]",
+        ["section", "chapters", "verses", "words",
+         f"leading words (count in N of M chapters, keyness against the rest of {rest_name})"],
+        note=f"The sections of the division '{division}' across {rest_name}, from CROSS_SECTIONS in "
+             f"atlas_sections.py.  Leading words are the words most key to the section against the rest of "
+             f"the touched books, up to six, each at keyness {GROUP_KEYNESS_FLOOR} or above, with the "
+             f"occurrence floor 1b uses for a text of the section's size.  Double-click a row for the "
+             f"section's first chapter.")
+    for sname, sparts, srest in secs:
+        own = {(b, c) for b, chs in sparts for c in chs}
+        n_words = sum(words_by.get(bc, 0) for bc in own)
+        rest = total_words - n_words
+        floor = occurrence_floor(n_words)
+        scored = []
+        for root, by_bc in weight.items():
+            in_sec = {bc: w for bc, w in by_bc.items() if bc in own}
+            a = sum(in_sec.values())
+            if a < floor:
+                continue
+            b = sum(by_bc.values()) - a
+            k = log_likelihood(a, b, n_words, rest) if rest > 0 and n_words > 0 else 0
+            if k >= GROUP_KEYNESS_FLOOR:
+                scored.append((k, root, a, len(in_sec)))
+        scored.sort(key=lambda t: (-t[0], t[1]))
+        leading = ", ".join(f"{atlas.form(r)} ({a} in {n}/{len(own)}, {k:.0f})" for k, r, a, n in scored[:6])
+        sec7.add([sname, parts_text(sparts), sum(verses_by.get(bc, 0) for bc in own), n_words, leading or "-"],
+                 link={"book": sparts[0][0], "chapter": sparts[0][1][0]})
+    # d. The function words by section, Delta from the rest of the touched books
+    function_cross_section_table(atlas, report, f"7d. Function words by section [{group}: {division}]",
+                                 touched, secs, rest_name)
+    return report
+
+
+def verses_signature_section(atlas, report, title, verses, label, books, n_scope, n_chapters, what):
+    """
+    Section 1 for any set of verses (a passage, a cross-book section):
+    the text's tokens by root against the rest of the root's testament,
+    as a book's are, with the verses holding each root kept for the
+    click.  Returns the top roots.  what is the word the note uses for
+    the text ("passage", "section").
+    """
+    ids = [v["verse_id"] for v in verses]
+    refs_of = {v["verse_id"]: v["reference"] for v in verses}
+    counts, held = Counter(), {}
+    marks = ",".join("?" * len(ids))
+    for vid, root in atlas.db.execute(
+            f"SELECT verse_id, root FROM tokens WHERE verse_id IN ({marks}) AND is_stop = 0", ids):
+        counts[root] += 1
+        held.setdefault(root, []).append(refs_of[vid])
+    scored = []
+    for root, a in counts.items():
+        if a < 2:
+            continue
+        w = atlas.word_row(root)
+        total = w["weight"] if w else a
+        n_compare = atlas.comparison_words(root)
+        k = log_likelihood(a, total - a, n_scope, n_compare - n_scope)
+        if k > 0:
+            scored.append((k, root, a, total, n_compare))
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    sec = report.section(
+        title, ["word", "count", f"{what}/1000", "rest/1000", "chapters", "books", "keyness", "note"],
+        note=f"The words far more common in the {what} than in the rest of the testament (or, for an "
+             f"English stem, the Bible), ranked by keyness; at least two occurrences.  'chapters' is "
+             f"how many of the {what}'s {n_chapters} chapters hold the word.  Click a row for the "
+             f"{what}'s verses holding it; double-click for the word's page.")
+    top = []
+    for k, root, a, total, n_compare in scored[:TOP_N]:
+        w = atlas.word_row(root)
+        chs = len({r.rsplit(" ", 1)[0] + " " + r.rsplit(" ", 1)[1].split(":")[0] for r in held[root]})
+        notes = []
+        renderings = atlas.renderings(root)
+        if renderings > 1:
+            notes.append(f"{renderings} renderings")
+        sec.add([atlas.form(root), a, per_thousand(a, n_scope), per_thousand(total, n_compare),
+                 f"{chs}/{n_chapters}", f"{w['books_reached']}/{atlas.comparison_books(root)}" if w else "-",
+                 round(k, 1), ", ".join(notes)],
+                refs=list(dict.fromkeys(held[root])), link={"word": root, "book": books[0]})
+        top.append(root)
+    return top
+
+
 def passage_page(atlas, name):
     """
     The page of a named passage from the catalogue (metadata.db): any
@@ -3165,46 +3351,8 @@ def passage_page(atlas, name):
                         "the books outside it, and the testament figures are those of the first book's "
                         "testament where the passage spans both.")
 
-    # -- 1. signature words: the passage's tokens by root, against the rest
-    # of the root's testament (as a book's are), with the verses holding
-    # each root kept for the click
-    counts, held = Counter(), {}
-    marks = ",".join("?" * len(ids))
-    for vid, root in atlas.db.execute(
-            f"SELECT verse_id, root FROM tokens WHERE verse_id IN ({marks}) AND is_stop = 0", ids):
-        counts[root] += 1
-        held.setdefault(root, []).append(refs_of[vid])
-    scored = []
-    for root, a in counts.items():
-        if a < 2:
-            continue
-        w = atlas.word_row(root)
-        total = w["weight"] if w else a
-        n_compare = atlas.comparison_words(root)
-        k = log_likelihood(a, total - a, n_scope, n_compare - n_scope)
-        if k > 0:
-            scored.append((k, root, a, total, n_compare))
-    scored.sort(key=lambda s: (-s[0], s[1]))
-    sec = report.section(
-        f"1. Signature words [{label}]",
-        ["word", "count", "passage/1000", "rest/1000", "chapters", "books", "keyness", "note"],
-        note=f"The words far more common in the passage than in the rest of the testament (or, for an "
-             f"English stem, the Bible), ranked by keyness; at least two occurrences.  'chapters' is "
-             f"how many of the passage's {len(chapters)} chapters hold the word.  Click a row for the "
-             f"passage's verses holding it; double-click for the word's page.")
-    top = []
-    for k, root, a, total, n_compare in scored[:TOP_N]:
-        w = atlas.word_row(root)
-        chs = len({r.rsplit(" ", 1)[0] + " " + r.rsplit(" ", 1)[1].split(":")[0] for r in held[root]})
-        notes = []
-        renderings = atlas.renderings(root)
-        if renderings > 1:
-            notes.append(f"{renderings} renderings")
-        sec.add([atlas.form(root), a, per_thousand(a, n_scope), per_thousand(total, n_compare),
-                 f"{chs}/{len(chapters)}", f"{w['books_reached']}/{atlas.comparison_books(root)}" if w else "-",
-                 round(k, 1), ", ".join(notes)],
-                refs=list(dict.fromkeys(held[root])), link={"word": root, "book": books[0]})
-        top.append(root)
+    top = verses_signature_section(atlas, report, f"1. Signature words [{label}]", verses, label, books,
+                                   n_scope, len(chapters), "passage")
     lexicon_section(atlas, report, f"1. Signature words [{label}]", top, books[0], None, "passage")
 
     signature_formulas_section(atlas, report, f"2. Signature formulas [{label}]", verses, books[0], n_scope)

@@ -234,11 +234,12 @@ SECTIONS = {
     },
     "2 Samuel": {
         # Rost's division: the Succession Narrative (9 to 20) continues
-        # in 1 Kings 1 to 2, which the layer cannot yet express as one
-        # section across two books; 1 Kings carries its own two chapters
+        # in 1 Kings 1 to 2; the whole of it, across the two books, is a
+        # cross-book section in CROSS_SECTIONS below, and this division
+        # keeps the 2 Samuel part so the book's own pages still show it
         "Parts": [
             ("David's rise", 1, 8),
-            ("The Succession Narrative", 9, 20),
+            ("The Succession Narrative in 2 Samuel", 9, 20),
             ("The appendix", 21, 24),
         ],
     },
@@ -508,6 +509,116 @@ SECTION_DATES = {
         "Final Hallel": -400,
     },
 }
+
+
+# ---------------------------------------------------------------------------
+# Sections that cross a book boundary
+# ---------------------------------------------------------------------------
+# A few of the units a reader knows run across the seam the canon put
+# between two books: the Succession Narrative is 2 Samuel 9 to 20 with
+# 1 Kings 1 to 2 (Rost, 1926), the Elijah cycle runs from 1 Kings 17
+# into 2 Kings 1, and the Elisha cycle fills 2 Kings 2 to 8 and 13.
+# Each group names the books it spans, in canon order, and its
+# divisions; a section's chapters are book-qualified items, ("2 Samuel",
+# 9, 20) for a run or ("1 Kings", 21) for one chapter.  "The rest" for
+# such a section is the rest of the books its division touches (2
+# Samuel and 1 Kings together for the Succession Narrative), which is
+# the frame the scholarly question sets it against; the books of the
+# group that a division does not touch are left alone.  Sections of a
+# division need not cover the touched books: what they leave out
+# becomes a "Rest of 2 Samuel and 1 Kings" section, as within a book.
+CROSS_SECTIONS = {
+    "Samuel and Kings": {
+        "books": ["1 Samuel", "2 Samuel", "1 Kings", "2 Kings"],
+        "divisions": {
+            "The Succession Narrative": [
+                ("The Succession Narrative", [("2 Samuel", 9, 20), ("1 Kings", 1, 2)]),
+            ],
+            # 2 Kings 2 holds Elijah's ascension and Elisha's first acts;
+            # at chapter grain it goes to Elisha, whose cycle it opens
+            "The prophetic cycles": [
+                ("The Elijah cycle", [("1 Kings", 17, 19), ("1 Kings", 21), ("2 Kings", 1)]),
+                ("The Elisha cycle", [("2 Kings", 2, 8), ("2 Kings", 13)]),
+            ],
+        },
+    },
+}
+
+
+def _parts(spec):
+    """
+    A cross-book section's chapters by book, in the order given:
+    [(book, [chapters]), ...], one entry per book.
+    """
+    by_book = {}
+    for item in spec[1]:
+        book = item[0]
+        chs = range(item[1], item[2] + 1) if len(item) == 3 else [item[1]]
+        by_book.setdefault(book, set()).update(chs)
+    return [(book, sorted(chs)) for book, chs in by_book.items()]
+
+
+def parts_text(parts):
+    """Parts as a reader writes them: '2 Samuel 9-20; 1 Kings 1-2'."""
+    return "; ".join(f"{book} {span_text(chs)}" for book, chs in parts)
+
+
+def cross_divisions(n_chapters_of=None):
+    """
+    Every cross-book division: [(group, division, books touched,
+    [(name, parts, is_rest), ...])].  With n_chapters_of (book -> its
+    chapter count) the chapters of the touched books that no section
+    holds become a final "Rest of ..." section, so that every chapter
+    of the touched books is in exactly one section of the division.
+    """
+    out = []
+    for group, table in CROSS_SECTIONS.items():
+        order = table["books"]
+        for division, specs in table["divisions"].items():
+            secs = [(spec[0], _parts(spec), False) for spec in specs]
+            touched = sorted({book for name, parts, rest in secs for book, chs in parts}, key=order.index)
+            if n_chapters_of:
+                covered = {(book, c) for name, parts, rest in secs for book, chs in parts for c in chs}
+                left = [(book, [c for c in range(1, (n_chapters_of.get(book) or 0) + 1) if (book, c) not in covered])
+                        for book in touched]
+                left = [(book, chs) for book, chs in left if chs]
+                if left:
+                    secs.append((f"{REST_PREFIX} " + " and ".join(touched), left, True))
+            out.append((group, division, touched, secs))
+    return out
+
+
+def find_cross_section(name, n_chapters_of=None, group=None):
+    """
+    A cross-book section by name, in the named group or any:
+    (group, division, books touched, (name, parts, is_rest)), or None.
+    """
+    for g, division, touched, secs in cross_divisions(n_chapters_of):
+        if group and g.lower() != group.lower():
+            continue
+        for sec in secs:
+            if sec[0].lower() == name.lower():
+                return g, division, touched, sec
+    return None
+
+
+def cross_sections_of_book(book, n_chapters_of=None):
+    """
+    The cross-book sections that take chapters of this book, for the
+    book's own pages: [(group, division, name, parts)], listed sections
+    only.
+    """
+    out = []
+    for group, division, touched, secs in cross_divisions(n_chapters_of):
+        for name, parts, is_rest in secs:
+            if not is_rest and any(b == book for b, chs in parts):
+                out.append((group, division, name, parts))
+    return out
+
+
+def is_cross_group(name):
+    """Is this the name of a cross-book group (as a page command names one)?"""
+    return any(g.lower() == name.lower() for g in CROSS_SECTIONS)
 
 
 def section_date(book, name):

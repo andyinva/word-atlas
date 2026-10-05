@@ -253,6 +253,20 @@ class FunctionReference:
     def profile(self, book, chapters=None):
         return {f: self.rate(book, f, chapters) for f in self.features}
 
+    # --- texts across books: a cross-book section -------------------------
+    def parts_size(self, parts):
+        """Tokens in a text given as [(book, chapters)]."""
+        return sum(self.size(book, set(chs)) for book, chs in parts)
+
+    def parts_profile(self, parts):
+        """The rates of a text given as [(book, chapters)], summed over its parts."""
+        n = self.parts_size(parts)
+        out = {}
+        for f in self.features:
+            c = sum(self.count(book, f, set(chs)) for book, chs in parts)
+            out[f] = 1000.0 * c / n if n else 0.0
+        return out
+
     # --- Delta ----------------------------------------------------------------
     def z(self, profile):
         return {f: (profile[f] - self.mean[f]) / self.spread[f] if self.spread[f] else 0.0 for f in self.features}
@@ -626,3 +640,69 @@ def section_table(atlas, report, title, book, secs, chapters_of, shown_name, fir
         kin = [b for b in atlas.books if groups.get(b) == group and atlas.book_info[b]["testament"] == ref.testament]
         if len(kin) > 1:
             sec.footer.append(kind_yardstick_line(ref, group, kin))
+
+
+def cross_section_table(atlas, report, title, touched, secs, rest_name):
+    """
+    7d for a cross-book division: one row per section with its
+    function-word rates and its Delta from the rest of the books the
+    division touches, the same table section_table draws within a
+    book, with a text given as parts [(book, chapters)].  The rest is
+    the touched books less the section (the Succession Narrative
+    against the rest of 2 Samuel and 1 Kings), which is the frame the
+    question about the section sets it against.
+    """
+    ref = reference_for(atlas, touched[0])
+    if ref is None:
+        report.section(title, ["text"], note=not_measured_note(touched[0]))
+        return
+    all_parts = [(b, sorted(ref.tokens[b])) for b in touched]
+    sec = report.section(
+        title, columns(ref),
+        note=f"The words no subject drives, a section at a time: each part's rates and its Delta from the "
+             f"rest of {rest_name}, the books its division touches taken together less the part itself.  "
+             f"A part whose Delta from the rest is near the halves yardstick is written like its frame "
+             f"whatever it tells; one near the books yardstick is as unlike its frame as another book would "
+             f"be.  " + how_to_read(ref))
+    profiles = {}
+    for name, parts, is_rest in secs:
+        own = {(b, c) for b, chs in parts for c in chs}
+        rest_parts = [(b, [c for c in chs if (b, c) not in own]) for b, chs in all_parts]
+        n = ref.parts_size(parts)
+        if not n:
+            continue
+        prof = ref.parts_profile(parts)
+        profiles[name] = prof
+        rest_prof = ref.parts_profile(rest_parts)
+        n_rest = ref.parts_size(rest_parts)
+        d = ref.delta(prof, rest_prof) if n_rest else 0.0
+        d2 = ref.delta(prof, rest_prof, ref.non_pronoun) if n_rest else 0.0
+        label = name + mark(ref, n)
+        sec.add([label, n] + [round(prof[f], 1) for f in ref.features] + [round(d, 2), round(d2, 2)],
+                link={"book": parts[0][0], "chapter": parts[0][1][0]})
+    line = left_out_line(ref, touched)
+    if line:
+        sec.footer.append(line)
+    names = [name for name, parts, is_rest in secs if name in profiles]
+    if len(names) > 2:
+        pairs = []
+        for i, a in enumerate(names):
+            for b in names[i + 1:]:
+                pairs.append(f"{a} / {b} {ref.delta(profiles[a], profiles[b]):.2f} "
+                             f"({ref.delta(profiles[a], profiles[b], ref.non_pronoun):.2f} without pronouns)")
+        sec.footer.append("Delta between parts: " + "; ".join(pairs) + ".")
+    # Each touched book whole against the others, so the reader can see
+    # whether the seam between the books is itself a change of hand
+    if len(touched) > 1:
+        whole = {b: ref.profile(b) for b in touched if ref.size(b)}
+        pairs = []
+        for i, a in enumerate(touched):
+            for b in touched[i + 1:]:
+                if a in whole and b in whole:
+                    pairs.append(f"{a} / {b} {ref.delta(whole[a], whole[b]):.2f} "
+                                 f"({ref.delta(whole[a], whole[b], ref.non_pronoun):.2f} without pronouns)")
+        if pairs:
+            sec.footer.append("The books themselves: " + "; ".join(pairs) + ".")
+    between, halves, n_halved = ref.yardsticks()
+    sec.footer.append(f"Yardsticks: two different books {between:.2f}; the two halves of one book {halves:.2f}.")
+    sec.footer.append(size_yardstick_line(ref))
