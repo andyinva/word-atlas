@@ -227,7 +227,7 @@ SECTIONS = {
         ],
         "The Ark Narrative": {
             "sections": [
-                ("The Ark Narrative", 4, 6),
+                ("The Ark Narrative in 1 Samuel", 4, 6),
             ],
             "rest": "The rest of 1 Samuel",
         },

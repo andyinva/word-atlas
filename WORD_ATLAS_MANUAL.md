@@ -4563,7 +4563,8 @@ language, so no Hebrew word takes an Aramaic number (a rebuild).
 **0.10.65.** The cross-book 7d measures each part against the
 division's "Rest of" row when it has one, so table and footer agree;
 the Jehu revolt added to the prophetic cycles as a control and the
-Ark Narrative as a second cross-book section of Samuel, and the
+Ark Narrative as a second cross-book section of Samuel (1 Samuel's
+own part renamed "The Ark Narrative in 1 Samuel"), and the
 reading of the cycles result corrected (section 33: mode, not hand);
 five word counts that ran two words per verse high (section 7's
 words and keyness denominators, 1d's words and rates) corrected to
