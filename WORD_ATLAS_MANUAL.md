@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.65. Andrew Hopkins, with Claude.
+For version 0.10.66. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -387,7 +387,11 @@ union of the verses.
 The book page is the longest and the one to learn first. Its sections
 run from the words of the book, through its phrases and their
 neighbors, to its relations with other books, and finally to the book
-against itself and its own parts.
+against itself and its own parts. On the command line and in a
+dossier the page opens with a list of its sections by number and
+title (since 0.10.66), because the numbering, 1 to 1f, 3.1 to 3.5,
+4 to 4f, 7 and its letters, 7x, is not one a first reader can guess;
+the shorter pages, which are regular, do without.
 
 **Section 1, Signature words.** The words far more common in this book
 than in the rest of the testament, ranked by keyness (section 20).
@@ -1079,8 +1083,12 @@ that a chapter pair on the map can be opened to its verses.
 
 A dossier is everything the atlas can say about one book in one text
 file, written by `atlas_query.py dossier Ezekiel` or the Save dossier
-button. In order, it holds: one build line and a contents line; the
-book page with every section; the book's rows of its testament page
+button. In order, it holds: one build line, a contents line and,
+since 0.10.66, a list of every page in the file by the line it begins
+on ("line 4668: Section page [Isaiah: Second Isaiah]"), so that a
+reader with the file open in an editor, or a program reading it, goes
+straight to the page wanted instead of searching a title through
+three megabytes; the book page with every section; the book's rows of its testament page
 (its home words, its row of the home map, and the words whose home or
 second home it is); its Compare pages, which are the book's two chief
 partners and then, for each section of each division in turn, the
@@ -4559,6 +4567,10 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.66.** A dossier lists its pages by the line each begins on,
+and a book page lists its sections by number and title, at the head;
+the test script checks the dossier's line numbers.
 
 **0.10.65.** The cross-book 7d measures each part against the
 division's "Rest of" row when it has one, so table and footer agree;

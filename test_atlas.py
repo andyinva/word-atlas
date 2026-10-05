@@ -184,7 +184,20 @@ def test_dossier(atlas, only):
     bad = BAD_WORDS.search(text)
     if bad:
         problems.append(f"'{bad.group()}' in the dossier")
-    report(name, not problems, "; ".join(problems) if problems else f"{len(text) // 1000} KB")
+    # The contents at the head point at the right lines (0.10.66)
+    lines = text.split("\n")
+    pointed = 0
+    for l in lines[:80]:
+        m = re.match(r"  line\s+(\d+): (.*)", l)
+        if m:
+            pointed += 1
+            n = int(m.group(1))
+            if n > len(lines) or not lines[n - 1].startswith("WORD ATLAS  -  " + m.group(2)):
+                problems.append(f"contents say line {n} is '{m.group(2)}' and it is not")
+                break
+    if not pointed:
+        problems.append("no contents by line at the head")
+    report(name, not problems, "; ".join(problems) if problems else f"{len(text) // 1000} KB, {pointed} pages listed")
 
 
 # --- determinism ----------------------------------------------------------------

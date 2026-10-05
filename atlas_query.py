@@ -63,6 +63,16 @@ def render(report, atlas=None):
         line = report.timing_line()
         print(f"  {report.title}: {line}")
         lines.append(line)
+    # The book page lists its sections by number and title at the head,
+    # since it is the page a first reader opens and its numbering (1 to
+    # 1f, 3.1 to 3.5, 4 to 4f, 7 and its letters, 7x) is not one a
+    # reader can guess; the shorter, regular pages do without
+    if report.title.startswith("Book page") and report.sections:
+        lines.append("")
+        lines.append("Sections on this page:")
+        for sec in report.sections:
+            number, _, rest = sec.title.partition(" ")
+            lines.append(f"  {number:<6} {rest}")
 
     for sec in report.sections:
         lines.append("")
@@ -301,16 +311,22 @@ def dossier(atlas, book_name, brief=False):
                 + f"; the {n_chapters} chapter pages"
                 + (" (trimmed to leading words, signature words, formulas, synopsis and kin)" if brief else "")
                 + "; the word pages of the ten most key signature words.")
-    parts = ["\n".join(head)]
+    # Every page is kept with its title, so that the head can list the
+    # pages by the line each begins on once all are laid out
+    pages = []                      # (title, rendered text)
+
+    def add(report):
+        pages.append((report.title.replace(f" ({atlas.settings['translation']})", ""), render(report)))
+
     report = book_page(atlas, book)
-    parts.append(render(report))
+    add(report)
     # The book's slice of its testament page: its home words, its row of
     # the home map, and the words whose home (or second home) it is
-    parts.append(render(testament_slice(atlas, book)))
+    add(testament_slice(atlas, book))
     # The book against each of its two chief partners, chapter against
     # chapter: the companion to 4b and the synopsis
     for partner in partners:
-        parts.append(render(compare_page(atlas, book, partner)))
+        add(compare_page(atlas, book, partner))
     # The section pages: every section of the main division, and any
     # section of another division that carries its own date (Second
     # Isaiah), whose dating footer is the most citable thing the layer
@@ -328,7 +344,7 @@ def dossier(atlas, book_name, brief=False):
             keep = ("1.", "1a", "2.", "4")
             section_report.sections = [sec for sec in section_report.sections
                                        if sec.title.startswith(keep)]
-        parts.append(render(section_report))
+        add(section_report)
     # The sections that cross this book's boundary (the Succession
     # Narrative in 2 Samuel's and 1 Kings' dossiers both), with their
     # division tables kept in the brief form, since those are the point
@@ -338,7 +354,7 @@ def dossier(atlas, book_name, brief=False):
         if brief:
             keep = ("1.", "1a", "2.", "4", "7")
             cross_report.sections = [sec for sec in cross_report.sections if sec.title.startswith(keep)]
-        parts.append(render(cross_report))
+        add(cross_report)
     top_words = [r["root"] for r in atlas.db.execute(
         "SELECT root FROM word_book WHERE book = ? AND weight >= 3 ORDER BY keyness DESC LIMIT 10", (book,))]
     for chapter in range(1, atlas.book_info[book]["chapters"] + 1):
@@ -347,15 +363,29 @@ def dossier(atlas, book_name, brief=False):
             keep = ("1.", "2.", "5.", "6.")
             chapter_report.sections = [sec for sec in chapter_report.sections
                                        if sec.title.startswith(keep)]
-        parts.append(render(chapter_report))
+        add(chapter_report)
     for root in top_words:
         try:
             # exact: the root as the book page counted it, so an untagged
             # stem opens its own page rather than a Strong's number
-            parts.append(render(word_page(atlas, root, book, exact=True)))
+            add(word_page(atlas, root, book, exact=True))
         except ValueError:
             continue
-    text = ("\n\n" + "=" * 110 + "\n\n").join(parts)
+    # The contents by line: the head's own length is known before the
+    # numbers are, since it is the fixed lines plus one per page, so
+    # each page's first line is the head, the separators and the pages
+    # before it added up.  A reader with the file in an editor goes to
+    # the line; a program reading the dossier finds the page the same way
+    separator = "\n\n" + "=" * 110 + "\n\n"
+    sep_lines = separator.count("\n")
+    n_head = len(head) + 2 + len(pages)           # the blank line and the heading, then one line per page
+    contents = ["", "Pages, by the line each begins on:"]
+    line = n_head + sep_lines
+    for title, text in pages:
+        contents.append(f"  line {line:>7}: {title}")
+        line += text.count("\n") + sep_lines
+    parts = ["\n".join(head + contents)] + [text for title, text in pages]
+    text = separator.join(parts)
     name = f"dossier_{book.lower().replace(' ', '_')}" + ("_brief" if brief else "")
     out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
     os.makedirs(out_dir, exist_ok=True)
