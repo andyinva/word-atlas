@@ -657,17 +657,35 @@ def cross_section_table(atlas, report, title, touched, secs, rest_name):
         report.section(title, ["text"], note=not_measured_note(touched[0]))
         return
     all_parts = [(b, sorted(ref.tokens[b])) for b in touched]
+    # The frame each part is measured against.  With a "Rest of ..."
+    # row, every listed part is set against that row alone, the frame
+    # the division names, and the row itself against the listed parts
+    # together; so Elijah's Delta is from the frame of Kings and not
+    # from a rest that still holds Elisha, and the row figure is the
+    # same comparison the footer's pairwise line makes.  Without a rest
+    # row (a division that covers its books) a part is set against the
+    # touched books less itself
+    frame = next((parts for name, parts, is_rest in secs if is_rest), None)
+    against = (f"the '{frame_name}' row, the chapters of {rest_name} outside every listed part"
+               if (frame_name := next((name for name, parts, is_rest in secs if is_rest), None)) else
+               f"the rest of {rest_name}, the books its division touches taken together less the part itself")
     sec = report.section(
         title, columns(ref),
-        note=f"The words no subject drives, a section at a time: each part's rates and its Delta from the "
-             f"rest of {rest_name}, the books its division touches taken together less the part itself.  "
-             f"A part whose Delta from the rest is near the halves yardstick is written like its frame "
+        note=f"The words no subject drives, a section at a time: each part's rates and its Delta from "
+             f"{against}" + ("; the rest row's own Delta is from the listed parts taken together" if frame else "")
+             + f".  A part whose Delta is near the halves yardstick is written like its frame "
              f"whatever it tells; one near the books yardstick is as unlike its frame as another book would "
              f"be.  " + how_to_read(ref))
     profiles = {}
+    listed = {(b, c) for name, parts, is_rest in secs if not is_rest for b, chs in parts for c in chs}
     for name, parts, is_rest in secs:
         own = {(b, c) for b, chs in parts for c in chs}
-        rest_parts = [(b, [c for c in chs if (b, c) not in own]) for b, chs in all_parts]
+        if frame is not None and not is_rest:
+            rest_parts = frame
+        elif frame is not None:
+            rest_parts = [(b, [c for c in chs if (b, c) in listed]) for b, chs in all_parts]
+        else:
+            rest_parts = [(b, [c for c in chs if (b, c) not in own]) for b, chs in all_parts]
         n = ref.parts_size(parts)
         if not n:
             continue

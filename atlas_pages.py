@@ -51,7 +51,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.64"   # the program version; the window title and every report print it
+VERSION = "0.10.65"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -1727,7 +1727,7 @@ def richness_runs(atlas, books, prefix):
             "SELECT root FROM word_book wb JOIN words w USING (root) WHERE wb.book = ? AND w.books_reached = 1 "
             "AND root GLOB ?", (b, prefix + "[0-9]*"))}
         words = {r[0]: r[1] for r in atlas.db.execute(
-            "SELECT chapter, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) + 1) "
+            "SELECT chapter, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) - 1) "
             "FROM verses WHERE book = ? GROUP BY chapter", (b,))}
         roots = {}
         for ch, root, w in atlas.db.execute(
@@ -1893,7 +1893,7 @@ def richness_section(atlas, report, title, book, peers, group):
             where, args = "", ()
         else:
             n_words = atlas.db.execute(
-                "SELECT COALESCE(SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) + 1), 0) "
+                "SELECT COALESCE(SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) - 1), 0) "
                 "FROM verses WHERE book = ? AND language = ?", (b, lang)).fetchone()[0]
         rows_ = atlas.db.execute(
             "SELECT wb.root, wb.weight, w.weight, w.books_reached FROM word_book wb JOIN words w USING (root) "
@@ -1911,7 +1911,7 @@ def richness_section(atlas, report, title, book, peers, group):
         lang = None
         if aramaic:
             n_ar = atlas.db.execute(
-                "SELECT COALESCE(SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) + 1), 0) "
+                "SELECT COALESCE(SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) - 1), 0) "
                 "FROM verses WHERE book = ? AND language = 'Aramaic'", (b,)).fetchone()[0]
             if n_ar >= FEW_WORDS:
                 lang = "Hebrew"
@@ -2835,8 +2835,14 @@ def sections_section(atlas, report, title, book, info):
     cells sections 4 and 6 already computed.  The first division gets
     7, 7a, 7b, 7c; a second gets 7.2, 7.2a ...
     """
+    # Words per chapter counted from the spaces of word_string, which is
+    # stored with a space at each end, so the words are the spaces less
+    # one.  Five of these counts added one instead until 0.10.65 and
+    # ran two words per verse high (the Succession Narrative read
+    # 15,210 words in section 7 and 14,306 in its header), which the
+    # reviewer saw as two counts on one page that did not agree
     words_by_ch = {r[0]: r[1] for r in atlas.db.execute(
-        "SELECT chapter, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) + 1) "
+        "SELECT chapter, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) - 1) "
         "FROM verses WHERE book = ? GROUP BY chapter", (book,))}
     verses_by_ch = {r[0]: r[1] for r in atlas.db.execute(
         "SELECT chapter, COUNT(*) FROM verses WHERE book = ? GROUP BY chapter", (book,))}
@@ -3212,7 +3218,7 @@ def cross_section_page(atlas, name, group=None):
     verses_by = {}
     for b in touched:
         for r in atlas.db.execute(
-                "SELECT chapter, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) + 1), COUNT(*) "
+                "SELECT chapter, SUM(LENGTH(word_string) - LENGTH(REPLACE(word_string, ' ', '')) - 1), COUNT(*) "
                 "FROM verses WHERE book = ? GROUP BY chapter", (b,)):
             words_by[(b, r[0])] = r[1]
             verses_by[(b, r[0])] = r[2]

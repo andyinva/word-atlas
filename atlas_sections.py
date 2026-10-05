@@ -535,10 +535,27 @@ CROSS_SECTIONS = {
                 ("The Succession Narrative", [("2 Samuel", 9, 20), ("1 Kings", 1, 2)]),
             ],
             # 2 Kings 2 holds Elijah's ascension and Elisha's first acts;
-            # at chapter grain it goes to Elisha, whose cycle it opens
+            # at chapter grain it goes to Elisha, whose cycle it opens.
+            # The Jehu revolt (2 Kings 9 to 10) is the control the
+            # reviewer asked for: northern narrative of the same kind,
+            # commonly given to the same prophetic source, so if its
+            # grammar sits with the cycles the finding is about a source,
+            # and if it sits with the frame the cycles differ by mode
+            # (story against annal) rather than by hand
             "The prophetic cycles": [
                 ("The Elijah cycle", [("1 Kings", 17, 19), ("1 Kings", 21), ("2 Kings", 1)]),
                 ("The Elisha cycle", [("2 Kings", 2, 8), ("2 Kings", 13)]),
+                ("The Jehu revolt", [("2 Kings", 9, 10)]),
+            ],
+        },
+    },
+    # The Ark Narrative (Rost again): the ark's capture and return in
+    # 1 Samuel 4 to 6 and its coming to Jerusalem in 2 Samuel 6
+    "Samuel": {
+        "books": ["1 Samuel", "2 Samuel"],
+        "divisions": {
+            "The Ark Narrative": [
+                ("The Ark Narrative", [("1 Samuel", 4, 6), ("2 Samuel", 6)]),
             ],
         },
     },

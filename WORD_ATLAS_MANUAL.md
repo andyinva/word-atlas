@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.64. Andrew Hopkins, with Claude.
+For version 0.10.65. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -1751,7 +1751,13 @@ section, so the Succession Narrative's leading words and function
 words are measured against the rest of 2 Samuel and 1 Kings, and the
 prophetic cycles' against the rest of 1 and 2 Kings. Sections of a
 division need not cover the touched books; what they leave out is
-the "Rest of 2 Samuel and 1 Kings" row. The book-against-itself
+the "Rest of 2 Samuel and 1 Kings" row, and where a division has such
+a row every listed part's Delta in 7d is measured against that row
+alone, the frame the division names, and the row's own against the
+listed parts together; so the figure in the table is the same
+comparison as the footer's pairwise line, and Elijah's Delta is from
+the frame of Kings, not from a rest that still holds Elisha (0.10.65;
+in 0.10.64 the two disagreed, 0.85 against 0.93). The book-against-itself
 tables (6, 6c, 6d) are not drawn across books; they stay on each
 book's own page.
 
@@ -2629,14 +2635,19 @@ Kings together, its leading words are Absalom (104 times, keyness
 Adonijah, and its partners by echo are 1 Chronicles at 5.8 times the
 expected rate (the parallel account), 1 Samuel at 4.0, then
 2 Chronicles, 2 Kings, Judges and Joshua, the narrative idiom of the
-Former Prophets. The function-word table is the finding Rost's
-question wanted: the narrative's Delta from the rest of 2 Samuel and
-1 Kings is 0.52 (0.55 without pronouns), under the 0.67 that one
+Former Prophets. The function-word table answers Rost's question as
+far as a table can: the narrative's Delta from the rest of 2 Samuel
+and 1 Kings is 0.52 (0.55 without pronouns), under the 0.67 that one
 book's two halves typically show, and the two books themselves stand
 0.36 apart. Whatever its origin, the Succession Narrative is written
 in the grammatical habits of its frame; its difference from Samuel
 and Kings is in what it tells and how, the court seen from inside,
-not in its particles. Samuel also extended the joined renderings to the local
+not in its particles. The frame here is itself story, which is why
+the figure is low and why the same measure on the prophetic cycles
+of Kings (section 33) needed a control before it could be read. The
+Ark Narrative (1 Samuel 4 to 6 with 2 Samuel 6), added in 0.10.65 as
+the second cross-book section of Samuel, is 2,059 tokens, a size at
+which the yardsticks say little either way. Samuel also extended the joined renderings to the local
 renderings line: 1 Samuel 18 tags "son in law" on H2859, which the
 Bible otherwise renders father-in-law, and the line now reads
 "'son-in-law' for H2859 (5 of the Bible's 5; father-in-law elsewhere)".
@@ -2813,24 +2824,45 @@ together. The table has, in effect, voted for the Greek order.
 
 The prophetic cycles read whole (0.10.64, section 28: the Elijah
 cycle as 1 Kings 17 to 19 and 21 with 2 Kings 1, the Elisha cycle as
-2 Kings 2 to 8 and 13) give the opposite result from the Succession
-Narrative. Against the rest of 1 and 2 Kings together, the Elijah
-cycle's function-word Delta is 0.85 (0.76 without pronouns) and the
-Elisha cycle's 0.79 (0.89 without), both nearer the 1.10 of two
-different books than the 0.67 of one book's halves, while the two
-cycles are 0.67 from each other (0.44 without pronouns), as alike as
-one book's halves. The rates say where the difference lies: the
-cycles open their clauses with the narrative vav at 86 and 92 per
-thousand against the frame's 58, and use "el" (unto) at 26 and 22
-against 12 and "asher" (which) at 14 and 10 against 20, the plain
-storytelling grammar of the northern narratives against the annalistic
-and Deuteronomistic prose of the frame. The leading words are what a
-reader expects (Elijah, Naboth, Ahab, fifty, Jezebel; Elisha, Syria,
-Gehazi, Naaman, the child), and the table adds that the two cycles
-share their grammar with each other and not with the book that holds
-them, which is what the hypothesis of a northern prophetic source
-behind Kings predicts, and what a reader of the Succession Narrative,
-whose grammar is its frame's, should set beside it.
+2 Kings 2 to 8 and 13) look at first like the opposite result from
+the Succession Narrative. Against the frame of Kings, the chapters of
+1 and 2 Kings outside every listed part, the Elijah cycle's
+function-word Delta is 0.95 (0.94 without pronouns) and the Elisha
+cycle's 0.87 (1.01 without), near the 1.10 of two different books,
+while the two cycles are 0.67 from each other (0.44 without pronouns),
+as alike as one book's halves. The rates say where the difference
+lies: the cycles open their clauses with the narrative vav at 86 and
+92 per thousand against the frame's 56, and use "el" (unto) at 26 and
+22 against 12 and "asher" (which) at 14 and 10 against 21. The leading
+words are what a reader expects (Elijah, Naboth, Ahab, fifty, Jezebel;
+Elisha, Syria, Gehazi, Naaman, the child).
+
+The first reading of this, in 0.10.64, was that the cycles share
+their grammar with each other and not with the book that holds them,
+as a northern prophetic source behind Kings would predict. The
+reviewer asked for the control before the manual said so, and the
+control (0.10.65) says otherwise. The frame of Kings is not story: it
+is the temple with its cubits, Solomon's prayer, the regnal formulae
+and the annals, and those drop the narrative vav and raise "asher"
+whoever wrote them. Set other story against the same frame and it
+stands as far off as the cycles do: the Succession Narrative 0.73
+(0.70 without pronouns), 1 Kings 1 to 2 alone 0.85, the whole of 1
+Samuel 0.72, the Ark Narrative 0.58, all with the narrative vav at 72
+to 75 per thousand and "asher" at 10 to 12. The Jehu revolt (2 Kings
+9 to 10), added to the division as the test, stands 0.79 from the
+frame and 0.80 and 0.62 from the two cycles, which at 1,900 tokens
+decides nothing; and the Succession Narrative, a Judean court story,
+is 0.54 from the Elijah cycle, nearer to it than the Elisha cycle is.
+So the 0.9 is story against annal, a difference of mode, not north
+against Judah, a difference of hand; what is left of the cycles' own
+colour after the mode is allowed for is small (the vav at 86 to 92
+against story's 73, "unto" at 22 to 26 against 18 to 20), and no
+reader should build a source on it from this table. The function-word
+layer measures the habits of a text; it does not know what kind of
+text it is measuring, and a part cut from a book of mixed kinds
+measures first the kind. That is the lesson of this page, and it is
+the reason the yardsticks warn that a run of chapters is typically
+0.7 to 1.0 from the rest of its book by size alone.
 
 ## 34. Chronicles: a source's silence as a row of numbers
 
@@ -4527,6 +4559,15 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.65.** The cross-book 7d measures each part against the
+division's "Rest of" row when it has one, so table and footer agree;
+the Jehu revolt added to the prophetic cycles as a control and the
+Ark Narrative as a second cross-book section of Samuel, and the
+reading of the cycles result corrected (section 33: mode, not hand);
+five word counts that ran two words per verse high (section 7's
+words and keyness denominators, 1d's words and rates) corrected to
+the convention the rest of the atlas uses, so a page's counts agree.
 
 **0.10.64.** Sections across a book boundary (CROSS_SECTIONS in
 atlas_sections.py; section 28): the Succession Narrative as 2 Samuel
