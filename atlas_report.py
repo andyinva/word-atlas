@@ -385,7 +385,16 @@ class ResultsWriter:
         return cur.lastrowid
 
     def write(self, report, run_id):
-        """Write one report under a run; returns its page_id."""
+        """
+        Write one report under a run; returns its page_id.  A page is
+        stored once per run, keyed by its title: a cross-book section
+        page is rendered into the dossier of every book it takes, and
+        the first copy stands for all of them.
+        """
+        existing = self.db.execute("SELECT page_id FROM pages WHERE run_id = ? AND title = ?",
+                                   (run_id, report.title)).fetchone()
+        if existing:
+            return existing[0]
         kind = report.title.split(" ")[0]
         cur = self.db.execute("INSERT INTO pages (run_id, name, title, kind, notes) VALUES (?, ?, ?, ?, ?)",
                               (run_id, report.name, report.title, kind, "\n".join(report.notes)))

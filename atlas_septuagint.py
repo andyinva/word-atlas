@@ -97,6 +97,16 @@ SECOND_TEXTS = {"TobS", "BelOG", "SusOG", "Odes"}
 PRONOUNS = {"P1": {"G1473", "G1691", "G1698", "G1700", "G3165", "G3427", "G3450",
                    "G2249", "G2248", "G2254", "G2257"},
             "P2": {"G4771", "G4571", "G4671", "G4675", "G5210", "G5209", "G5213", "G5216"}}
+# Repairs to the Septuagint's tagging where it is plainly a slip, found
+# as seams in 4e (the same word under two keys, one of them wrong):
+# (Rahlfs code, chapter, verse, the word as written) -> the key it
+# should carry.  A repair is for one tagging's mistake; two legitimate
+# numbers for one word go in the catalogue's equivalents table instead
+LEMMA_REPAIRS = {
+    ("Isa", 7, "14", "ἕξει"): "G2192",     # the future of echo, tagged as the noun hexis G1838
+    ("Isa", 8, "18", "παιδία"): "G3813",   # "children", tagged as paideia G3809, "discipline"
+}
+
 # Marks the TAGNT's glosses carry that are not the gloss
 GLOSS_NOISE = re.compile(r"\[.*?\]|<.*?>|[.,;:·¶!?\"'‘’“”]")
 TRAILING_PUNCTUATION = ".,;:·¶!?"
@@ -251,8 +261,14 @@ class GreekTexts:
                     "FROM tokens t JOIN verses v ON t.verse_id = v.verse_id "
                     f"WHERE v.corpus = ?{edition if corpus == 'GNT' else ''} "
                     "ORDER BY t.verse_id, t.position", (corpus,))
+                where = {vid: (code, ch, v) for vid, code, ch, v, eb, ec, ev in verses} if corpus == "LXX" else {}
                 words = defaultdict(list)
                 for vid, pos, surface, lemma, root, is_stop, gloss in rows:
+                    if corpus == "LXX":
+                        code, ch, v = where[vid]
+                        repair = LEMMA_REPAIRS.get((code, ch, v, surface.rstrip(TRAILING_PUNCTUATION)))
+                        if repair:
+                            root = repair
                     words[vid].append((surface, lemma, self.key_of(root, lemma), bool(is_stop), gloss))
                 loaded[corpus] = (verses, words)
             # Which keys are function words is decided once for both

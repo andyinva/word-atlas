@@ -7,7 +7,7 @@ with the version that carried them. Add to it whenever a review or a
 conversation raises something; the manual's version history records
 what shipped, this records what has not.
 
-Last updated 2026-10-05, at version 0.10.69.
+Last updated 2026-10-05, at version 0.10.70.
 
 ## Standing work
 
@@ -201,7 +201,10 @@ number against the land's), and the split breaks the run at "the house
 of Judah"; `tags check` should show whether it is general before an
 entry is made. (2) Jeremiah's verse map (28b) is now visible on the
 pages: 4e prints "Jeremiah (Rahlfs 30:12, no English verse mapped)"
-for English 49:18, and the chapters 25 to 51 want finishing by hand. (3) Done 0.10.61: a run bridged across one
+for English 49:18, and the chapters 25 to 51 want finishing by hand;
+the first canon-wide `declined` list added Nehemiah to it, whose
+fourteen 4e declines mean 2 Esdras 11 to 23 (Rahlfs' Nehemiah) is not
+mapped to English Nehemiah either. (3) Done 0.10.61: a run bridged across one
 word (changed or added on either side) when three shared words
 follow, marked "one word apart" with the gap in brackets; a bracket
 with the same word on both sides is a seam between the taggings, and
@@ -211,8 +214,10 @@ act on differently: two legitimate numbers for one word ([μήποτε |
 ([ἕξει | ἕξει] at Matthew 1:23, the Septuagint reading the future of
 echo as the noun hexis), a lemma repair on the Septuagint side, which
 wants a small table of corrections read by build_lxx.py or by the
-layer rather than an equivalence between two real keys. Read the
-footers of a canon-wide run and sort them. (4) The Old Testament side of 1e: a book's Septuagint
+layer rather than an equivalence between two real keys. Done 0.10.70: the canon-wide run found three seams, sorted into one
+equivalents row (μήποτε G3379 to G3361) and two lemma repairs
+(LEMMA_REPAIRS in atlas_septuagint.py); the `seams` question of
+atlas_results.py does the listing for later runs. (4) The Old Testament side of 1e: a book's Septuagint
 vocabulary against the rest of the Septuagint measures the translator;
 decide whether that is wanted. (4b) Done 0.10.60: 4f, the quotations the English echoes find that
 4e does not confirm in Greek, as a table with the Greek the two
@@ -315,7 +320,7 @@ go, and the README says what a visitor must supply.
 
 ## DONE
 
-2026-10-03 the repository public with 0.10.37 pushed. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
+2026-10-03 the repository public with 0.10.37 pushed. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
 splits. 0.10.50 1d a language at a time for Daniel and Ezra. 0.10.49 a run figure for the once-here share. 0.10.48 1c and 1d refusals and the sibling caution. 0.10.47 nearest beyond the kind under 1c and 1d. 0.10.46 1d's run figures cached. 0.10.45 1d's run columns. 0.10.44 vocabulary richness (1d); Hebrews in parts. 0.10.43 the kind's own size yardsticks. 0.10.42 nine-in-ten yardsticks and a no-pronoun Delta. 0.10.41 cautions and a size yardstick on 1c and 7d; three more
 letters in parts. 0.10.40 the function-word layer, 1c and 7d (New Testament). 0.10.39 section 7's leading words floored and ended early. 0.10.38 2 Corinthians, Galatians and Ephesians in parts. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
 words, 3 to 5). 0.10.34 1b stops at a keyness floor (6.63); three occurrences for a

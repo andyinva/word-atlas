@@ -596,7 +596,7 @@ def section_table(atlas, report, title, book, secs, chapters_of, shown_name, fir
              f"one near the books yardstick is as unlike the rest as another book would be.  "
              + how_to_read(ref))
     profiles = {}
-    skipped = []
+    skipped, no_rest = [], []
     for name, chs, is_rest in secs:
         own_chs = set(chapters_of[name])
         rest_chs = all_chapters - own_chs
@@ -607,18 +607,31 @@ def section_table(atlas, report, title, book, secs, chapters_of, shown_name, fir
         prof = ref.profile(book, own_chs)
         profiles[name] = prof
         rest_prof = ref.profile(book, rest_chs)
-        d = ref.delta(prof, rest_prof) if rest_chs and n else 0.0
-        d2 = ref.delta(prof, rest_prof, ref.non_pronoun) if rest_chs and n else 0.0
+        n_rest = ref.size(book, rest_chs)
         # 'few' (under FEW_WORDS content words) and 'low' (under
         # DELTA_MIN_WORDS tokens) are two marks for two tables; a part
         # that earns both is shown "(few, low)"
         label = shown_name[name]
         if mark(ref, n):
             label = label.replace(" (few)", " (few, low)") if "(few)" in label else label + " (low)"
+        # A part with no rest to measure against (Ezra's Hebrew once the
+        # Aramaic chapters are left out is the whole measurable book)
+        # declines with a dash: a Delta of 0.0 there read as a finding,
+        # and the results database's declined list could not see it
+        if not n_rest:
+            no_rest.append(label)
+            sec.add([label, n] + [round(prof[f], 1) for f in ref.features] + ["-", "-"],
+                    link={"book": book, "chapter": firsts[name], "section": name})
+            continue
+        d = ref.delta(prof, rest_prof)
+        d2 = ref.delta(prof, rest_prof, ref.non_pronoun)
         sec.add([label, n] + [round(prof[f], 1) for f in ref.features] + [round(d, 2), round(d2, 2)],
                 link={"book": book, "chapter": firsts[name], "section": name})
     if skipped:
         sec.footer.append("Not measured, being Aramaic: " + ", ".join(skipped) + ".")
+    if no_rest:
+        sec.footer.append("Not measured, the rest of the book being Aramaic and left out, so the part has no rest "
+                          "to be measured against: " + ", ".join(no_rest) + ".")
     line = left_out_line(ref, [book])
     if line:
         sec.footer.append(line)

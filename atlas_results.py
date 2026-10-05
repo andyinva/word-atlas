@@ -112,14 +112,50 @@ def q_shares(db, run):
         m = re.search(r"Septuagint: (.+?) ([\d.]+)%, (\d+)(?:st|nd|rd|th) of (\d+)", r["text"])
         if m:
             rows.append((m.group(1), float(m.group(2)), int(m.group(3))))
-    rows.sort(key=lambda t: -t[1])
+    # The same order the page's footer ranks by (share, then name), so
+    # the rank column and the list agree at a tie
+    rows.sort(key=lambda t: (-t[1], t[0]))
     return ("Share of content words leaning to the Septuagint (1f), every New Testament book, from its own page",
             table(["book", "share %", "rank"], rows))
 
 
+YARDSTICK = re.compile(r"about ([\d,]+) tokens ([\d.]+), nine in ten under ([\d.]+)")
+
+
+def size_yardsticks(db, section_id):
+    """
+    The size yardsticks printed under a 7d table, parsed from its
+    footer: [(tokens, median, nine in ten)], the testament's own line
+    (the first "Size yardsticks" footer, not the kind's).
+    """
+    for f in db.execute("SELECT text FROM footers WHERE section_id = ? ORDER BY position", (section_id,)):
+        if f["text"].startswith("Size yardsticks"):
+            return [(int(a.replace(",", "")), float(b), float(c)) for a, b, c in YARDSTICK.findall(f["text"])]
+    return []
+
+
+def nine_in_ten(yardsticks, tokens):
+    """The nine-in-ten line for a part's size: the nearest size struck, on a log scale; the largest beyond it."""
+    if not yardsticks or not tokens:
+        return None
+    import math
+    best = min(yardsticks, key=lambda y: abs(math.log(y[0]) - math.log(max(tokens, 1))))
+    return best[2]
+
+
 def q_deltas(db, run):
-    """Every row of a function-word-by-section table: the part, its tokens and its Delta from its rest."""
-    rows = []
+    """
+    Every row of a function-word-by-section table: the part, its
+    tokens, its Delta from its rest, the nine-in-ten yardstick for a
+    part of its size, and the excess of the Delta over that line, which
+    is what the list is sorted by: a small part stands far from its
+    book by size alone, and the yardsticks were struck to discount it.
+    One row per division and part (a cross-book division's table is on
+    every page of the division); a two-part division, whose parts have
+    the same Delta by construction, prints once as "A / B".
+    """
+    seen = {}
+    order = []
     for s in db.execute(
             "SELECT s.section_id, s.number, s.title, p.title AS page FROM sections s JOIN pages p USING (page_id) "
             "WHERE p.run_id = ? AND s.title LIKE '%Function words by section%' ORDER BY p.page_id, s.position", (run,)):
@@ -129,12 +165,37 @@ def q_deltas(db, run):
                                         columns.index("Delta"), columns.index("Delta (no pronouns)"))
         except ValueError:
             continue
+        yardsticks = size_yardsticks(db, s["section_id"])
+        division = s["title"]
         for row in data:
-            rows.append((book_of(s["page"]), s["number"], row[i_text], row[i_tok], row[i_d], row[i_d2]))
-    rows.sort(key=lambda t: -(t[4] or 0))
-    return ("Every part's function-word Delta from its rest (7d and its repeats), largest first; "
-            "yardsticks: two different books about 1.10, the two halves of one book about 0.67",
-            table(["page", "table", "part", "tokens", "Delta", "Delta (no pronouns)"], rows))
+            if not isinstance(row[i_d], (int, float)):
+                continue                      # a part that declined ("-")
+            key = (division, row[i_text])
+            if key in seen:
+                continue
+            line = nine_in_ten(yardsticks, row[i_tok])
+            seen[key] = [book_of(division), s["number"], row[i_text], row[i_tok], row[i_d], row[i_d2], line,
+                         round(row[i_d] - line, 2) if line is not None else None]
+            order.append(key)
+    # A two-part division: one row for the pair
+    by_division = {}
+    for key in order:
+        by_division.setdefault(key[0], []).append(key)
+    rows = []
+    for division, keys in by_division.items():
+        if len(keys) == 2 and seen[keys[0]][4] == seen[keys[1]][4]:
+            a, b = seen[keys[0]], seen[keys[1]]
+            rows.append([a[0], a[1], f"{a[2]} / {b[2]}", f"{a[3]} / {b[3]}", a[4], a[5],
+                         a[6] if a[6] is not None and b[6] is not None and a[6] <= b[6] else b[6],
+                         max(x for x in (a[7], b[7]) if x is not None) if (a[7] is not None or b[7] is not None) else None])
+        else:
+            rows.extend(seen[k] for k in keys)
+    rows.sort(key=lambda t: -(t[7] if t[7] is not None else -9))
+    return ("Every part's function-word Delta from its rest (7d and its repeats), with the nine-in-ten yardstick "
+            "for a part of its size and the excess over it, largest excess first.  A part above its line stands "
+            "further from its book than nine in ten runs of its size do; the yardsticks are two different books "
+            "about 1.10 and the two halves of one book about 0.67",
+            table(["division", "table", "part", "tokens", "Delta", "Delta (no pronouns)", "nine in ten (size)", "excess"], rows))
 
 
 def q_seams(db, run):
@@ -167,15 +228,40 @@ def q_seams(db, run):
             table(["key", "key", "word(s)", "places", "pages", "where"], rows))
 
 
+def first_sentence(text, limit=150):
+    """
+    The reason as a reader needs it: whole sentences (a full stop
+    followed by a space ends one, so 'lxx.db' does not) until at least
+    sixty characters are in hand ("Not measured." alone says nothing),
+    within the limit.
+    """
+    out = ""
+    for m in re.finditer(r".*?\.(?=\s|$)", text, re.S):
+        out = text[:m.end()].strip()
+        if len(out) >= 60:
+            break
+    out = out or text
+    return out if len(out) <= limit else out[:limit].rstrip() + " ..."
+
+
 def q_declined(db, run):
+    """
+    Every table that declined to measure (no rows and a note beginning
+    'Not measured'), and every table that declined for a part of what
+    it covers (a footer beginning 'Not measured'), with the reason.
+    """
     rows = []
     for r in db.execute(
-            "SELECT p.title AS page, s.number, s.title, s.note FROM sections s JOIN pages p USING (page_id) "
+            "SELECT p.title AS page, s.number, s.note FROM sections s JOIN pages p USING (page_id) "
             "WHERE p.run_id = ? AND s.n_rows = 0 AND s.note LIKE 'Not measured%' ORDER BY p.page_id, s.position", (run,)):
-        reason = r["note"].split(".")[0] + "."
-        rows.append((book_of(r["page"]), r["number"], reason[:100]))
-    return ("Every table that declined to measure, with the first sentence of its reason",
-            table(["page", "table", "reason"], rows))
+        rows.append((book_of(r["page"]), r["number"], "whole table", first_sentence(r["note"])))
+    for r in db.execute(
+            "SELECT p.title AS page, s.number, f.text FROM footers f JOIN sections s USING (section_id) "
+            "JOIN pages p USING (page_id) WHERE p.run_id = ? AND f.text LIKE 'Not measured%' "
+            "ORDER BY p.page_id, s.position, f.position", (run,)):
+        rows.append((book_of(r["page"]), r["number"], "in part", first_sentence(r["text"])))
+    return ("Every table that declined to measure, whole or in part, with the first sentence of its reason",
+            table(["page", "table", "declined", "reason"], rows))
 
 
 def q_section(db, run, book, number):

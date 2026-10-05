@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.69. Andrew Hopkins, with Claude.
+For version 0.10.70. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -1207,7 +1207,23 @@ its reason), `section Isaiah 7d` (one section of one page as stored),
 title, sections by number and rows by their first cell, which is the
 reviewer's diff of two dossiers made exact), and `sql "SELECT ..."`
 for anything else. `--run N` reads a run other than the latest;
-`--out NAME` names the saved file.
+`--out NAME` names the saved file. The first canon-wide run (0.10.70)
+shaped the questions: a page is stored once per run by its title, so
+a cross-book section page rendered into three dossiers is counted
+once; `deltas` prints one row per division and part, a two-part
+division as one row for the pair, and sorts by the excess of each
+Delta over the nine-in-ten yardstick for a part of its size, since
+"largest first" without that is led by the smallest parts, the hymn
+to wisdom at 303 tokens and the court tales at 501, which is the size
+effect the yardsticks were struck to discount; sorted by excess, the
+canon's largest well-sized distances are 1 Chronicles' genealogies,
+Ezekiel's temple vision, Leviticus' Holiness Code and Exodus' story
+against its tabernacle, every one a change of kind inside a book,
+which is the mode caution of section 33 as a canon-wide table and
+also what the layer should find if it measures what it claims to;
+`declined` lists tables that declined in part (a footer beginning
+"Not measured") as well as whole, with whole sentences of the reason;
+`shares` ranks ties as the page does.
 With `--brief` (the button's Yes) each chapter page keeps only its
 leading words, signature words, formulas and synopsis, and each section
 page its signature words, formulas and echo tables, which is what a
@@ -2234,7 +2250,18 @@ equivalents row (μήποτε at Matthew 13:15), or one tagging's slip,
 which is a lemma repair on the side that erred (ἕξει is the future of
 echo, and the Septuagint's tagger read it as the noun hexis; the
 remedy is to correct that lemma, not to declare two real keys
-equivalent). The Hebrews 8:11 seam was the test of the οἶδα
+equivalent). The first canon-wide run (0.10.70) found three seams in
+all, which says the two taggings agree far better than expected, and
+they sorted themselves: μήποτε (G3361 | G3379), the TAGNT keying the
+compound under μή and the Septuagint under its own number, six places
+across seventeen pages, is an equivalents row; ἕξει at Isaiah 7:14
+and παιδία at Isaiah 8:18 behind Hebrews 2:13 (the Septuagint's
+"children" keyed as παιδεία, "discipline") are the Septuagint's
+slips, and are repaired by LEMMA_REPAIRS in atlas_septuagint.py, a
+small table of (Rahlfs reference, word) to the key it should carry,
+applied as the Septuagint is read. A repair is for one tagging's
+mistake and is written there; two legitimate numbers for one word go
+in the catalogue. The Hebrews 8:11 seam was the test of the οἶδα
 equivalence entered in 0.10.57: it had not reached the page because
 atlas_lxx.py upper-cases a root as it enters it, so the row read
 "L:ΟΙΔΑ" where the tokens carry "L:οιδα"; since 0.10.62 the layer
@@ -4673,6 +4700,16 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.70.** After the first canon-wide results run: a page stored
+once per run by title; `deltas` by division and part, sorted by the
+excess over the size yardstick; `declined` with partial declines and
+whole sentences; `shares` ranking ties as the page does; a 7d row
+whose part has no rest to be measured against (Ezra's Hebrew once
+the Aramaic is left out) declines with a dash instead of printing
+0.0; LEMMA_REPAIRS in atlas_septuagint.py for the Septuagint's two
+slips (Isaiah 7:14 ἕξει, 8:18 παιδία), and the μήποτε equivalence
+entered in the catalogue.
 
 **0.10.69.** atlas_results.py: the first questions of the results
 database (runs, shares, deltas, seams, declined, section, diff, sql),
