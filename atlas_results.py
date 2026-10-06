@@ -34,6 +34,8 @@ import re
 import sqlite3
 import sys
 
+from atlas_report import is_numeric_cell   # one alignment rule for pages and results
+
 PROGRAM_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_PATH = os.path.join(PROGRAM_DIR, "reports", "results.db")
 
@@ -66,7 +68,9 @@ def table(columns, rows):
     for row in cells:
         for i, v in enumerate(row):
             widths[i] = max(widths[i], len(v))
-    numeric = [all(isinstance(row[i], (int, float)) or row[i] in (None, "") for row in rows) for i in range(len(columns))]
+    # Numbers and figure-like text ("501 / 3261", "15/66") right-aligned,
+    # words left-aligned: the same rule the pages use (atlas_report)
+    numeric = [all(is_numeric_cell(row[i]) for row in rows) for i in range(len(columns))]
 
     def fmt(values):
         return "  ".join(v.rjust(widths[i]) if numeric[i] else v.ljust(widths[i]) for i, v in enumerate(values)).rstrip()

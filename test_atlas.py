@@ -332,6 +332,59 @@ def test_guards(atlas, only):
         report(name, not stray, f"pronoun numbers counted as content: {stray}" if stray else "")
 
 
+# --- the window -----------------------------------------------------------------------------
+WINDOW_SCRIPT = """
+import sys
+from PyQt6.QtWidgets import QApplication, QTableWidget
+from PyQt6.QtTest import QTest
+from PyQt6.QtCore import Qt
+app = QApplication(sys.argv)
+import word_atlas, atlas_pages
+w = word_atlas.WordAtlasWindow(atlas_pages.Atlas())
+w.show()
+w.open_page("Book", "Jude", None, "")
+app.processEvents()
+tables = w.page_view.body.findChildren(QTableWidget)
+t = tables[0]
+rect = t.visualItemRect(t.item(0, 0))
+QTest.mouseClick(t.viewport(), Qt.MouseButton.LeftButton, pos=rect.center())
+app.processEvents()
+QTest.mouseDClick(t.viewport(), Qt.MouseButton.LeftButton, pos=rect.center())
+app.processEvents()
+app.processEvents()
+title = w.page_view.body.findChildren(QTableWidget)[0].section.title
+print("opened:", title)
+"""
+
+
+def test_window(only):
+    """
+    The window opened offscreen, a page shown, a table double-clicked:
+    the double-click opens the page the row leads to and the program
+    is still running afterwards.  In its own process, since the fault
+    it guards (0.10.71: opening a page from inside a table's own
+    signal replaced the table and brought the program down without a
+    message) kills the process rather than raising.
+    """
+    name = "guard: the window survives a double-click on a table"
+    if only and only not in name:
+        return
+    try:
+        import PyQt6  # noqa: F401
+    except ImportError:
+        skip(name, "PyQt6 is not installed")
+        return
+    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
+    out = subprocess.run([sys.executable, "-c", WINDOW_SCRIPT], capture_output=True, text=True,
+                         env=env, cwd=PROGRAM_DIR, timeout=300)
+    opened = [l for l in out.stdout.splitlines() if l.startswith("opened:")]
+    if out.returncode == 0 and opened:
+        report(name, True, opened[0][8:60])
+    else:
+        tail = (out.stderr.strip().splitlines() or ["no output"])[-1]
+        report(name, False, f"exit {out.returncode}: {tail[:120]}")
+
+
 # --- housekeeping -----------------------------------------------------------------------
 def read(name):
     with open(os.path.join(PROGRAM_DIR, name), encoding="utf-8") as f:
@@ -393,7 +446,7 @@ def main(argv):
         print("smoke: dossier Jude --brief")
         for args in DETERMINISM_COMMANDS:
             print("determinism:", " ".join(args))
-        print("guard: names test; Greek New Testament verses; equivalents lemma keys; pronouns")
+        print("guard: names test; Greek New Testament verses; equivalents lemma keys; pronouns; the window's double-click")
         print("housekeeping: one version everywhere; no em dash; every module compiles")
         return 0
     started = time.perf_counter()
@@ -401,6 +454,7 @@ def main(argv):
     test_housekeeping(only)
     atlas = atlas_pages.Atlas()
     test_guards(atlas, only)
+    test_window(only)
     test_smoke(atlas, only)
     test_dossier(atlas, only)
     if not quick:

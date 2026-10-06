@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.70. Andrew Hopkins, with Claude.
+For version 0.10.73. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -335,6 +335,7 @@ English ones.
 | `atlas_lift.py`, `atlas_lxx.py`, `build_lxx.py`, `septuagint_bridge.py` | The command-line line of work on fair baselines, passages and the Septuagint; `METADATA_IN_WORD_ATLAS.md` and `NORMALIZATION_IN_WORD_ATLAS.md` describe it |
 | `atlas_report.py` | The reporting module: Report and Section, the text layout, trimming, the dossier's head, and the results database writer (section 11a) |
 | `atlas_results.py` | Questions across the canon asked of reports/results.db, each answer saved as a text file under reports/ (section 19) |
+| `atlas_pack.py` | Packs reports/results.db with a manifest into one `.wadb` file for the Word Atlas Reader, the separate viewer for readers who have the dataset and not the program (section 19) |
 | `test_atlas.py` | The check before a commit: smoke, determinism, guards and housekeeping (section 41) |
 | `WORD_ATLAS_MANUAL.md` | This manual |
 | `HOW_WORD_ATLAS_GREW.md` | The story of how the program was built |
@@ -1224,6 +1225,19 @@ also what the layer should find if it measures what it claims to;
 `declined` lists tables that declined in part (a footer beginning
 "Not measured") as well as whole, with whole sentences of the reason;
 `shares` ranks ties as the page does.
+
+The database is also what a reader without the program gets. `python3
+atlas_pack.py` (0.10.73) zips `reports/results.db` together with a
+manifest (the program version, the runs inside, when it was packed)
+into `reports/word_atlas_<version>.wadb`, about a third of the
+database's size; and the Word Atlas Reader, a separate program in its
+own repository (word_atlas_reader), opens that one file and shows every
+page as text laid out by this program's own `atlas_report.py`, every
+table as a grid that sorts, a search across every cell, the
+`atlas_results.py` questions from a menu, and a panel for asking Claude
+questions of the data with the reader's own API key, Claude working
+through a read-only SQL query. The Reader needs Python and PyQt6, or
+nothing at all when built with PyInstaller; its README says how.
 With `--brief` (the button's Yes) each chapter page keeps only its
 leading words, signature words, formulas and synopsis, and each section
 page its signature words, formulas and echo tables, which is what a
@@ -4700,6 +4714,24 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.73.** `atlas_pack.py`, which packs the results database into
+one `.wadb` file for the Word Atlas Reader, the separate viewer for
+readers who have the dataset and not the program (section 19).
+
+**0.10.72.** Columns in the text reports line up. A column was
+right-aligned only when every cell was a number, so a column of
+figures written as text ("501 / 3261" tokens in `deltas`, "15/66"
+books on a book page) fell to the left while its neighbours stood to
+the right. Now any column whose cells are all numbers or figure-like
+text (digits and the marks . , : % x / -) is right-aligned, in the
+pages and in `atlas_results.py` alike, by one shared rule.
+
+**0.10.71.** A double-click on any table closed the window without a
+message: opening the page a row leads to replaced the page view's
+widgets from inside the table's own signal. The opening is now put
+off until the click is over, and the test script double-clicks a
+table in an offscreen window before every commit.
 
 **0.10.70.** After the first canon-wide results run: a page stored
 once per run by title; `deltas` by division and part, sorted by the

@@ -44,6 +44,15 @@ corpora in place the pages gain the Septuagint layer (`atlas_septuagint.py`,
 section 28d): a New Testament book's Greek against the Septuagint, its
 Septuagint words, and the echoes across the testaments in Greek.
 
+## Checking it
+
+    python3 test_atlas.py
+
+builds every kind of page on a few books, runs the same pages twice
+under different hash seeds, and checks the guards and the version
+lines; it prints one line per test and exits 1 on a failure, so it can
+be a pre-commit hook. `--quick` leaves out the determinism test.
+
 ## Reading further
 
 `WORD_ATLAS_MANUAL.md` is the one document: how to start, how to read

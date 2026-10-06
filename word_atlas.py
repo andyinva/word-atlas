@@ -38,7 +38,7 @@ import sys
 import importlib
 import os
 
-from PyQt6.QtCore import QProcess, QRectF, Qt
+from PyQt6.QtCore import QTimer, QProcess, QRectF, Qt
 from PyQt6.QtGui import QColor, QFont, QKeySequence, QPainter, QPen, QShortcut
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame, QHBoxLayout, QInputDialog, QLabel,
                              QLineEdit, QMainWindow, QMessageBox, QPushButton,
@@ -1455,10 +1455,21 @@ class WordAtlasWindow(QMainWindow):
         return "".join(parts) or "<p><i>No verses to show for this row.</i></p>"
 
     def follow_link(self, section, row):
-        """Double click: open the page a row leads to."""
+        """
+        Double click: open the page a row leads to.  The opening is put
+        off until the click has been fully handled: opening a page
+        replaces the page view's widgets, the table that sent the
+        double-click among them, and replacing a widget from inside its
+        own signal brought the program down without a message (a double
+        click anywhere on a table closed the window, 0.10.71)
+        """
         link = section.links[row] if row < len(section.links) else None
         if not link:
             return
+        QTimer.singleShot(0, lambda: self._follow(link))
+
+    def _follow(self, link):
+        """The page a link leads to, opened once the click is over."""
         if "word" in link and "pair" not in link:
             # A word: open its word page, in the book the row came from
             self.open_page("Word", link.get("book"), None, self.atlas.form(link["word"]))

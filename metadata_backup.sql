@@ -1,5 +1,5 @@
 -- Word Atlas metadata.db backup (plain SQL; restore with atlas_backup.py)
--- written: 2026-10-04 09:17
+-- written: 2026-10-05 18:43
 BEGIN TRANSACTION;
 CREATE TABLE books (
     book_num       INTEGER PRIMARY KEY,     -- 1 = Genesis ... 66 = Revelation
@@ -5552,6 +5552,7 @@ INSERT INTO "root_equivalents" VALUES('G2909','G2908','kreisson, better: the Sep
 INSERT INTO "root_equivalents" VALUES('G3112','G3117','makran / makros, far and long: 26/11');
 INSERT INTO "root_equivalents" VALUES('G4240','G4236','prautes / praotes, meekness, one word in two spellings: 9/9');
 INSERT INTO "root_equivalents" VALUES('L:ΟΙΔΑ','G6063','oida ''know'': the Septuagint keys it by lemma, the TAGNT under G6063');
+INSERT INTO "root_equivalents" VALUES('G3379','G3361','mepote ''lest'': the TAGNT keys the compound under me G3361, the Septuagint under its own G3379 (six places across seventeen pages in the first canon-wide run)');
 CREATE TABLE verse_tags (
     book_num    INTEGER NOT NULL REFERENCES books(book_num),
     chapter     INTEGER NOT NULL,

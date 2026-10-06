@@ -37,6 +37,26 @@ import time
 PAGE_SEPARATOR = "\n\n" + "=" * 110 + "\n\n"
 TABLE_RULE_MAX = 110            # the dash line under a table's header is no wider than this
 NUMBER = re.compile(r"-?\d{1,3}(,\d{3})*(\.\d+)?|-?\d+(\.\d+)?")   # a cell that is a number written as text
+# A cell that looks like a figure even though it is text: "501 / 3261",
+# "15/66", "12:3", "3.2x", "41%", "-".  Such cells line up on the right
+# like numbers, so a column of them reads as a column of figures.
+FIGURE = re.compile(r"[\d.,:%x/\s-]*")
+
+
+def is_numeric_cell(value):
+    """
+    True when a table cell should be right-aligned: a number, an empty
+    cell, or text made only of digits and figure punctuation.  A column
+    is right-aligned when every one of its cells passes this test, so
+    one word in a column turns the whole column left-aligned.
+    """
+    if value is None:
+        return True
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, (int, float)):
+        return True
+    return isinstance(value, str) and FIGURE.fullmatch(value) is not None
 
 
 # ---------------------------------------------------------------------------
@@ -216,9 +236,9 @@ def render(report, atlas=None, timing=False):
             for row in cells:
                 for i, v in enumerate(row):
                     widths[i] = max(widths[i], len(v))
-            # Numbers right-aligned, text left-aligned
-            numeric = [all(isinstance(row[i], (int, float)) or row[i] == ""
-                           for row in sec.rows) for i in range(len(sec.columns))]
+            # Numbers and figure-like text right-aligned, words left-aligned
+            numeric = [all(is_numeric_cell(row[i]) for row in sec.rows)
+                       for i in range(len(sec.columns))]
 
             def fmt(values):
                 out = []

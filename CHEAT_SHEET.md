@@ -167,7 +167,9 @@ partner's order), 4c the echo map picture, and 4d every verse tagged by
 which of the two chief partners it has a parallel in (both, one only,
 neither), and 4e the Septuagint echoes, the runs of Greek the book
 shares with the other testament's Greek text (quotations by root,
-with the Rahlfs numbering and the synoptic parallels; 1e and 1f on a
+with the Rahlfs numbering and the synoptic parallels), 4f the English
+echoes across the testaments that no Greek run confirms (quotations
+not in the Septuagint's words; 1e and 1f on a
 New Testament book give its Greek against the Septuagint and its
 Septuagint words). 5 Reach and depth, a chart of the signature words with reach
 across and depth up: leading words top right, spread words bottom
