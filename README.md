@@ -44,6 +44,20 @@ corpora in place the pages gain the Septuagint layer (`atlas_septuagint.py`,
 section 28d): a New Testament book's Greek against the Septuagint, its
 Septuagint words, and the echoes across the testaments in Greek.
 
+## Sharing the results without the program
+
+    python atlas_query.py dossier all --results
+    python atlas_pack.py
+
+writes every page of the canon into `reports/results.db` and packs it
+into one `reports/word_atlas_<version>.wadb` file. The Word Atlas
+Reader, a separate program at github.com/andyinva/word-atlas-reader,
+opens that one file with no Bible build and no main program behind
+it: every page as text, every table as a sortable grid, a search
+across every cell, the results questions, and a panel for asking
+Claude questions of the data with the reader's own API key. Hand a
+reader the `.wadb` and the Reader, and they have the findings.
+
 ## Checking it
 
     python3 test_atlas.py
