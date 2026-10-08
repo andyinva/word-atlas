@@ -280,6 +280,40 @@ def test_guards(atlas, only):
                 problems.append(f"'{tail}' counted {counts[tail]} times as a word")
         report(name, not problems, "; ".join(problems))
 
+    # The cross references (0.10.75): the listed column and footer on
+    # Revelation's table 4, with a link a reader would expect to be
+    # there (Revelation 5:11 and Daniel 7:10, 'ten thousand times ten
+    # thousand') carrying its votes, and the footer readable by
+    # atlas_results
+    name = "guard: listed links on table 4 (cross references)"
+    if not only or only in name:
+        import atlas_listed
+        crossrefs = atlas_listed.get(atlas)
+        if not crossrefs.available:
+            skip(name, "no cross_references table in bibles.db and no cross_references.db")
+        else:
+            import atlas_report
+            rep = atlas_report.Report("t", "Book page [Revelation] (KJV)")
+            atlas_pages.echoes_section(atlas, rep, "4. Echoes [Revelation] -> other books", "Revelation")
+            sec = rep.sections[0]
+            problems = []
+            if "listed" not in sec.columns:
+                problems.append("no listed column")
+            else:
+                li = sec.columns.index("listed")
+                rows = {str(r[2]): r for r in sec.rows}
+                hit = next((r for r in sec.rows if "Revelation 5:11" in str(r[2]) and "Daniel 7:10" in str(r[3])), None)
+                if hit is None:
+                    problems.append("Revelation 5:11 -> Daniel 7:10 not among the rows")
+                elif not isinstance(hit[li], int) or hit[li] < 1:
+                    problems.append(f"its listed votes are {hit[li]!r}")
+            parsed = next((atlas_listed.parse_footer(f) for f in sec.footer if f.startswith("Listed links")), None)
+            if not parsed:
+                problems.append("no readable listed-links footer")
+            elif parsed[3] < 1 or parsed[2] < parsed[3]:
+                problems.append(f"footer counts {parsed}")
+            report(name, not problems, "; ".join(problems) or (f"{parsed[3]} of {parsed[2]} links held" if parsed else ""))
+
     # The Septuagint layer's texts, when lxx.db holds them
     try:
         import atlas_septuagint

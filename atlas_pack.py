@@ -6,7 +6,8 @@ atlas_pack.py  -  pack the results database for the Word Atlas Reader
 
 Zips reports/results.db together with a small manifest (the program
 version, the runs the file holds, when it was packed) into one .wadb
-file, by default reports/word_atlas_<version>.wadb.  The Reader opens
+file, by default reports/word_atlas_<run version>_<run date>.wadb,
+named after the newest run the database holds.  The Reader opens
 that file directly; a reader who has it needs neither the Bible build
 nor the main program.  The database compresses to about a third of its
 size, since nearly all of it is text.
@@ -46,7 +47,12 @@ def pack(results_path=RESULTS_PATH, out_path=None, note=""):
         "runs": runs,
     }
     if out_path is None:
-        out_path = os.path.join(PROGRAM_DIR, "reports", f"word_atlas_{VERSION}.wadb")
+        # Named after the newest run inside, its version and its date,
+        # not after the program doing the packing: the name then says
+        # what the pages are, and packing again later does not change it
+        newest = runs[-1]
+        out_path = os.path.join(PROGRAM_DIR, "reports",
+                                f"word_atlas_{newest['version']}_{newest['started'][:10]}.wadb")
     with zipfile.ZipFile(out_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         z.write(results_path, "results.db")
         z.writestr("manifest.json", json.dumps(manifest, indent=2))

@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.73. Andrew Hopkins, with Claude.
+For version 0.10.75. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -334,6 +334,7 @@ English ones.
 | `build_gnt.py`, `build_tahot.py` | Import STEPBible's TAGNT Greek New Testament and TAHOT Hebrew Old Testament into `lxx.db` (section 28c) |
 | `atlas_lift.py`, `atlas_lxx.py`, `build_lxx.py`, `septuagint_bridge.py` | The command-line line of work on fair baselines, passages and the Septuagint; `METADATA_IN_WORD_ATLAS.md` and `NORMALIZATION_IN_WORD_ATLAS.md` describe it |
 | `atlas_report.py` | The reporting module: Report and Section, the text layout, trimming, the dossier's head, and the results database writer (section 11a) |
+| `atlas_listed.py` | The cross references (OpenBible.info on the Treasury of Scripture Knowledge, from bibles.db) behind the `listed` column and footers of sections 4, 4e and 6 |
 | `atlas_results.py` | Questions across the canon asked of reports/results.db, each answer saved as a text file under reports/ (section 19) |
 | `atlas_pack.py` | Packs reports/results.db with a manifest into one `.wadb` file for the Word Atlas Reader, the separate viewer for readers who have the dataset and not the program (section 19) |
 | `test_atlas.py` | The check before a commit: smoke, determinism, guards and housekeeping (section 41) |
@@ -799,6 +800,36 @@ Psalm 2:7 (with Acts 13:33 and Hebrews 5:5 in the last column), 2
 Samuel 7:14 beside 1 Chronicles 17:13, Deuteronomy 32:43. The chapter
 and section pages carry 4e over their own verses.
 
+**The listed column and the listed-links footer** (sections 4, 4e and
+6; 0.10.75). The echo tables find shared wording on their own, with no
+list of known connections to say what they ought to find. From
+0.10.75 they have one: the cross references in Bible Search Lite's
+`bibles.db`, the OpenBible.info set, built on the Treasury of Scripture
+Knowledge (1830s) and voted on by readers since, some 345,000 links
+each with its votes, used under its Creative Commons Attribution
+licence and credited in every footer that draws on it. On tables 4
+and 4e a `listed` column gives the readers' votes for a cross
+reference between a verse on each side of the echo, blank when no
+link is listed; a figure means the connection was already known, a
+blank that the echo is a new find or a false one. Under 4, 4e and 6 a
+footer counts the well-voted links (10 or more votes) from the text's
+verses to other books (for 4e, to the other testament; for 6, between
+the book's own chapters) and says how many the table holds, counting
+every candidate echo the table weighed and not only the rows it shows,
+with the same count for the best-known links (100 or more votes), and
+names the strongest it does not hold. The numbers are humbling and
+meant to be: Revelation's table 4 holds 59 of the 2,096 listed links
+from its verses, because a cross reference joins verses by theme,
+name or image as readily as by wording, and the atlas finds wording.
+The strongest misses say what the method cannot see: Revelation 10:10
+beside Jeremiah 15:16, the eating of the book, which no shared run of
+words carries. `atlas_results.py listed` gathers the counts for every
+book of a run (section 19). A cross reference says readers connected
+two verses and nothing of why, so `listed` is a check on the tables,
+not a grade of the echo. Without the table (an older `bibles.db`, or
+no `cross_references.db` beside the program) the column is left out
+and the footer says so.
+
 **Section 4f, Quoted by English, not in the Septuagint's words**
 (0.10.60). The other half of 4e: the echoes section 4's English
 bridge found across the testaments (five or more words when grown, in
@@ -1204,6 +1235,8 @@ rest, from 7d and its repeats, largest first, beside the yardsticks),
 across the canon, the list the equivalents and lemma-repair work
 starts from), `declined` (every table that declined to measure, with
 its reason), `section Isaiah 7d` (one section of one page as stored),
+`listed` (the echo tables against the cross references, every book's
+counts from the 4, 4e and 6 footers, with the share held; 0.10.75),
 `diff 1 2` (the cells that differ between two runs, pages matched by
 title, sections by number and rows by their first cell, which is the
 reviewer's diff of two dossiers made exact), and `sql "SELECT ..."`
@@ -1229,7 +1262,7 @@ also what the layer should find if it measures what it claims to;
 The database is also what a reader without the program gets. `python3
 atlas_pack.py` (0.10.73) zips `reports/results.db` together with a
 manifest (the program version, the runs inside, when it was packed)
-into `reports/word_atlas_<version>.wadb`, about a third of the
+into `reports/word_atlas_<run version>_<run date>.wadb`, about a third of the
 database's size; and the Word Atlas Reader, a separate program in its
 own repository (word_atlas_reader), opens that one file and shows every
 page as text laid out by this program's own `atlas_report.py`, every
@@ -4714,6 +4747,17 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.75.** The cross references as an outside check on the echo
+tables: a `listed` column on 4 and 4e with the readers' votes for a
+link between the two verses, and a footer under 4, 4e and 6 counting
+the well-voted links the table holds and naming the strongest it does
+not (atlas_listed.py, from the OpenBible.info set in bibles.db, CC BY);
+`atlas_results.py listed` for a run; a guard test.
+
+**0.10.74.** The packed file is named after the newest run it holds
+(`word_atlas_0.10.69_2026-10-05.wadb`), not after the program doing
+the packing, so the name says what the pages are.
 
 **0.10.73.** `atlas_pack.py`, which packs the results database into
 one `.wadb` file for the Word Atlas Reader, the separate viewer for

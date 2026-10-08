@@ -32,6 +32,7 @@ from collections import Counter, defaultdict
 from atlas_function import book_table as function_book_table, section_table as function_section_table
 from atlas_septuagint import vocabulary_sections as septuagint_vocabulary_sections, \
     echoes_section as septuagint_echoes_section
+import atlas_listed
 from atlas_sections import (FEW_WORDS, SMALL_WORDS, divisions_of, find_section, sections_of, section_date,
                             section_of, seam_chapters, span_text, cross_divisions, find_cross_section,
                             cross_sections_of_book, is_cross_group, parts_text)
@@ -51,7 +52,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.73"   # the program version; the window title and every report print it
+VERSION = "0.10.75"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -2119,8 +2120,10 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
         kept[key] = [grown, list(here), list(there)]
         order.append(key)
 
+    crossrefs = atlas_listed.get(atlas)
+    columns = ["echo", "grade", "here", "elsewhere"] + (["listed"] if crossrefs.available else [])
     sec = report.section(
-        title, ["echo", "grade", "here", "elsewhere"],
+        title, columns,
         note=f"Shared runs of words, found as formulas of 3 to 5 words and then grown to the whole "
              f"run the two places share (so an echo may be a whole sentence), that occur here and in "
              f"another book, and in no more "
@@ -2136,7 +2139,12 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
              + f"  'quotation' marks an echo of {QUOTE_MIN_WORDS} or more words found in exactly two "
                f"verses of the whole Bible: the strongest kind of evidence the table has; 'by English' "
                f"an echo across the testaments that meets the same test by wording alone, weaker "
-               f"evidence, since the translators' idiom can make it.")
+               f"evidence, since the translators' idiom can make it."
+             + ("  'listed' is the readers' votes for a cross reference between a verse on each side "
+                "(OpenBible.info, built on the Treasury of Scripture Knowledge): a figure means the "
+                "connection was known, blank that it was not listed, which makes it a new find or a "
+                "false one; a listed link may be a shared theme as easily as a quotation."
+                if crossrefs.available else ""))
     for key in order[:ECHO_N]:
         phrase, here, there = kept[key]
         shown = atlas.display_of(phrase, here + there) if by_roots else phrase
@@ -2148,10 +2156,24 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
             grade = "by English" if phrase.startswith("en:") else "quotation"
         else:
             grade = ""
-        sec.add([shown, grade, ", ".join(here), ", ".join(there)], refs=here + there,
-                link={"phrase": shown, "key": phrase})
+        row = [shown, grade, ", ".join(here), ", ".join(there)]
+        if crossrefs.available:
+            votes = crossrefs.votes_for_pairs(here, there)
+            row.append(votes if votes is not None else "")
+        sec.add(row, refs=here + there, link={"phrase": shown, "key": phrase})
     # An echo found by root and again by wording shows once
     sec.merge_duplicates(score_column="grade")
+    # The outside check: the well-voted listed links from these verses
+    # to other books, how many the table holds, the strongest it lacks
+    if verse_ids is not None:
+        scope = [r[0] for r in atlas.db.execute(
+            "SELECT reference FROM verses WHERE verse_id IN (" + ",".join("?" * len(ids)) + ")", ids)]
+    else:
+        scope = atlas_listed.scope_refs(atlas, book, chapter if is_range else ([chapter] if chapter else None))
+    other_books = set(atlas.books) - set(books)
+    candidates = {(h, t) for _, here_, there_ in found for h in here_ for t in there_}
+    atlas_listed.footer_for(sec, crossrefs, scope, other_books=other_books, what="other books",
+                            found=candidates)
     if len(found) > ECHO_N:
         sec.footer.append(f"{len(found) - ECHO_N} more candidate echoes not shown; the tallies "
                           f"below count all of them.")
@@ -3502,6 +3524,33 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
     sec.footer.append("Strongest pairs: " + "; ".join(
         f"{a} and {b} ({round(w)}, {cell_count[(a, b)]} phrases: \"{cell_best[(a, b)][1]}\")"
         for (a, b), w in strongest) + ".")
+    # The outside check for the map: of the well-voted listed links
+    # between different chapters of this book, how many fall on a
+    # chapter pair the map lights (any shared weight), and the strongest
+    # that fall on a dark cell
+    crossrefs = atlas_listed.get(atlas)
+    if crossrefs.available:
+        scope = atlas_listed.scope_refs(atlas, book, chapters_all if chapter_range is not None else None)
+        links = crossrefs.links_from(scope, same_book=book)
+        lit, dark = 0, {}
+        for (f, t), votes in links.items():
+            fc = atlas_listed.parse_ref(f)[1]
+            tc = atlas_listed.parse_ref(t)[1]
+            if tc not in index or fc not in index:
+                continue
+            if cell_weight.get((min(fc, tc), max(fc, tc)), 0) > 0:
+                lit += 1
+            else:
+                dark[(f, t)] = votes
+        line = (f"Listed links ({atlas_listed.MIN_VOTES} or more votes) between different chapters of "
+                f"{book}: {lit + len(dark)}; {lit} fall on a pair the map lights.")
+        if dark:
+            top = sorted(dark.items(), key=lambda kv: (-kv[1], kv[0]))[:atlas_listed.NAME_MOST]
+            line += "  Strongest on a dark pair: " + "; ".join(f"{a} -> {b} ({v})" for (a, b), v in top)
+            if len(dark) > atlas_listed.NAME_MOST:
+                line += f"; and {len(dark) - atlas_listed.NAME_MOST} more"
+            line += "."
+        sec.footer.append(line + "  " + atlas_listed.CREDIT)
 
     # Chapter to chapter: each chapter's strongest partner in the book,
     # so the mirror (Exodus 25 to 37, 26 to 36 ...) and the plague block

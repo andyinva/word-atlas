@@ -63,6 +63,7 @@ import unicodedata
 from collections import Counter, defaultdict
 
 from atlas_text import log_likelihood
+import atlas_listed
 
 # --- the rules ------------------------------------------------------------
 ECHO_MIN_WORDS = 4        # roots a shared run needs to be an echo
@@ -942,8 +943,12 @@ def echoes_section(atlas, report, title, book, chapters=None):
     kept.sort(key=lambda r: (-weight(r[0], r[1], r[2], r[5]), -texts.matched(r[2], r[5]), texts.order_key(r[0]), r[1]))
     far_col = "Septuagint" if far == "LXX" else "New Testament"
     also_col = "also in NT" if far == "LXX" else "also in Septuagint"
+    crossrefs = atlas_listed.get(atlas)
+    columns = ["echo (Greek)", "gloss", "words", "content", "grade", "here", far_col, also_col]
+    if crossrefs.available:
+        columns.append("listed")
     sec = report.section(
-        title, ["echo (Greek)", "gloss", "words", "content", "grade", "here", far_col, also_col],
+        title, columns,
         note=f"Runs of {ECHO_MIN_WORDS} or more Greek words, by root, that {book}'s text in {near_name} shares "
              f"with {far_name} (lxx.db): the quotations and allusions in the words the writers used, found "
              f"by Strong's numbers rather than by English wording, so section 4's 'by English' echoes across "
@@ -1023,9 +1028,15 @@ def echoes_section(atlas, report, title, book, chapters=None):
         own_refs = [texts.ref(v) for v in sorted(own, key=texts.order_key)]
         far_refs = [texts.ref(v) for v in sorted(extra, key=texts.order_key)]
         refs = [r for r in [texts.english_ref(vid)] + [texts.english_ref(v) for v in extra] if r]
-        sec.add([greek, gloss, n_matched, n_content, grade, texts.ref(vid), ", ".join(far_refs),
-                 ", ".join(own_refs[:4]) + (f" and {len(own_refs) - 4} more" if len(own_refs) > 4 else "")],
-                refs=refs, link={"book": book})
+        row = [greek, gloss, n_matched, n_content, grade, texts.ref(vid), ", ".join(far_refs),
+               ", ".join(own_refs[:4]) + (f" and {len(own_refs) - 4} more" if len(own_refs) > 4 else "")]
+        if crossrefs.available:
+            # The votes for a listed link between the verse here and any
+            # verse of the far side (the English references, so the
+            # Septuagint's own numbering does not get in the way)
+            votes = crossrefs.votes_for_pairs(refs[:1], refs[1:]) if len(refs) > 1 else None
+            row.append(votes if votes is not None else "")
+        sec.add(row, refs=refs, link={"book": book})
     if len(kept) > len(shown):
         sec.footer.append(f"{len(kept) - len(shown)} more echoes of commoner words not shown.")
     if formulas:
@@ -1033,6 +1044,26 @@ def echoes_section(atlas, report, title, book, chapters=None):
                           f"of {far_name} set aside as formulas of the language.")
     if not kept:
         sec.footer.append(f"No run of {ECHO_MIN_WORDS} or more words shared with {far_name} meets the tests.")
+    # The outside check: the well-voted listed links from these verses
+    # to the other testament, how many the table holds, the strongest
+    # it lacks.  Allusions by image rather than by shared Greek are the
+    # usual misses, and naming them says what this table cannot see.
+    if crossrefs.available:
+        sec.note += ("  'listed' is the readers' votes for a cross reference between the verse here and a verse "
+                     "on the far side (OpenBible.info, on the Treasury of Scripture Knowledge); blank, not listed.")
+    scope = atlas_listed.scope_refs(atlas, book, chapters)
+    far_testament = "Old" if far == "LXX" else "New"
+    far_books = {b for b in atlas.books if atlas.book_info[b]["testament"] == far_testament}
+    candidates = set()
+    for vid, start, length, extra, places, gaps in kept:
+        h = texts.english_ref(vid)
+        for v in extra:
+            e = texts.english_ref(v)
+            if h and e:
+                candidates.add((h, e))
+    atlas_listed.footer_for(sec, crossrefs, scope, other_books=far_books,
+                            what="the Old Testament" if far == "LXX" else "the New Testament",
+                            found=candidates)
     # The English bridge's cross-testament echoes that no Greek run
     # confirms: a quotation the writer made from the Hebrew, or from
     # memory, rather than in the Septuagint's words.  Drawn from the

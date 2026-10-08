@@ -322,6 +322,10 @@ for _label, _numbers, _gloss in FUNCTION_WORDS + FUNCTION_WORDS_HEBREW:
 
 # The Septuagint layer's columns (1e, 1f, 4e; atlas_septuagint.py)
 COLUMN_HELP.update({
+    "listed": "The readers' votes for a cross reference between a verse on each side of this echo, from the "
+              "OpenBible.info set built on the Treasury of Scripture Knowledge (bibles.db).  A figure means "
+              "the connection was already known; blank means no link is listed, so the echo is a new find "
+              "or a false one.  A listed link may be a shared theme or name as easily as a quotation.",
     "lemma": "The Greek word in its dictionary form, as the tagging gives it.",
     "here/10k": "How often the word occurs per 10,000 content words of this book's Greek text.",
     "Septuagint/10k": "How often the word occurs per 10,000 content words of the Septuagint (the whole of it, "
