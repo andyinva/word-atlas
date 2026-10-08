@@ -1,5 +1,5 @@
 -- Word Atlas metadata.db backup (plain SQL; restore with atlas_backup.py)
--- written: 2026-10-05 18:43
+-- written: 2026-10-08 16:14
 BEGIN TRANSACTION;
 CREATE TABLE books (
     book_num       INTEGER PRIMARY KEY,     -- 1 = Genesis ... 66 = Revelation
@@ -5553,6 +5553,11 @@ INSERT INTO "root_equivalents" VALUES('G3112','G3117','makran / makros, far and 
 INSERT INTO "root_equivalents" VALUES('G4240','G4236','prautes / praotes, meekness, one word in two spellings: 9/9');
 INSERT INTO "root_equivalents" VALUES('L:ΟΙΔΑ','G6063','oida ''know'': the Septuagint keys it by lemma, the TAGNT under G6063');
 INSERT INTO "root_equivalents" VALUES('G3379','G3361','mepote ''lest'': the TAGNT keys the compound under me G3361, the Septuagint under its own G3379 (six places across seventeen pages in the first canon-wide run)');
+INSERT INTO "root_equivalents" VALUES('L:ΣΑΛΩΜΩΝ','G4672','Solomon, the Septuagint''s spelling');
+INSERT INTO "root_equivalents" VALUES('L:ΗΛΙΟΥ','G2243','Elijah');
+INSERT INTO "root_equivalents" VALUES('L:ΕΛΙΣΑΙΕ','G1666','Elisha');
+INSERT INTO "root_equivalents" VALUES('L:ΑΣΑΦ','G760','Asaph');
+INSERT INTO "root_equivalents" VALUES('L:ΙΣΣΑΧΑΡ','G2466','Issachar');
 CREATE TABLE verse_tags (
     book_num    INTEGER NOT NULL REFERENCES books(book_num),
     chapter     INTEGER NOT NULL,

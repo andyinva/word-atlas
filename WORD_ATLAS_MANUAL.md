@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.77. Andrew Hopkins, with Claude.
+For version 0.10.78. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -4759,6 +4759,17 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.78.** 4f's test reads more than the longest run. A run of
+four or more broken once, a word swapped or added on one side, is
+'one word changed' (Hebrews 12:29 against Deuteronomy 4:24, 'our' for
+'your': the Septuagint's words after all); the echo's content words,
+by their Strong's numbers in the King James verse, all present in the
+other side's Greek but not in a run is 'same words, other order' (Jude
+1:9 against Zechariah 3:2); 'departs' is kept for the pairs whose
+roots are absent (Hebrews 12:5 against Job 5:17, Jude 1:14 against
+Deuteronomy 33:2). On a tie the Greek shared shows the run with the
+most content words. A guard test holds the three cases.
 
 **0.10.77.** 4f admits an English echo one word short of its floor
 when the two verses are a listed cross reference with ten or more

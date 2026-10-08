@@ -314,6 +314,32 @@ def test_guards(atlas, only):
                 problems.append(f"footer counts {parsed}")
             report(name, not problems, "; ".join(problems) or (f"{parsed[3]} of {parsed[2]} links held" if parsed else ""))
 
+    # 4f's three-way Greek test (0.10.78): a quotation with one word
+    # changed, one with its words in another order, and a departure
+    name = "guard: 4f tells 'one word changed' and 'same words, other order' from 'departs'"
+    if not only or only in name:
+        try:
+            import atlas_septuagint as sept
+            texts = sept.greek_texts(atlas)
+        except Exception as e:                               # noqa: BLE001
+            texts = None
+            skip(name, f"the Greek texts could not load: {e}")
+        if texts is not None:
+            problems = []
+            for phrase, here, there, want in (
+                    ("god is a consuming fire", "Hebrews 12:29", "Deuteronomy 4:24", "one word changed"),
+                    ("the lord rebuke", "Jude 1:9", "Zechariah 3:2", "same words, other order"),
+                    ("with ten thousands", "Jude 1:14", "Deuteronomy 33:2", "departs")):
+                a, b = texts.by_ref["GNT"].get(here), texts.by_ref["LXX"].get(there)
+                if a is None or b is None:
+                    problems.append(f"{here} or {there} not in the texts")
+                    continue
+                roots = sept.echo_roots(atlas, phrase, here)
+                got = sept.classify_pair(texts.keys[a], texts.stop[a], texts.keys[b], roots, texts.keys[b])[1]
+                if got != want:
+                    problems.append(f"{here} against {there}: {got!r}, wanted {want!r}")
+            report(name, not problems, "; ".join(problems))
+
     # The Septuagint layer's texts, when lxx.db holds them
     try:
         import atlas_septuagint

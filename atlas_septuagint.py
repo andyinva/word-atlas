@@ -823,19 +823,98 @@ def english_echoes_unconfirmed(atlas, book, chapters, testament, greek_pairs):
     return out
 
 
-def longest_common_run(a, b):
-    """The longest run of keys two verses share: (length, start in a)."""
-    best, best_i = 0, 0
+def longest_common_run(a, b, stop_a=None):
+    """
+    The longest run of keys two verses share: (length, start in a).
+    Among runs of the same length the one with the most content words
+    is chosen (stop_a marks a's stop words), so the reader sees the
+    telling part ("fire consuming" rather than "the God").
+    """
+    best, best_i, best_content = 0, 0, -1
     prev = [0] * (len(b) + 1)
     for i in range(1, len(a) + 1):
         cur = [0] * (len(b) + 1)
         for j in range(1, len(b) + 1):
             if a[i - 1] == b[j - 1]:
                 cur[j] = prev[j - 1] + 1
-                if cur[j] > best:
-                    best, best_i = cur[j], i - cur[j]
+                n = cur[j]
+                start = i - n
+                content = sum(1 for k in range(start, i) if not stop_a[k]) if stop_a else 0
+                if n > best or (n == best and content > best_content):
+                    best, best_i, best_content = n, start, content
         prev = cur
     return best, best_i
+
+
+def bridged_run(a, b):
+    """
+    The most words two verses share in one run broken once: a word
+    changed on both sides, or added on one.  Hebrews 12:29 against
+    Deuteronomy 4:24 shares "God [our | your] fire consuming", four of
+    five with a pronoun swapped, which no unbroken run shows.
+    """
+    best = 0
+    for i in range(len(a)):
+        for j in range(len(b)):
+            if a[i] != b[j] or (i and j and a[i - 1] == b[j - 1]):
+                continue
+            k = 0
+            while i + k < len(a) and j + k < len(b) and a[i + k] == b[j + k]:
+                k += 1
+            for da, db in ((1, 1), (1, 0), (0, 1)):
+                i2, j2 = i + k + da, j + k + db
+                m = 0
+                while i2 + m < len(a) and j2 + m < len(b) and a[i2 + m] == b[j2 + m]:
+                    m += 1
+                if m:
+                    best = max(best, k + m)
+            best = max(best, k)
+    return best
+
+
+def echo_roots(atlas, phrase, ref):
+    """
+    The Strong's numbers of the English echo's content words in the
+    King James verse (the tokens table), so the echo can be looked for
+    in the other side's Greek by root, in any order.  The phrase is
+    found as a run of surfaces in the verse; failing that, its words
+    are taken one by one.
+    """
+    row = atlas.db.execute("SELECT verse_id FROM verses WHERE reference = ?", (ref,)).fetchone()
+    if row is None:
+        return set()
+    tokens = atlas.db.execute("SELECT surface, root, is_stop FROM tokens WHERE verse_id = ? ORDER BY position",
+                              (row[0],)).fetchall()
+    words = phrase.split()
+    surfaces = [t[0] for t in tokens]
+    for i in range(len(surfaces) - len(words) + 1):
+        if surfaces[i:i + len(words)] == words:
+            return {t[1] for t in tokens[i:i + len(words)] if not t[2] and t[1].startswith("G")}
+    wanted = set(words)
+    return {t[1] for t in tokens if t[0] in wanted and not t[2] and t[1].startswith("G")}
+
+
+def classify_pair(a_keys, a_stop, b_keys, roots, other_keys):
+    """
+    What the Greek of an English-bridged pair says, as 4f's 'test':
+    (rank, test, run length, run start in a).  The run alone cannot
+    tell a Septuagint quotation with one word changed, or with its
+    words in another order, from a real departure, so two more
+    measures stand beside it: the longest run broken once, and whether
+    the echo's own content roots (roots, from the King James verse's
+    Strong's numbers) all stand in the other side's Greek (other_keys)
+    in any order.
+    """
+    n, start = longest_common_run(a_keys, b_keys, a_stop)
+    if n >= ECHO_MIN_WORDS:
+        return 1, "formula", n, start
+    if bridged_run(a_keys, b_keys) >= ECHO_MIN_WORDS:
+        return 1, "one word changed", n, start
+    if n == ECHO_MIN_WORDS - 1:
+        return 1, "short run", n, start
+    if len(roots) >= 2 and roots <= set(other_keys):
+        return 1, "same words, other order", n, start
+    return 0, "departs", n, start
 
 
 def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far_name):
@@ -857,14 +936,14 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
         if a_vid is None or b_vid is None:
             rows.append((2, phrase, h, e, "", 0, "no Greek verse mapped" + tag))
             continue
-        n, start = longest_common_run(texts.keys[a_vid], texts.keys[b_vid])
+        # The echo's roots come from the New Testament side's King James
+        # verse, whose Strong's numbers are Greek, and are looked for in
+        # the Old Testament side's Septuagint keys
+        nt_ref, ot_vid = (h, b_vid) if near == "GNT" else (e, a_vid)
+        roots = echo_roots(atlas, phrase, nt_ref)
+        rank, test, n, start = classify_pair(texts.keys[a_vid], texts.stop[a_vid], texts.keys[b_vid],
+                                             roots, texts.keys[ot_vid])
         greek = " ".join(texts.surface[a_vid][start:start + n]) if n else ""
-        if n <= 2:
-            rank, test = 0, "departs"
-        elif n < ECHO_MIN_WORDS:
-            rank, test = 1, "short run"
-        else:
-            rank, test = 1, "formula"
         rows.append((rank, phrase, h, e, greek, n, test + tag))
     rows.sort(key=lambda r: r[0])          # stable: rarity order kept within each kind
     sec = report.section(
@@ -874,9 +953,14 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
              f"of the Bible, section 4's 'by English' grade loosened by two verses so a saying the Synoptics share is "
              f"not excluded) that no Greek run in 4e confirms between the same two verses.  'Greek shared' is the "
              f"longest run of Greek, by root, that the two verses do share, and 'test' says what it means: 'departs' "
-             f"(two words or fewer in common) is a quotation not made in the Septuagint's words, a rendering of the "
-             f"Hebrew or a free one, or an echo the translators' English made on its own; 'short run' is Greek that "
-             f"agrees but for fewer than {ECHO_MIN_WORDS} words, an idiom or a quotation broken by a differing word; "
+             f"(two words or fewer in common, and the echo's content words not all present) is a quotation not made "
+             f"in the Septuagint's words, a rendering of the Hebrew or a free one, or an echo the translators' "
+             f"English made on its own; 'one word changed' is a run of {ECHO_MIN_WORDS} or more broken once, a word "
+             f"swapped or added on one side (Hebrews 12:29 against Deuteronomy 4:24, 'our' for 'your'), the "
+             f"Septuagint's words after all; 'same words, other order' is the echo's content words (two or more, by "
+             f"their Strong's numbers in the King James verse) all present in the other side's Greek but not in a "
+             f"run (Jude 1:9 against Zechariah 3:2), a quotation by sense and the Hebrew order; 'short run' is Greek that agrees but for {ECHO_MIN_WORDS - 1} words, an idiom or a quotation "
+             f"broken by a differing word; "
              f"'formula' is a run 4e set aside as the language's common stock or for want of two content words.  "
              f"Departures first, then the rest rarest first; every departure is shown.  Where the English bridge "
              f"never paired a quotation (Matthew's Micah 5:2, Hosea 11:1, Isaiah 53:4, whose King James wording "
@@ -890,7 +974,8 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
     if len(rows) > len(shown):
         sec.footer.append(f"{len(rows) - len(shown)} more rows of commoner words not shown.")
     kinds = Counter(r[6].split(" (")[0] for r in rows)
-    sec.footer.append("In all: " + ", ".join(f"{kinds[k]} {k}" for k in ("departs", "short run", "formula", "no Greek verse mapped") if kinds[k]) + ".")
+    sec.footer.append("In all: " + ", ".join(f"{kinds[k]} {k}" for k in (
+        "departs", "same words, other order", "one word changed", "short run", "formula", "no Greek verse mapped") if kinds[k]) + ".")
 
 
 # --- 4e: the echoes ----------------------------------------------------------
