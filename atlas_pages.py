@@ -52,7 +52,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.75"   # the program version; the window title and every report print it
+VERSION = "0.10.76"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -2140,7 +2140,8 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
                f"verses of the whole Bible: the strongest kind of evidence the table has; 'by English' "
                f"an echo across the testaments that meets the same test by wording alone, weaker "
                f"evidence, since the translators' idiom can make it."
-             + ("  'listed' is the readers' votes for a cross reference between a verse on each side "
+             + ("  'listed' is the readers' votes for a cross reference between a verse on each side, the "
+                "highest when several verses stand on a side "
                 "(OpenBible.info, built on the Treasury of Scripture Knowledge): a figure means the "
                 "connection was known, blank that it was not listed, which makes it a new find or a "
                 "false one; a listed link may be a shared theme as easily as a quotation."
@@ -2716,6 +2717,7 @@ def book_page(atlas, book_name):
     # tested by root
     far = "Greek Old Testament" if info["testament"] == "New" else "New Testament, in Greek"
     septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{book}] -> {far}", book)
+    atlas_listed.reconcile(report)
     if atlas.has_depth:
         reach_depth_section(atlas, report, f"5. Reach and depth [{book}]", book, info)
     if info["chapters"] > 2:
@@ -3060,6 +3062,7 @@ def section_page(atlas, book_name, section_name):
                    scope_name=label, date=section_date(book, name))
     far = "Greek Old Testament" if atlas.book_info[book]["testament"] == "New" else "New Testament, in Greek"
     septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{label}] -> {far}", book, chapters)
+    atlas_listed.reconcile(report)
     if len(chapters) > 1:
         within_book_section(atlas, report, f"6. Echoes within [{label}]: chapter against chapter",
                             book, chapter_range=chapters)
@@ -3134,6 +3137,7 @@ def cross_section_page(atlas, name, group=None):
     for book, chs in parts:
         septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{name}: {book} {span_text(chs)}] -> {far}",
                                   book, chs)
+    atlas_listed.reconcile(report)
 
     # 7. The division at section scale: every section of it, with its
     # leading words against the rest of the touched books
@@ -3533,20 +3537,20 @@ def within_book_section(atlas, report, title, book, chapter_range=None):
         scope = atlas_listed.scope_refs(atlas, book, chapters_all if chapter_range is not None else None)
         links = crossrefs.links_from(scope, same_book=book)
         lit, dark = 0, {}
-        for (f, t), votes in links.items():
-            fc = atlas_listed.parse_ref(f)[1]
-            tc = atlas_listed.parse_ref(t)[1]
+        for n, (this, other, votes) in links.items():
+            fc, tc = this[1], other[1]
             if tc not in index or fc not in index:
                 continue
             if cell_weight.get((min(fc, tc), max(fc, tc)), 0) > 0:
                 lit += 1
             else:
-                dark[(f, t)] = votes
+                dark[n] = (this, other, votes)
         line = (f"Listed links ({atlas_listed.MIN_VOTES} or more votes) between different chapters of "
                 f"{book}: {lit + len(dark)}; {lit} fall on a pair the map lights.")
         if dark:
-            top = sorted(dark.items(), key=lambda kv: (-kv[1], kv[0]))[:atlas_listed.NAME_MOST]
-            line += "  Strongest on a dark pair: " + "; ".join(f"{a} -> {b} ({v})" for (a, b), v in top)
+            top = sorted(dark.items(), key=lambda kv: (-kv[1][2], kv[0]))[:atlas_listed.NAME_MOST]
+            text = atlas_listed.CrossRefs.text
+            line += "  Strongest on a dark pair: " + "; ".join(f"{text(a)} -> {text(b)} ({v})" for n, (a, b, v) in top)
             if len(dark) > atlas_listed.NAME_MOST:
                 line += f"; and {len(dark) - atlas_listed.NAME_MOST} more"
             line += "."
@@ -3994,6 +3998,7 @@ def chapter_page(atlas, book_name, chapter):
     echoes_section(atlas, report, f"4. Echoes [{label}] -> other books", book, chapter)
     far = "Greek Old Testament" if atlas.book_info[book]["testament"] == "New" else "New Testament, in Greek"
     septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{label}] -> {far}", book, [chapter])
+    atlas_listed.reconcile(report)
     synopsis_section(atlas, report, book, chapter, verses)
     kin_section(atlas, report, book, chapter)
     return report

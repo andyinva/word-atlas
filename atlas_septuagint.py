@@ -67,6 +67,7 @@ import atlas_listed
 
 # --- the rules ------------------------------------------------------------
 ECHO_MIN_WORDS = 4        # roots a shared run needs to be an echo
+LISTED_MIN_WORDS = 3      # a shorter run is admitted when the two verses are a listed cross reference
 ECHO_MIN_CONTENT = 2      # of which this many must be content words
 ECHO_BRIDGE_MIN = 3       # words a run must go on for beyond a one-word gap for the gap to be bridged
 ECHO_MAX_PLACES = 6       # verses on the far side beyond which a run is a formula, not an echo
@@ -430,11 +431,10 @@ class GreekTexts:
         return (eb or 99, ec if eb else ch, ev if eb else digits, code, ch, digits)
 
     # --- shared runs --------------------------------------------------------
-    def index(self, corpus):
-        """Every run of ECHO_MIN_WORDS keys in a corpus -> where it stands.  Built once."""
-        if corpus not in self._index:
+    def index(self, corpus, n=ECHO_MIN_WORDS):
+        """Every run of n keys in a corpus -> where it stands.  Built once per length."""
+        if (corpus, n) not in self._index:
             idx = defaultdict(list)
-            n = ECHO_MIN_WORDS
             for (c, book), vids in self.by_book.items():
                 if c != corpus:
                     continue
@@ -442,10 +442,10 @@ class GreekTexts:
                     ks = self.keys[vid]
                     for i in range(len(ks) - n + 1):
                         idx[ks[i:i + n]].append((vid, i))
-            self._index[corpus] = idx
-        return self._index[corpus]
+            self._index[(corpus, n)] = idx
+        return self._index[(corpus, n)]
 
-    def grow(self, ks, i, oks, j):
+    def grow(self, ks, i, oks, j, n=ECHO_MIN_WORDS):
         """
         Grow a matching run of ECHO_MIN_WORDS keys at ks[i] / oks[j] to
         its full length, bridging a gap of one word where the run goes
@@ -457,7 +457,7 @@ class GreekTexts:
         tuple of (near position, kind) with kind "changed", "near" (a
         word only here) or "far" (a word only there).
         """
-        a, b = i + ECHO_MIN_WORDS, j + ECHO_MIN_WORDS
+        a, b = i + n, j + n
         gaps = []
         while True:
             while a < len(ks) and b < len(oks) and ks[a] == oks[b]:
@@ -493,17 +493,16 @@ class GreekTexts:
                 break
         return i, a - i, j, b - j, tuple(gaps)
 
-    def runs(self, vids, far_corpus):
+    def runs(self, vids, far_corpus, n=ECHO_MIN_WORDS):
         """
-        The runs of ECHO_MIN_WORDS or more keys that the given verses
+        The runs of n (ECHO_MIN_WORDS) or more keys that the given verses
         share with the far corpus, grown to their full length with
         one-word gaps bridged (see grow).  Returns {(verse_id, start,
         length, gaps): [(far verse_id, far start, far length), ...]}.
         Each shared stretch is recorded once, at its full length: a
         start that an earlier start grows over is skipped.
         """
-        idx = self.index(far_corpus)
-        n = ECHO_MIN_WORDS
+        idx = self.index(far_corpus, n)
         found = defaultdict(list)
         for vid in vids:
             ks = self.keys[vid]
@@ -512,7 +511,7 @@ class GreekTexts:
                     oks = self.keys[ovid]
                     if i > 0 and j > 0 and ks[i - 1] == oks[j - 1]:
                         continue          # found already from one word earlier
-                    start, length, fstart, flength, gaps = self.grow(ks, i, oks, j)
+                    start, length, fstart, flength, gaps = self.grow(ks, i, oks, j, n)
                     place = (ovid, fstart, flength)
                     if place not in found[(vid, start, length, gaps)]:
                         found[(vid, start, length, gaps)].append(place)
@@ -899,6 +898,25 @@ def echoes_section(atlas, report, title, book, chapters=None):
         report.section(title, ["echo"], note=f"Not measured: {near_name} in lxx.db has no verses for {book}.")
         return
     found = texts.runs(vids, far)
+    # A run one word short of the floor is admitted when readers have
+    # listed the two verses as a cross reference (Jude 1:9 and
+    # Zechariah 3:2, "The Lord rebuke thee", three words): the listing
+    # is the corroboration the fourth word would have been.  Such a
+    # run is graded 'listed, 3 words' and never 'quotation'.
+    crossrefs = atlas_listed.get(atlas)
+    short_runs = set()
+    if crossrefs.available and LISTED_MIN_WORDS < ECHO_MIN_WORDS:
+        for (vid, start, length, gaps), places in texts.runs(vids, far, LISTED_MIN_WORDS).items():
+            if texts.matched(length, gaps) >= ECHO_MIN_WORDS or (vid, start, length, gaps) in found:
+                continue
+            here_ref = texts.english_ref(vid)
+            if not here_ref:
+                continue
+            listed = [p for p in places if texts.english_ref(p[0])
+                      and (crossrefs.votes(here_ref, texts.english_ref(p[0])) or 0) >= atlas_listed.MIN_VOTES]
+            if listed:
+                found[(vid, start, length, gaps)] = listed
+                short_runs.add((vid, start, length, gaps))
     # Group the places by far verse, and set aside the formulas: a run
     # in more than ECHO_MAX_PLACES verses of the far side is the common
     # stock of the language ("and it came to pass in the days of"), not
@@ -943,7 +961,6 @@ def echoes_section(atlas, report, title, book, chapters=None):
     kept.sort(key=lambda r: (-weight(r[0], r[1], r[2], r[5]), -texts.matched(r[2], r[5]), texts.order_key(r[0]), r[1]))
     far_col = "Septuagint" if far == "LXX" else "New Testament"
     also_col = "also in NT" if far == "LXX" else "also in Septuagint"
-    crossrefs = atlas_listed.get(atlas)
     columns = ["echo (Greek)", "gloss", "words", "content", "grade", "here", far_col, also_col]
     if crossrefs.available:
         columns.append("listed")
@@ -1009,6 +1026,8 @@ def echoes_section(atlas, report, title, book, chapters=None):
         n_matched = texts.matched(length, gaps)
         n_content = len(content_of(vid, start, length, gaps))
         grade = "quotation" if is_quotation(n_matched, extra) and n_content >= QUOTATION_MIN_CONTENT else ""
+        if (vid, start, length, gaps) in short_runs:
+            grade = f"listed, {n_matched} words"
         # A changed word spelt the same on both sides is a seam between
         # the two taggings, not a change in the text
         for pos, kind in gaps:
@@ -1050,7 +1069,11 @@ def echoes_section(atlas, report, title, book, chapters=None):
     # usual misses, and naming them says what this table cannot see.
     if crossrefs.available:
         sec.note += ("  'listed' is the readers' votes for a cross reference between the verse here and a verse "
-                     "on the far side (OpenBible.info, on the Treasury of Scripture Knowledge); blank, not listed.")
+                     "on the far side (OpenBible.info, on the Treasury of Scripture Knowledge), the highest when "
+                     "several verses are listed; blank, not listed.  A run of "
+                     f"{LISTED_MIN_WORDS} words, one short of the floor, is admitted when the two verses are "
+                     "listed with 10 or more votes, graded 'listed, 3 words', the listing standing in for the "
+                     "missing word.")
     scope = atlas_listed.scope_refs(atlas, book, chapters)
     far_testament = "Old" if far == "LXX" else "New"
     far_books = {b for b in atlas.books if atlas.book_info[b]["testament"] == far_testament}

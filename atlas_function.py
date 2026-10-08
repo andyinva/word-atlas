@@ -628,7 +628,8 @@ def section_table(atlas, report, title, book, secs, chapters_of, shown_name, fir
         sec.add([label, n] + [round(prof[f], 1) for f in ref.features] + [round(d, 2), round(d2, 2)],
                 link={"book": book, "chapter": firsts[name], "section": name})
     if skipped:
-        sec.footer.append("Not measured, being Aramaic: " + ", ".join(skipped) + ".")
+        sec.footer.append("Not measured, the part being Aramaic, which the Hebrew profile cannot read: "
+                          + ", ".join(skipped) + ".")
     if no_rest:
         sec.footer.append("Not measured, the rest of the book being Aramaic and left out, so the part has no rest "
                           "to be measured against: " + ", ".join(no_rest) + ".")

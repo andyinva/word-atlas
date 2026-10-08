@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.75. Andrew Hopkins, with Claude.
+For version 0.10.76. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -817,8 +817,16 @@ verses to other books (for 4e, to the other testament; for 6, between
 the book's own chapters) and says how many the table holds, counting
 every candidate echo the table weighed and not only the rows it shows,
 with the same count for the best-known links (100 or more votes), and
-names the strongest it does not hold. The numbers are humbling and
-meant to be: Revelation's table 4 holds 59 of the 2,096 listed links
+names the strongest it does not hold. Each listing is counted once
+however many verses its range spans, and on a page that has both
+tables, 4's footer counts apart the links 4e holds and 4e's those 4
+holds, so a quotation found in Greek is not called a miss of the page
+under the English table. In 4e a run of three Greek words, one short
+of the floor, is admitted when the two verses are a listed cross
+reference with ten or more votes, graded 'listed, 3 words': the
+listing stands in for the missing word, the first place the column
+improves a table rather than annotating it (0.10.76). The numbers
+are humbling and meant to be: Revelation's table 4 holds 59 of the 2,096 listed links
 from its verses, because a cross reference joins verses by theme,
 name or image as readily as by wording, and the atlas finds wording.
 The strongest misses say what the method cannot see: Revelation 10:10
@@ -4747,6 +4755,19 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.76.** The reviewer's read of 0.10.75: a listing is counted
+once however many verses its range spans (the loader had counted a
+range once per verse, so Hebrews 4:16 to 10:19-23 stood four times
+in the totals and the lists), and the two listings of a pair fold to
+one with the greater votes; table 4's footer counts apart the links
+4e holds and 4e's those 4 holds ("38 more found by 4e (in Greek)"),
+so a quotation found in Greek is not called a miss of the page under
+the English table; a Greek run of three words, one short of 4e's
+floor, is admitted when the two verses are a listed cross reference
+with ten or more votes, graded 'listed, 3 words'; the notes say the
+votes shown are the highest when several verses stand on a side;
+7.2d's Aramaic decline reads as a sentence.
 
 **0.10.75.** The cross references as an outside check on the echo
 tables: a `listed` column on 4 and 4e with the readers' votes for a
