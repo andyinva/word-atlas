@@ -889,32 +889,100 @@ def echo_roots(atlas, phrase, ref):
     surfaces = [t[0] for t in tokens]
     for i in range(len(surfaces) - len(words) + 1):
         if surfaces[i:i + len(words)] == words:
-            return {t[1] for t in tokens[i:i + len(words)] if not t[2] and t[1].startswith("G")}
-    wanted = set(words)
-    return {t[1] for t in tokens if t[0] in wanted and not t[2] and t[1].startswith("G")}
+            chosen = tokens[i:i + len(words)]
+            break
+    else:
+        wanted = set(words)
+        chosen = [t for t in tokens if t[0] in wanted]
+    content = {t[1] for t in chosen if not t[2] and t[1].startswith("G")}
+    every = {t[1].lstrip("=") for t in chosen if t[1].lstrip("=").startswith("G")} - {ARTICLE}
+    return content, every
 
 
-def classify_pair(a_keys, a_stop, b_keys, roots, other_keys):
+ARTICLE = "G3588"         # the Greek article, stepped over when 4f matches runs
+
+
+def without_articles(keys, stop=None):
+    """
+    The keys with the article left out, and for each kept key its
+    position in the original: the Gospels' "the son of the man" and
+    Theodotion's "son of man" are one run once the article is stepped
+    over, as the quotation handbooks step over it.
+    """
+    kept, positions, stops = [], [], []
+    for i, k in enumerate(keys):
+        if k == ARTICLE:
+            continue
+        kept.append(k)
+        positions.append(i)
+        stops.append(stop[i] if stop else False)
+    return kept, positions, stops
+
+
+def smallest_window(keys, wanted):
+    """
+    The shortest stretch of keys holding every key in wanted (a verse
+    may say 'not' four times; the echo's 'not' is the one beside its
+    verb), or [] when wanted is empty or not all present.
+    """
+    wanted = set(wanted)
+    if not wanted or not wanted <= set(keys):
+        return []
+    best = None
+    for i in range(len(keys)):
+        if keys[i] not in wanted:
+            continue
+        seen = set()
+        for j in range(i, len(keys)):
+            if keys[j] in wanted:
+                seen.add(keys[j])
+                if seen == wanted:
+                    if best is None or j - i < len(best) - 1:
+                        best = keys[i:j + 1]
+                    break
+    return best or []
+
+
+def classify_pair(a_keys, a_stop, b_keys, roots, all_roots, nt_keys, ot_keys):
     """
     What the Greek of an English-bridged pair says, as 4f's 'test':
-    (rank, test, run length, run start in a).  The run alone cannot
-    tell a Septuagint quotation with one word changed, or with its
-    words in another order, from a real departure, so two more
-    measures stand beside it: the longest run broken once, and whether
-    the echo's own content roots (roots, from the King James verse's
-    Strong's numbers) all stand in the other side's Greek (other_keys)
-    in any order.
+    (rank, test, run length, run start in a, run end in a).  The run
+    alone cannot tell a Septuagint quotation with one word changed, or
+    with its words in another order, or one that is whole but short
+    because one Greek verb carries three English words, from a real
+    departure; so beside it stand the Greek span of the echo's own
+    words on the New Testament side (all_roots, every Strong's number
+    of the echo's words; whole when the shared run covers it), the
+    longest run broken once, and whether the echo's content roots
+    (roots) all stand in the other side's Greek in any order.  Runs
+    are matched with the article stepped over.
     """
-    n, start = longest_common_run(a_keys, b_keys, a_stop)
+    a2, a_pos, a_st = without_articles(a_keys, a_stop)
+    b2, b_pos, _ = without_articles(b_keys)
+    n, start2 = longest_common_run(a2, b2, a_st)
+    start, end = (a_pos[start2], a_pos[start2 + n - 1] + 1) if n else (0, 0)
+    # Whole in Greek: the New Testament side's span of the echo's own
+    # words, articles aside, lies inside a run the two sides share
+    nt2, nt_pos, _ = without_articles(nt_keys)
+    ot2, _, _ = without_articles(ot_keys)
+    # Every root of the echo must stand in the New Testament side's
+    # Greek, else the window is a piece of the echo and a piece can
+    # match by chance (a tagging seam between the two texts, G1638 for
+    # the Mount of Olives against G1636 for its olives, leaves one out)
+    span = smallest_window(nt2, all_roots) if all_roots <= set(nt2) else []
+    if roots and len(span) >= 2 and any(ot2[j:j + len(span)] == span for j in range(len(ot2) - len(span) + 1)):
+        return 1, "whole in Greek", n, start, end
     if n >= ECHO_MIN_WORDS:
-        return 1, "formula", n, start
-    if bridged_run(a_keys, b_keys) >= ECHO_MIN_WORDS:
-        return 1, "one word changed", n, start
+        return 2, "formula", n, start, end
+    # The broken run is measured with the articles in as well as out,
+    # since an article inside a run is part of what the two sides share
+    if max(bridged_run(a2, b2), bridged_run(a_keys, b_keys)) >= ECHO_MIN_WORDS:
+        return 2, "one word changed", n, start, end
     if n == ECHO_MIN_WORDS - 1:
-        return 1, "short run", n, start
-    if len(roots) >= 2 and roots <= set(other_keys):
-        return 1, "same words, other order", n, start
-    return 0, "departs", n, start
+        return 2, "short run", n, start, end
+    if len(roots) >= 2 and roots <= set(ot2):
+        return 2, f"same words, other order ({len(roots)} roots)", n, start, end
+    return 0, "departs", n, start, end
 
 
 def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far_name):
@@ -934,16 +1002,16 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
         a_vid = texts.by_ref[near].get(h)
         b_vid = texts.by_ref[far].get(e)
         if a_vid is None or b_vid is None:
-            rows.append((2, phrase, h, e, "", 0, "no Greek verse mapped" + tag))
+            rows.append((3, phrase, h, e, "", 0, "no Greek verse mapped" + tag))
             continue
         # The echo's roots come from the New Testament side's King James
         # verse, whose Strong's numbers are Greek, and are looked for in
         # the Old Testament side's Septuagint keys
-        nt_ref, ot_vid = (h, b_vid) if near == "GNT" else (e, a_vid)
-        roots = echo_roots(atlas, phrase, nt_ref)
-        rank, test, n, start = classify_pair(texts.keys[a_vid], texts.stop[a_vid], texts.keys[b_vid],
-                                             roots, texts.keys[ot_vid])
-        greek = " ".join(texts.surface[a_vid][start:start + n]) if n else ""
+        nt_ref, nt_vid, ot_vid = (h, a_vid, b_vid) if near == "GNT" else (e, b_vid, a_vid)
+        roots, all_roots = echo_roots(atlas, phrase, nt_ref)
+        rank, test, n, start, end = classify_pair(texts.keys[a_vid], texts.stop[a_vid], texts.keys[b_vid],
+                                                  roots, all_roots, texts.keys[nt_vid], texts.keys[ot_vid])
+        greek = " ".join(texts.surface[a_vid][start:end]) if n else ""
         rows.append((rank, phrase, h, e, greek, n, test + tag))
     rows.sort(key=lambda r: r[0])          # stable: rarity order kept within each kind
     sec = report.section(
@@ -955,27 +1023,36 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
              f"longest run of Greek, by root, that the two verses do share, and 'test' says what it means: 'departs' "
              f"(two words or fewer in common, and the echo's content words not all present) is a quotation not made "
              f"in the Septuagint's words, a rendering of the Hebrew or a free one, or an echo the translators' "
-             f"English made on its own; 'one word changed' is a run of {ECHO_MIN_WORDS} or more broken once, a word "
+             f"English made on its own; 'whole in Greek' is a run that covers the whole Greek of the echo's own "
+             f"words on the New Testament side, a quotation complete whatever its length, since one Greek verb can "
+             f"carry three English words (Matthew 19:18 against Exodus 20:16, 'thou shalt not bear false witness', "
+             f"two Greek words); 'one word changed' is a run of {ECHO_MIN_WORDS} or more broken once, a word "
              f"swapped or added on one side (Hebrews 12:29 against Deuteronomy 4:24, 'our' for 'your'), the "
              f"Septuagint's words after all; 'same words, other order' is the echo's content words (two or more, by "
              f"their Strong's numbers in the King James verse) all present in the other side's Greek but not in a "
-             f"run (Jude 1:9 against Zechariah 3:2), a quotation by sense and the Hebrew order; 'short run' is Greek that agrees but for {ECHO_MIN_WORDS - 1} words, an idiom or a quotation "
+             f"run (Jude 1:9 against Zechariah 3:2), a quotation by sense and the Hebrew order, the count of roots "
+             f"in brackets so two common roots are weighed as the light thing they are; runs are matched with the "
+             f"Greek article stepped over; 'short run' is Greek that agrees but for {ECHO_MIN_WORDS - 1} words, an idiom or a quotation "
              f"broken by a differing word; "
              f"'formula' is a run 4e set aside as the language's common stock or for want of two content words.  "
-             f"Departures first, then the rest rarest first; every departure is shown.  Where the English bridge "
+             f"Departures first, then the whole-in-Greek rows, then the rest rarest first; every departure and "
+             f"every whole-in-Greek row is shown.  Where the English bridge "
              f"never paired a quotation (Matthew's Micah 5:2, Hosea 11:1, Isaiah 53:4, whose King James wording "
              f"differs from the prophet's), there is nothing here to test: the method's edge.  An English run one "
              f"word short of the floor is admitted when the two verses are a listed cross reference with "
              f"{atlas_listed.MIN_VOTES} or more votes (OpenBible.info, on the Treasury of Scripture Knowledge), "
              f"marked '(listed, 4 words)' in the test column.")
-    shown = rows[:top_n()] + [r for r in rows[top_n():] if r[0] == 0]
+    # Every departure and every whole-in-Greek row is shown whatever its
+    # rank: the two findings of the table
+    shown = rows[:top_n()] + [r for r in rows[top_n():] if r[0] <= 1]
     for rank, phrase, h, e, greek, n, test in shown:
         sec.add([phrase, h, e, greek, n or "", test], refs=[h, e], link={"phrase": phrase, "key": "en:" + phrase})
     if len(rows) > len(shown):
         sec.footer.append(f"{len(rows) - len(shown)} more rows of commoner words not shown.")
     kinds = Counter(r[6].split(" (")[0] for r in rows)
-    sec.footer.append("In all: " + ", ".join(f"{kinds[k]} {k}" for k in (
-        "departs", "same words, other order", "one word changed", "short run", "formula", "no Greek verse mapped") if kinds[k]) + ".")
+    sec.footer.append("In all: " + "; ".join(f"{kinds[k]} {k}" for k in (
+        "departs", "whole in Greek", "same words, other order", "one word changed", "short run", "formula",
+        "no Greek verse mapped") if kinds[k]) + ".")
 
 
 # --- 4e: the echoes ----------------------------------------------------------

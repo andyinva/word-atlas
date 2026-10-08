@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.78. Andrew Hopkins, with Claude.
+For version 0.10.79. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -4759,6 +4759,19 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.79.** 4f's test, the reviewer's second read. 'whole in
+Greek': a run that covers the whole Greek of the echo's own words on
+the New Testament side (the shortest stretch holding every Strong's
+number of the echo's words, every one of them present), a quotation
+complete whatever its length, since one Greek verb carries 'bear
+false witness' (Matthew 19:18 against Exodus 20:16, two Greek words);
+shown whatever its rank, as departures are. Runs are matched with
+the Greek article stepped over, so the Gospels' 'the son of the man'
+and Theodotion's 'son of man' are one run. 'same words, other order'
+prints its root count in brackets, so two common roots (Hebrews 1:10
+against Genesis 2:4, earth and heavens) are weighed as the light
+thing they are. The summary line uses semicolons.
 
 **0.10.78.** 4f's test reads more than the longest run. A run of
 four or more broken once, a word swapped or added on one side, is
