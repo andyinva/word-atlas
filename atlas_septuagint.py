@@ -748,10 +748,15 @@ def english_echoes_unconfirmed(atlas, book, chapters, testament, greek_pairs):
     lie in the other testament, grown over their verses to the full run
     as section 4 grows them, kept when the run is QUOTE_MIN_WORDS or
     more words in at most ENGLISH_MAX_VERSES verses of the Bible, and
-    not confirmed by a Greek run between the same two verses.  Returns
-    [(phrase, here reference, there reference)], rarest first.
+    not confirmed by a Greek run between the same two verses.  A run
+    one word short of that is kept when the two verses are a listed
+    cross reference with MIN_VOTES or more votes (Jude 1:9 and
+    Zechariah 3:2, "The LORD rebuke thee": a quotation by sense and
+    the Hebrew order that no Greek run carries).  Returns [(phrase,
+    here reference, there reference, listed short)], rarest first.
     """
     from atlas_pages import QUOTE_MIN_WORDS, STOPLIST
+    crossrefs = atlas_listed.get(atlas)
     # The English-bridged echoes of the whole Bible, read once and kept
     # on the atlas (eleven thousand rows): a query per phrase cost Luke
     # four seconds
@@ -783,15 +788,25 @@ def english_echoes_unconfirmed(atlas, book, chapters, testament, greek_pairs):
             words = atlas._word_string_by_ref = dict(atlas.db.execute("SELECT reference, word_string FROM verses"))
         strings = [words[r] for r in refs if r in words]
         grown = atlas.grow_formula(phrase[3:], strings) if strings else phrase[3:]
-        if len(grown.split()) < QUOTE_MIN_WORDS:
+        n_words = len(grown.split())
+        # The run's length before tidying, so "the lord rebuke thee" is
+        # four words though it is shown as three
+        whole = atlas.grow_formula(phrase[3:], strings, trim=False) if strings else grown
+        n_whole = len(whole.split())
+        if n_words < QUOTE_MIN_WORDS - 1 and n_whole < QUOTE_MIN_WORDS - 1:
             continue
+        short = n_words < QUOTE_MIN_WORDS
         for h in here:
             for e in far:
                 if (h, e) in greek_pairs:
                     continue
+                # One word short passes only on a listed pair
+                if short and not (crossrefs.available
+                                  and (crossrefs.votes(h, e) or 0) >= atlas_listed.MIN_VOTES):
+                    continue
                 # One row per verse pair: the longest grown phrase
-                if (h, e) not in found or len(grown) > len(found[(h, e)]):
-                    found[(h, e)] = grown
+                if (h, e) not in found or len(grown) > len(found[(h, e)][0]):
+                    found[(h, e)] = (grown, short)
     roots = {}
 
     def rarity(phrase):
@@ -803,7 +818,7 @@ def english_echoes_unconfirmed(atlas, book, chapters, testament, greek_pairs):
                 roots[w] = atlas.rarity(atlas.root_of(w))
             total += roots[w]
         return total
-    out = [(phrase, h, e) for (h, e), phrase in found.items()]
+    out = [(phrase, h, e, short) for (h, e), (phrase, short) in found.items()]
     out.sort(key=lambda r: (-rarity(r[0]), atlas.ref_key(r[1]), atlas.ref_key(r[2])))
     return out
 
@@ -835,11 +850,12 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
     """
     far_col = "Septuagint" if far == "LXX" else "New Testament"
     rows = []
-    for phrase, h, e in unconfirmed:
+    for phrase, h, e, short in unconfirmed:
+        tag = " (listed, 4 words)" if short else ""
         a_vid = texts.by_ref[near].get(h)
         b_vid = texts.by_ref[far].get(e)
         if a_vid is None or b_vid is None:
-            rows.append((2, phrase, h, e, "", 0, "no Greek verse mapped"))
+            rows.append((2, phrase, h, e, "", 0, "no Greek verse mapped" + tag))
             continue
         n, start = longest_common_run(texts.keys[a_vid], texts.keys[b_vid])
         greek = " ".join(texts.surface[a_vid][start:start + n]) if n else ""
@@ -849,7 +865,7 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
             rank, test = 1, "short run"
         else:
             rank, test = 1, "formula"
-        rows.append((rank, phrase, h, e, greek, n, test))
+        rows.append((rank, phrase, h, e, greek, n, test + tag))
     rows.sort(key=lambda r: r[0])          # stable: rarity order kept within each kind
     sec = report.section(
         title, ["English echo", "here", far_col, "Greek shared", "words", "test"],
@@ -864,13 +880,16 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
              f"'formula' is a run 4e set aside as the language's common stock or for want of two content words.  "
              f"Departures first, then the rest rarest first; every departure is shown.  Where the English bridge "
              f"never paired a quotation (Matthew's Micah 5:2, Hosea 11:1, Isaiah 53:4, whose King James wording "
-             f"differs from the prophet's), there is nothing here to test: the method's edge.")
+             f"differs from the prophet's), there is nothing here to test: the method's edge.  An English run one "
+             f"word short of the floor is admitted when the two verses are a listed cross reference with "
+             f"{atlas_listed.MIN_VOTES} or more votes (OpenBible.info, on the Treasury of Scripture Knowledge), "
+             f"marked '(listed, 4 words)' in the test column.")
     shown = rows[:top_n()] + [r for r in rows[top_n():] if r[0] == 0]
     for rank, phrase, h, e, greek, n, test in shown:
         sec.add([phrase, h, e, greek, n or "", test], refs=[h, e], link={"phrase": phrase, "key": "en:" + phrase})
     if len(rows) > len(shown):
         sec.footer.append(f"{len(rows) - len(shown)} more rows of commoner words not shown.")
-    kinds = Counter(r[6] for r in rows)
+    kinds = Counter(r[6].split(" (")[0] for r in rows)
     sec.footer.append("In all: " + ", ".join(f"{kinds[k]} {k}" for k in ("departs", "short run", "formula", "no Greek verse mapped") if kinds[k]) + ".")
 
 

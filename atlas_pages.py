@@ -52,7 +52,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.76"   # the program version; the window title and every report print it
+VERSION = "0.10.77"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -881,10 +881,12 @@ class Atlas:
 
     # -- growing formulas (same idea as phase 1, now against stored strings) --------
 
-    def grow_formula(self, phrase, word_strings):
+    def grow_formula(self, phrase, word_strings, trim=True):
         """
         Extend a formula left and right for as long as every verse in
-        word_strings continues it with the same word, then tidy it.
+        word_strings continues it with the same word, then tidy it
+        (trim=False keeps the run whole, so its length can be counted
+        before the tidying drops a leading or trailing small word).
         """
         while True:
             grew = False
@@ -914,7 +916,7 @@ class Atlas:
                     phrase = f"{phrase} {word}" if side == "right" else f"{word} {phrase}"
                     grew = True
             if not grew:
-                return trim_formula(phrase)
+                return trim_formula(phrase) if trim else phrase
 
     # -- lookups for the window ------------------------------------------------------
 

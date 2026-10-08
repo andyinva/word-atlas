@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.76. Andrew Hopkins, with Claude.
+For version 0.10.77. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -825,7 +825,9 @@ under the English table. In 4e a run of three Greek words, one short
 of the floor, is admitted when the two verses are a listed cross
 reference with ten or more votes, graded 'listed, 3 words': the
 listing stands in for the missing word, the first place the column
-improves a table rather than annotating it (0.10.76). The numbers
+improves a table rather than annotating it (0.10.76); 4f does the
+same for an English echo one word short of its floor, marked
+'(listed, 4 words)' (0.10.77). The numbers
 are humbling and meant to be: Revelation's table 4 holds 59 of the 2,096 listed links
 from its verses, because a cross reference joins verses by theme,
 name or image as readily as by wording, and the atlas finds wording.
@@ -1245,6 +1247,8 @@ starts from), `declined` (every table that declined to measure, with
 its reason), `section Isaiah 7d` (one section of one page as stored),
 `listed` (the echo tables against the cross references, every book's
 counts from the 4, 4e and 6 footers, with the share held; 0.10.75),
+`unlisted 100` (a random sample of the echo rows no cross reference
+lists, with a blank verdict column for grading by hand; 0.10.77),
 `diff 1 2` (the cells that differ between two runs, pages matched by
 title, sections by number and rows by their first cell, which is the
 reviewer's diff of two dossiers made exact), and `sql "SELECT ..."`
@@ -4755,6 +4759,16 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.77.** 4f admits an English echo one word short of its floor
+when the two verses are a listed cross reference with ten or more
+votes, marked '(listed, 4 words)' in the test column, the run counted
+before tidying drops its small end word: Jude 1:9 beside Zechariah
+3:2 ("The LORD rebuke thee") and Jude 1:14 beside Deuteronomy 33:2
+("with ten thousands of saints"), quotations by sense and the Hebrew
+order that no Greek run carries. `atlas_results.py unlisted [N]`
+draws a random sample of the echo rows no cross reference lists, with
+a blank verdict column, for grading by hand.
 
 **0.10.76.** The reviewer's read of 0.10.75: a listing is counted
 once however many verses its range spans (the loader had counted a
