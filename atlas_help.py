@@ -206,7 +206,10 @@ COLUMN_HELP = {
     "grade": "'quotation' marks an echo of five or more words found in exactly two verses of "
              "the whole Bible, one here and one there: the strongest kind of evidence the table has.  "
              "'by English' marks an echo across the testaments that meets the same test by wording "
-             "alone: weaker, since the translators' idiom can make it.",
+             "alone: weaker, since the translators' idiom can make it.  'cited, N roots' marks a row that "
+             "is no echo at all but a pair the rabbinic library cites together in ten or more passages, "
+             "whose two verses share N rare roots in any order: the readers' finding, on one word, "
+             "admitted on their word.",
     "quotation grade": "How many of the partner's echoes are quotation grade: five or more words "
                        "in exactly two verses of the Bible, one here and one there.  Echoes that "
                        "meet the test only by English wording across the testaments are counted "

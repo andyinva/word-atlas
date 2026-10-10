@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.81. Andrew Hopkins, with Claude.
+For version 0.10.82. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -925,9 +925,24 @@ share wording, because the rabbinic rule of gezerah shavah reads two
 verses together for a word they share, which is what the echo tables
 do with roots; the Treasury's strongest links (Isaiah 55:8 with
 Jeremiah 29:11) join verses by theme, which no shared wording carries.
-So where `listed` tests the tables against readers' sense of what
-belongs together, `cited` tests them against readers who were
-looking for the same thing. The export's verse numbers follow the
+The reviewer's read of Genesis (0.10.81) put that more exactly: the
+rabbis read by a shared word, not a shared phrase, so the echo tables,
+which ask for three roots in a row, hold fewer of the cited pairs than
+of the listed ones (1.5 percent against 5.6 on Genesis), and the
+strongest cited pairs they miss are famous readings made on one word:
+Genesis 1:1 with Jeremiah 2:3 (the beginning and the firstfruits, one
+root, Rashi's first comment), Genesis 28:11 with Jeremiah 7:16 (the
+verb paga, from which the evening prayer is derived), Genesis 15:6
+with Exodus 4:31 (believed), Genesis 38:8 with Deuteronomy 25:5 (the
+brother's duty). So from 0.10.82 the column's gift is the one the
+listed column gives, a reason to lower the floor on a corroborated
+pair: a cited pair of ten or more passages that no echo holds, whose
+two verses share a rare root (rarer than one word in two thousand, as
+6c counts kin) in any order, is added to table 4 as a row graded
+'cited, N roots', the shared words as each verse spells them, the
+strongest first, twelve at most with a footer counting the rest. The
+grade says plainly that the row is the readers' finding admitted on
+their word, not the table's own. The export's verse numbers follow the
 Hebrew Bible (the Psalm titles are verses, Joel has four chapters),
 so `sefaria_links.py hebrew` builds a Hebrew-to-King-James map into
 metadata.db's `hebrew_verse_map` table from STEPBible's TVTMS file,
@@ -961,7 +976,16 @@ sorts the two kinds by eye, which the test column makes quick. A
 quotation the King James wording never let the English bridge pair
 (Matthew's Micah 5:2, Hosea 11:1, Isaiah 53:4) is not here, because
 there is nothing to test; that is the method's edge, and only a
-quotation list would carry it further.
+quotation list would carry it further. The test grew at 0.10.78 and 0.10.79 (one word changed, same words in
+another order, whole in Greek; section 28d and Appendix C). From 0.10.82 an article both sides have inside the run counts as a
+word and one on a side alone is stepped over, so the count agrees
+with the Greek shown and the floors stand where they stood when
+articles counted (0.10.81 had dropped every run a word or two and
+Hebrews lost its formula and short-run rows); and a whole-in-Greek run
+that stands in more than six verses of the far side is graded 'whole
+in Greek, common stock', the language's own phrase (the birds of the
+air, Matthew 8:20 beside 2 Samuel 21:10) and no quotation, ranked
+with the formulas rather than shown whatever its place.
 
 **Section 5, Reach and depth.** A chart with one point per signature
 word, reach across (how many chapters the word touches) and depth up
@@ -4867,6 +4891,20 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.82.** The reviewer's read of 0.10.81, and the translations
+layer resumed. 4f: an article both sides have inside a run counts as
+a word, one on a side alone is stepped over, so the count and the
+Greek shown agree and Hebrews has its formula and short-run rows
+back; a whole-in-Greek run in more than six verses of the far side is
+'whole in Greek, common stock', not a quotation. Table 4 on an Old
+Testament book adds rows graded 'cited, N roots' for cited pairs of
+ten or more passages the echoes miss whose verses share a rare root
+in any order (Genesis 1:1 with Jeremiah 2:3), and the column's note
+says the rabbis read by a word, not a phrase. The six translations
+under copyright (JUB, LEB, NET, LIT, MKJ, BBE) are left out of the
+translations index altogether (`atlas_translations.EXCLUDED`, or a
+family of 'excluded' in metadata.db). Guards extended.
 
 **0.10.81.** The rabbinic library's pairs as a second web
 (`sefaria_links.py`). Sefaria's links export is read once, kept to

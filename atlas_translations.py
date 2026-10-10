@@ -127,6 +127,13 @@ SPELLINGS = {
     "stablished": "established", "jehovah": "lord", "yahweh": "lord", "yhwh": "lord",
 }
 
+# Translations left out of the index altogether: under copyright, and
+# though a report carries counts and names only, the index itself holds
+# their word runs, so they stay out of anything that could travel.  A
+# translation whose family is set to 'excluded' in metadata.db's
+# translation_families table is left out the same way.
+EXCLUDED = {"JUB", "LEB", "NET", "LIT", "MKJ", "BBE"}
+
 # The language zones a run must span to count as an echo across the
 # seam: the Hebrew and the Aramaic verses of the Old Testament, and the
 # Greek New Testament.  A run within one zone is an echo by root, which
@@ -256,11 +263,16 @@ def words_of(text):
 # Building the index
 # ---------------------------------------------------------------------------
 
-def read_translations(src):
-    """(id, abbreviation, name) of every translation, King James first."""
+def read_translations(src, metadata_path=METADATA_PATH, log=None):
+    """(id, abbreviation, name) of every translation used, King James first; the excluded ones left out and named."""
     rows = src.execute("SELECT id, abbreviation, name FROM translations ORDER BY id").fetchall()
-    rows.sort(key=lambda r: (r[1] != BASE, r[0]))
-    return rows
+    families = families_from(metadata_path)
+    out = [r for r in rows if r[1].upper() not in EXCLUDED and families.get(r[1], "").lower() != "excluded"]
+    left = [r[1] for r in rows if r not in out]
+    if left and log:
+        log(f"  left out ({len(left)}, under copyright or marked excluded): {', '.join(left)}")
+    out.sort(key=lambda r: (r[1] != BASE, r[0]))
+    return out
 
 
 def read_verses(src, tid):
@@ -365,7 +377,7 @@ def build(index_path=INDEX_PATH, source_path=None, atlas_path=None, metadata_pat
     atlas_path = atlas_path or os.path.join(PROGRAM_DIR, "atlas.db")
     spellings = spellings_from(metadata_path)
     families = families_from(metadata_path)
-    translations = read_translations(src)
+    translations = read_translations(src, metadata_path, log)
     log(f"reading {len(translations)} translations from {src_path}")
 
     # First pass: the vocabulary of every translation, for the stemmer
@@ -541,7 +553,7 @@ def survey(source_path=None, metadata_path=METADATA_PATH, write=False, log=print
     if src is None:
         raise SystemExit("No database with more than one translation found.")
     spellings = spellings_from(metadata_path)
-    translations = read_translations(src)
+    translations = read_translations(src, metadata_path, log)
     texts = {tid: dict((ref, text) for ref, _, text in read_verses(src, tid)) for tid, _, _ in translations}
     vocabulary = set()
     for rows in texts.values():

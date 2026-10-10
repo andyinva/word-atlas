@@ -53,7 +53,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.81"   # the program version; the window title and every report print it
+VERSION = "0.10.82"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -2026,6 +2026,69 @@ def neighbors_section(atlas, report, title, scope, root, word, scope_label):
                 link={"word": l["neighbor"], "book": scope, "pair": root} if l else None)
 
 
+CITED_ROOT_N = 12       # rows added to table 4 for cited pairs that share a rare root, at most
+
+
+def cited_root_rows(atlas, sec, cited, crossrefs, width):
+    """
+    The rabbinic readings the echo tables miss because they rest on one
+    word: of the cited pairs (CITED_STRONG passages or more) from the
+    text's verses to other books that no echo holds, those whose two
+    verses share a rare root (rarer than one word in two thousand, as
+    6c counts kin) in any order, added as rows graded 'cited, N roots',
+    the shared words as each verse spells them, the strongest first.
+    Rashi's first comment comes in this way: Genesis 1:1 with Jeremiah
+    2:3, 'the beginning' and 'the firstfruits' one Hebrew root; so does
+    the evening prayer's derivation, Genesis 28:11 with Jeremiah 7:16,
+    'lighted' and 'intercession' both paga.
+    """
+    data = getattr(sec, cited.KEY, None)
+    if not data:
+        return
+    threshold = math.log(2000)
+    strongs = atlas.roots_mode == "strongs"
+    cache = {}
+
+    def rare_roots(ref):
+        if ref not in cache:
+            row = atlas.verse_by_reference(ref)
+            words = {}
+            if row is not None:
+                for surface, root in atlas.db.execute(
+                        "SELECT surface, root FROM tokens WHERE verse_id = ? AND is_stop = 0 ORDER BY position",
+                        (row["verse_id"],)):
+                    if (strongs and not is_strongs(root)) or atlas.rarity(root) < threshold:
+                        continue
+                    words.setdefault(root, surface)
+            cache[ref] = words
+        return cache[ref]
+
+    found = []
+    for n, (this, other, passages) in data["links"].items():
+        if n in data["held"] or passages < cited.STRONG:
+            continue
+        here_ref, there_ref = atlas_listed.CrossRefs.text(this), atlas_listed.CrossRefs.text(other)
+        a, b = rare_roots(here_ref), rare_roots(there_ref)
+        shared = sorted(set(a) & set(b), key=lambda r: -atlas.rarity(r))
+        if shared:
+            found.append((passages, shared, here_ref, there_ref, a, b))
+    if not found:
+        return
+    found.sort(key=lambda f: (-f[0], f[2], f[3]))
+    for passages, shared, here_ref, there_ref, a, b in found[:CITED_ROOT_N]:
+        words = ", ".join(a[r] if a[r] == b[r] else f"{a[r]} / {b[r]}" for r in shared)
+        row = [words, f"cited, {len(shared)} root{'s' if len(shared) > 1 else ''}", here_ref, there_ref]
+        if crossrefs.available:
+            votes = crossrefs.votes(here_ref, there_ref)
+            row.append(votes if votes is not None else "")
+        row.append(passages)
+        row.extend([""] * (width - len(row)))
+        sec.add(row, refs=[here_ref, there_ref], link={"phrase": words, "key": " ".join(shared)})
+    sec.footer.append(f"{len(found)} cited pairs ({cited.STRONG} or more passages) that no echo holds share a rare "
+                      f"root in any order and are added as rows graded 'cited, N roots'"
+                      + (f"; {len(found) - CITED_ROOT_N} more not shown" if len(found) > CITED_ROOT_N else "") + ".")
+
+
 def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, date=None,
                    verse_ids=None, books=None):
     """
@@ -2167,8 +2230,10 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
              + ("  'cited' is how many passages of the rabbinic library (the Mishnah, the Talmuds, the Midrash and "
                 "the commentators, from Sefaria's links) cite a verse on each side of the echo together, a "
                 "commentary on one verse citing the other counted as a passage; blank, never cited together.  "
-                "The rabbis read two verses together above all for a word they share, so this web agrees with "
-                "the method where the readers' cross references, which join verses by theme, do not."
+                "The rabbis read two verses together for a word they share, one word as often as a phrase, "
+                "so the pairs they cite are made as the echoes are but on a lower floor; a cited pair the "
+                f"echoes miss that shares a rare root is added as a row graded 'cited, N roots' (from "
+                f"{atlas_listed.CITED_STRONG} passages)."
                 if cited_on else "")
              + (atlas_translations.note_for(translations) if translations.available else ""))
     supports = []             # the other translations' verdicts on the English echoes shown
@@ -2216,6 +2281,7 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
     if cited_on:
         atlas_listed.footer_for(sec, cited, scope, other_books=other_books, what="other books",
                                 found=candidates)
+        cited_root_rows(atlas, sec, cited, crossrefs, len(columns))
     if translations.available:
         atlas_translations.footer_for(sec, translations, supports)
     if len(found) > ECHO_N:

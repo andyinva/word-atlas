@@ -831,7 +831,7 @@ def longest_common_run(a, b, stop_a=None):
     is chosen (stop_a marks a's stop words), so the reader sees the
     telling part ("fire consuming" rather than "the God").
     """
-    best, best_i, best_content = 0, 0, -1
+    best, best_i, best_j, best_content = 0, 0, 0, -1
     prev = [0] * (len(b) + 1)
     for i in range(1, len(a) + 1):
         cur = [0] * (len(b) + 1)
@@ -842,9 +842,9 @@ def longest_common_run(a, b, stop_a=None):
                 start = i - n
                 content = sum(1 for k in range(start, i) if not stop_a[k]) if stop_a else 0
                 if n > best or (n == best and content > best_content):
-                    best, best_i, best_content = n, start, content
+                    best, best_i, best_j, best_content = n, start, j - n, content
         prev = cur
-    return best, best_i
+    return best, best_i, best_j
 
 
 def bridged_run(a, b):
@@ -944,7 +944,30 @@ def smallest_window(keys, wanted):
     return best or []
 
 
-def classify_pair(a_keys, a_stop, b_keys, roots, all_roots, nt_keys, ot_keys):
+def matched_articles(a_keys, b_keys, a_pos, b_pos, start_a, start_b, n):
+    """
+    The articles a run shares: with the run found on the keys stripped
+    of articles (a_pos and b_pos give each kept key's place in the
+    original), an article standing in the same gap of the run on both
+    sides is a word the two sides share and is counted; one on a side
+    alone was stepped over and is not.  Returns (count, whether an
+    article leads the run on both sides), so the count and the Greek
+    shown agree.
+    """
+    if not n:
+        return 0, False
+    count = 0
+    for k in range(1, n):
+        gap_a = a_keys[a_pos[start_a + k - 1] + 1:a_pos[start_a + k]]
+        gap_b = b_keys[b_pos[start_b + k - 1] + 1:b_pos[start_b + k]]
+        if ARTICLE in gap_a and ARTICLE in gap_b:
+            count += 1
+    leading = (a_pos[start_a] > 0 and a_keys[a_pos[start_a] - 1] == ARTICLE
+               and b_pos[start_b] > 0 and b_keys[b_pos[start_b] - 1] == ARTICLE)
+    return count + (1 if leading else 0), leading
+
+
+def classify_pair(a_keys, a_stop, b_keys, roots, all_roots, nt_keys, ot_keys, far_places=None):
     """
     What the Greek of an English-bridged pair says, as 4f's 'test':
     (rank, test, run length, run start in a, run end in a).  The run
@@ -956,12 +979,24 @@ def classify_pair(a_keys, a_stop, b_keys, roots, all_roots, nt_keys, ot_keys):
     of the echo's words; whole when the shared run covers it), the
     longest run broken once, and whether the echo's content roots
     (roots) all stand in the other side's Greek in any order.  Runs
-    are matched with the article stepped over.
+    are matched with the article stepped over where one side alone has
+    it; an article both sides have inside the run counts as a word, so
+    the count agrees with the Greek shown and the floors stand where
+    they stood when articles counted.  far_places, when given, counts
+    the far side's verses holding a run, so a whole-in-Greek run that
+    is the language's common stock (the birds of the air, in dozens of
+    Septuagint verses) is told from a quotation.
     """
     a2, a_pos, a_st = without_articles(a_keys, a_stop)
     b2, b_pos, _ = without_articles(b_keys)
-    n, start2 = longest_common_run(a2, b2, a_st)
-    start, end = (a_pos[start2], a_pos[start2 + n - 1] + 1) if n else (0, 0)
+    n0, start2, start_b = longest_common_run(a2, b2, a_st)
+    extra, leading = matched_articles(a_keys, b_keys, a_pos, b_pos, start2, start_b, n0)
+    n = n0 + extra
+    if n0:
+        start = a_pos[start2] - (1 if leading else 0)
+        end = a_pos[start2 + n0 - 1] + 1
+    else:
+        start, end = 0, 0
     # Whole in Greek: the New Testament side's span of the echo's own
     # words, articles aside, lies inside a run the two sides share
     nt2, nt_pos, _ = without_articles(nt_keys)
@@ -972,6 +1007,11 @@ def classify_pair(a_keys, a_stop, b_keys, roots, all_roots, nt_keys, ot_keys):
     # the Mount of Olives against G1636 for its olives, leaves one out)
     span = smallest_window(nt2, all_roots) if all_roots <= set(nt2) else []
     if roots and len(span) >= 2 and any(ot2[j:j + len(span)] == span for j in range(len(ot2) - len(span) + 1)):
+        # A whole run in more verses of the far side than an echo may
+        # have is the common stock of the language, not a quotation
+        places = far_places(tuple(span)) if far_places else None
+        if places is not None and places > ECHO_MAX_PLACES:
+            return 2, f"whole in Greek, common stock ({places} verses)", n, start, end
         return 1, "whole in Greek", n, start, end
     if n >= ECHO_MIN_WORDS:
         return 2, "formula", n, start, end
@@ -998,6 +1038,26 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
     """
     far_col = "Septuagint" if far == "LXX" else "New Testament"
     rows = []
+
+    # How many verses of the far side hold a run (articles aside): an
+    # index per run length, built once and kept on the texts
+    if not hasattr(texts, "_stripped"):
+        texts._stripped = {}
+
+    def far_places(span):
+        n = len(span)
+        if (far, n) not in texts._stripped:
+            idx = defaultdict(set)
+            for (c, book), vids in texts.by_book.items():
+                if c != far:
+                    continue
+                for vid in vids:
+                    ks, _, _ = without_articles(texts.keys[vid])
+                    for i in range(len(ks) - n + 1):
+                        idx[tuple(ks[i:i + n])].add(vid)
+            texts._stripped[(far, n)] = idx
+        return len(texts._stripped[(far, n)].get(span, ()))
+
     for phrase, h, e, short in unconfirmed:
         tag = " (listed, 4 words)" if short else ""
         a_vid = texts.by_ref[near].get(h)
@@ -1011,7 +1071,8 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
         nt_ref, nt_vid, ot_vid = (h, a_vid, b_vid) if near == "GNT" else (e, b_vid, a_vid)
         roots, all_roots = echo_roots(atlas, phrase, nt_ref)
         rank, test, n, start, end = classify_pair(texts.keys[a_vid], texts.stop[a_vid], texts.keys[b_vid],
-                                                  roots, all_roots, texts.keys[nt_vid], texts.keys[ot_vid])
+                                                  roots, all_roots, texts.keys[nt_vid], texts.keys[ot_vid],
+                                                  far_places=far_places)
         greek = " ".join(texts.surface[a_vid][start:end]) if n else ""
         rows.append((rank, phrase, h, e, greek, n, test + tag))
     rows.sort(key=lambda r: r[0])          # stable: rarity order kept within each kind
@@ -1031,13 +1092,16 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
              f"English made on its own; 'whole in Greek' is a run that covers the whole Greek of the echo's own "
              f"words on the New Testament side, a quotation complete whatever its length, since one Greek verb can "
              f"carry three English words (Matthew 19:18 against Exodus 20:16, 'thou shalt not bear false witness', "
-             f"two Greek words); 'one word changed' is a run of {ECHO_MIN_WORDS} or more broken once, a word "
+             f"two Greek words), unless the run stands in more than {ECHO_MAX_PLACES} verses of the far side, when it "
+             f"is 'whole in Greek, common stock', the language's own phrase (the birds of the air) and no quotation; "
+             f"'one word changed' is a run of {ECHO_MIN_WORDS} or more broken once, a word "
              f"swapped or added on one side (Hebrews 12:29 against Deuteronomy 4:24, 'our' for 'your'), the "
              f"Septuagint's words after all; 'same words, other order' is the echo's content words (two or more, by "
              f"their Strong's numbers in the King James verse) all present in the other side's Greek but not in a "
              f"run (Jude 1:9 against Zechariah 3:2), a quotation by sense and the Hebrew order, the count of roots "
              f"in brackets so two common roots are weighed as the light thing they are; runs are matched with the "
-             f"Greek article stepped over; 'short run' is Greek that agrees but for {ECHO_MIN_WORDS - 1} words, an idiom or a quotation "
+             f"Greek article stepped over where one side alone has it, and an article both sides have inside the "
+             f"run counted as a word; 'short run' is Greek that agrees but for {ECHO_MIN_WORDS - 1} words, an idiom or a quotation "
              f"broken by a differing word; "
              f"'formula' is a run 4e set aside as the language's common stock or for want of two content words.  "
              f"Departures first, then the whole-in-Greek rows, then the rest rarest first; every departure and "
@@ -1068,8 +1132,8 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
         sec.footer.append(f"{len(rows) - len(shown)} more rows of commoner words not shown.")
     kinds = Counter(r[6].split(" (")[0] for r in rows)
     sec.footer.append("In all: " + "; ".join(f"{kinds[k]} {k}" for k in (
-        "departs", "whole in Greek", "same words, other order", "one word changed", "short run", "formula",
-        "no Greek verse mapped") if kinds[k]) + ".")
+        "departs", "whole in Greek", "whole in Greek, common stock", "same words, other order", "one word changed",
+        "short run", "formula", "no Greek verse mapped") if kinds[k]) + ".")
 
 
 # --- 4e: the echoes ----------------------------------------------------------

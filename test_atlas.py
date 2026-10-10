@@ -349,6 +349,14 @@ def test_guards(atlas, only):
             atlas_pages.echoes_section(atlas, rep2, "4. Echoes [Jude] -> other books", "Jude")
             if "cited" in rep2.sections[0].columns:
                 problems.append("Jude, a New Testament book, got a cited column")
+            # 0.10.82: a cited pair on one shared root is a row (Rashi's
+            # first comment, Genesis 1:1 with Jeremiah 2:3)
+            rep3 = atlas_report.Report("t", "Book page [Genesis] (KJV)")
+            atlas_pages.echoes_section(atlas, rep3, "4. Echoes [Genesis] -> other books", "Genesis")
+            sec3 = rep3.sections[0]
+            if not any(str(r[1]).startswith("cited, 1 root") and r[2] == "Genesis 1:1" and r[3] == "Jeremiah 2:3"
+                       for r in sec3.rows):
+                problems.append("Genesis 1:1 -> Jeremiah 2:3 not added as a 'cited, 1 root' row")
             report(name, not problems, "; ".join(problems) or (f"{parsed[3]} of {parsed[2]} pairs held" if parsed else ""))
 
     # The other translations as witnesses (0.10.80): a small source of
@@ -450,15 +458,25 @@ def test_guards(atlas, only):
                     ("the lord rebuke", "Jude 1:9", "Zechariah 3:2", "same words, other order (2 roots)"),
                     ("with ten thousands", "Jude 1:14", "Deuteronomy 33:2", "departs"),
                     ("thou shalt not bear false witness", "Matthew 19:18", "Exodus 20:16", "whole in Greek"),
-                    ("despise not thou the chastening", "Hebrews 12:5", "Job 5:17", "departs")):
+                    ("despise not thou the chastening", "Hebrews 12:5", "Job 5:17", "departs"),
+                    # 0.10.82: an article both sides have counts, so the formula grade is back
+                    ("the works of thy hands", "Hebrews 2:7", "Psalms 92:4", "formula"),
+                    # ... and a whole run that is the language's common stock says so
+                    ("the birds of the air", "Matthew 8:20", "2 Samuel 21:10", "whole in Greek, common stock")):
                 a, b = texts.by_ref["GNT"].get(here), texts.by_ref["LXX"].get(there)
                 if a is None or b is None:
                     problems.append(f"{here} or {there} not in the texts")
                     continue
                 roots, all_roots = sept.echo_roots(atlas, phrase, here)
+                # The far side's verse count for a run, as 4f supplies it
+                def far_places(span, _n=[0]):
+                    sw = [sept.without_articles(texts.keys[v])[0] for (c, bk), vids in texts.by_book.items()
+                          if c == "LXX" for v in vids]
+                    return sum(1 for ks in sw if any(tuple(ks[i:i + len(span)]) == span
+                                                      for i in range(len(ks) - len(span) + 1)))
                 got = sept.classify_pair(texts.keys[a], texts.stop[a], texts.keys[b], roots, all_roots,
-                                         texts.keys[a], texts.keys[b])[1]
-                if got != want:
+                                         texts.keys[a], texts.keys[b], far_places=far_places)[1]
+                if got != want and got.split(" (")[0] != want:
                     problems.append(f"{here} against {there}: {got!r}, wanted {want!r}")
             report(name, not problems, "; ".join(problems))
 

@@ -7,7 +7,7 @@ with the version that carried them. Add to it whenever a review or a
 conversation raises something; the manual's version history records
 what shipped, this records what has not.
 
-Last updated 2026-10-10, at version 0.10.81.
+Last updated 2026-10-10, at version 0.10.82.
 
 ## Standing work
 
@@ -168,10 +168,14 @@ the testament. If a section of Daniel's Aramaic chapters were ever set
 against a Hebrew baseline, 1b would need a language test too, and the
 English bridge to carry it, as the echoes have.
 
-## The translations layer (on hold, 2026-10-10)
+## The translations layer (resumed 2026-10-10)
 
-**Where it stands.** 0.10.80 shipped the layer whole and it is
-dormant until an index is built: `atlas_translations.py` (build,
+**Where it stands.** Resumed the same day it was held, with the six
+translations under copyright (JUB, LEB, NET, LIT, MKJ, BBE) left out
+of the index altogether at 0.10.82 (`EXCLUDED` in
+atlas_translations.py, or a family of 'excluded' in metadata.db); the
+index then holds no copyrighted word runs. 0.10.80 shipped the layer
+whole and it is dormant until an index is built: `atlas_translations.py` (build,
 survey, show, status), the `translations` and `families` columns and
 footers on tables 4 and 4f, `atlas_results.py idiom`, two guard tests,
 manual section 12 and 19, Appendix C. The pages add the columns only
@@ -205,7 +209,7 @@ text carries something odd (the Diaglott at 1.000 against Young's is
 suspicious); that needs the text in front of whoever looks, which the
 export below gives.
 
-**To pick it up again.** (1) In `~/projects/word_atlas` make the
+**To finish it.** (1) In `~/projects/word_atlas` make the
 export (`translations.db`, the four text tables of Bible Search
 Lite's `bibles.db`, about 110 MB, gitignored) so the survey can be
 read with the text at hand; the command is in the session notes and
@@ -277,7 +281,12 @@ of the weekly portions), so a per-verse `cited` figure on Word or
 Chapter pages would need the commentary-on-its-own-verse links left
 out; not built. (c) A results question setting the two webs against
 each other and the atlas's echoes (both list, one lists, neither) on
-the rows of 4 and 6, now that both columns stand on the page. (d) The
+the rows of 4 and 6, now that both columns stand on the page. (f)
+The 'cited, N roots' rows (0.10.82) are on table 4 only; the
+reviewer asked for the same within a book, where 6 is a chapter map
+and not a list of verse pairs, so haker-na (Genesis 37:32 with 38:25)
+has no row yet; a 6-side list, or 6c run on cited pairs, is the
+place. (d) The
 co-citation floor of two passages and the list ceiling of twelve
 verses are first guesses; `sefaria_links.py treasury` is the place
 to try others. (e) `survey` could report the hand-made against the
@@ -500,7 +509,7 @@ go, and the README says what a visitor must supply.
 
 ## DONE
 
-2026-10-03 the repository public with 0.10.37 pushed. 0.10.81 the rabbinic library's pairs as a second web (sefaria_links.py; the cited column and footers on 4 and 6; `atlas_results.py cited`). 0.10.80 the other English translations as witnesses to the English echoes (atlas_translations.py; translations and families columns on 4 and 4f; `atlas_results.py idiom`). 0.10.79 4f's 'whole in Greek', articles stepped over, root counts. 0.10.78 4f's three-way Greek test. 0.10.77 4f's listed four-word echoes; `atlas_results.py unlisted`, a results query that samples the unlisted echo rows for grading by hand. 0.10.76 listings counted once, 4 and 4e reconciled, three-word Greek runs on listed pairs. 0.10.75 the cross references as a check on the echo tables (listed column, footers, results question). 0.10.74 the packed file named after its run. 0.10.73 atlas_pack.py and the Word Atlas Reader (its own repository). 0.10.72 figure-like text columns right-aligned. 0.10.71 the window's double-click crash. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
+2026-10-03 the repository public with 0.10.37 pushed. 0.10.82 the reviewer's read of 0.10.81 (articles counted when shared, common-stock runs, 'cited, N roots' rows); the copyrighted translations excluded. 0.10.81 the rabbinic library's pairs as a second web (sefaria_links.py; the cited column and footers on 4 and 6; `atlas_results.py cited`). 0.10.80 the other English translations as witnesses to the English echoes (atlas_translations.py; translations and families columns on 4 and 4f; `atlas_results.py idiom`). 0.10.79 4f's 'whole in Greek', articles stepped over, root counts. 0.10.78 4f's three-way Greek test. 0.10.77 4f's listed four-word echoes; `atlas_results.py unlisted`, a results query that samples the unlisted echo rows for grading by hand. 0.10.76 listings counted once, 4 and 4e reconciled, three-word Greek runs on listed pairs. 0.10.75 the cross references as a check on the echo tables (listed column, footers, results question). 0.10.74 the packed file named after its run. 0.10.73 atlas_pack.py and the Word Atlas Reader (its own repository). 0.10.72 figure-like text columns right-aligned. 0.10.71 the window's double-click crash. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
 splits. 0.10.50 1d a language at a time for Daniel and Ezra. 0.10.49 a run figure for the once-here share. 0.10.48 1c and 1d refusals and the sibling caution. 0.10.47 nearest beyond the kind under 1c and 1d. 0.10.46 1d's run figures cached. 0.10.45 1d's run columns. 0.10.44 vocabulary richness (1d); Hebrews in parts. 0.10.43 the kind's own size yardsticks. 0.10.42 nine-in-ten yardsticks and a no-pronoun Delta. 0.10.41 cautions and a size yardstick on 1c and 7d; three more
 letters in parts. 0.10.40 the function-word layer, 1c and 7d (New Testament). 0.10.39 section 7's leading words floored and ended early. 0.10.38 2 Corinthians, Galatians and Ephesians in parts. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
 words, 3 to 5). 0.10.34 1b stops at a keyness floor (6.63); three occurrences for a
