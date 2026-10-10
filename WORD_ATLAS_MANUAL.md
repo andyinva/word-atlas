@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.86. Andrew Hopkins, with Claude.
+For version 0.10.87. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -1426,9 +1426,12 @@ counts from the 4, 4e and 6 footers, with the share held; 0.10.75),
 lists, with a blank verdict column for grading by hand; 0.10.77),
 `idiom` (the echoes found by English wording, table 4's 'by English'
 rows and every 4f row, by how many other translations and families
-keep them: the ones no other family keeps, the likeliest translators'
-idiom, then the ones every family keeps, then a count by book;
-0.10.80),
+keep them: the ones no other family keeps and 4e does not hold in
+Greek, the likeliest translators' idiom; the ones 4e holds in Greek,
+quotations of the Septuagint set apart whatever the translations say;
+the ones every family keeps; then a count by book; the heading counts
+the distinct echoes as well as the rows, since a cross-testament echo
+stands on both its books' pages; 0.10.80, 0.10.87),
 `cited` (the echo tables against the pairs the rabbinic library cites
 together, from the cited-pairs footers of 4 and 6, with the share
 held, in the form of `listed`; 0.10.81),
@@ -4942,6 +4945,20 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.87.** `atlas_results.py idiom` after the first canon with the
+translations on it: the rows 4e holds in Greek are read from the 4e
+tables' refs and set apart in a list of their own, as the table
+footer sets them apart, so 'who maketh his angels spirits' is no
+longer an idiom candidate; the heading counts the distinct echoes
+beside the rows, since a cross-testament echo stands on both its
+books' pages (819 rows were some 400 echoes). The first canon
+reading: 376 rows kept by the King James family alone, most of them
+Luke and Acts ('it came to pass when he was come', 'he lift up his
+eyes'), the King James rendering Luke's Septuagintal Greek in the
+English it had made for the Hebrew narrative; and one echo kept by
+every family, 'my God, my God, why hast thou forsaken me', Psalm
+22:1 in Matthew and Mark, 23 of 23.
 
 **0.10.86.** The reviewer's read of 0.10.85. The translations
 matcher reads the divine name as 'the lord' wherever a translation
