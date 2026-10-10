@@ -411,6 +411,13 @@ def test_guards(atlas, only):
                 # The run is in one verse of each translation only: never on both sides
                 if s2.kept != 0:
                     problems.append(f"'us a child is born' kept by {s2.kept}")
+                # 0.10.83: a tradition's map renumbers a book, joining a title verse to verse 1
+                rows = [("Psalms 3:1", "Psalms", "A Psalm of David"), ("Psalms 3:2", "Psalms", "Lord how are they increased"),
+                        ("Psalms 3:3", "Psalms", "Many there be")]
+                mapped = tr.remap_rows(rows, "Psalms", {("Psalms", 3, 1): (3, 1), ("Psalms", 3, 2): (3, 1),
+                                                         ("Psalms", 3, 3): (3, 2)})
+                if [r[0] for r in mapped] != ["Psalms 3:1", "Psalms 3:2"] or "David Lord" not in mapped[0][2]:
+                    problems.append(f"remap_rows gave {mapped}")
                 if t.phrase("shew unto us") != t.phrase("show to us"):
                     problems.append(f"spelling not folded: {t.phrase('shew unto us')!r} vs {t.phrase('show to us')!r}")
         report(name, not problems, "; ".join(problems))
@@ -591,6 +598,84 @@ def read(name):
         return f.read()
 
 
+WORKBENCH_SCRIPT = """
+import sys
+from PyQt6.QtWidgets import QApplication
+app = QApplication(sys.argv)
+import atlas_workbench
+w = atlas_workbench.Workbench()
+got = []
+w.run_tool = lambda script, args=(), **k: got.append([script] + list(args))
+w.page_options = {"top": "5", "only": "1,2", "quiet": True}
+w.query(["book", "Jude"])
+menus = [a.text().replace("&", "") for a in w.menuBar().actions()]
+print("composed:", " ".join(got[0]))
+print("menus:", ", ".join(menus))
+"""
+
+
+def test_workbench(only):
+    """The workbench (0.10.84) composes the command a menu would run, with the page options, in its own process."""
+    name = "guard: the workbench composes commands with the page options"
+    if only and only not in name:
+        return
+    try:
+        import PyQt6  # noqa: F401
+    except ImportError:
+        skip(name, "PyQt6 is not installed")
+        return
+    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
+    out = subprocess.run([sys.executable, "-c", WORKBENCH_SCRIPT], capture_output=True, text=True,
+                         env=env, cwd=PROGRAM_DIR, timeout=120)
+    lines = dict(l.split(": ", 1) for l in out.stdout.splitlines() if ": " in l)
+    problems = []
+    want = "atlas_query.py book Jude --top 5 --only 1,2 --quiet"
+    if out.returncode != 0:
+        problems.append(f"exit {out.returncode}: {(out.stderr.strip().splitlines() or ['no output'])[-1][:120]}")
+    elif lines.get("composed") != want:
+        problems.append(f"composed {lines.get('composed')!r}")
+    else:
+        for m in ("Pages", "Dossiers", "Results", "Builds", "Translations", "Sefaria", "Backup", "Install", "Tests", "Git"):
+            if m not in lines.get("menus", ""):
+                problems.append(f"no {m} menu")
+    report(name, not problems, "; ".join(problems))
+
+
+def test_dist(only):
+    """atlas_dist.py (0.10.85): a Reader bundle made into a temporary folder, unpacked and checked."""
+    name = "guard: atlas_dist makes, lists and unpacks a Reader bundle"
+    if only and only not in name:
+        return
+    import tempfile
+    import atlas_dist
+    reader_dir = atlas_dist.READER_DIR if os.path.exists(os.path.join(atlas_dist.READER_DIR, "word_atlas_reader.py")) \
+        else os.path.join(os.path.dirname(PROGRAM_DIR), "war")
+    if not os.path.exists(os.path.join(reader_dir, "word_atlas_reader.py")):
+        skip(name, "no Reader folder beside the program")
+        return
+    wadb = atlas_dist.newest_wadb()
+    if not wadb:
+        skip(name, "no .wadb under reports/ (python3 atlas_pack.py)")
+        return
+    problems = []
+    with tempfile.TemporaryDirectory() as tmp:
+        out = os.path.join(tmp, "reader.zip")
+        lines = []
+        atlas_dist.reader_bundle(wadb=wadb, out=out, reader_dir=reader_dir, log=lines.append)
+        if not os.path.exists(out):
+            problems.append("no zip written")
+        else:
+            atlas_dist.unpack(out, os.path.join(tmp, "new"), log=lines.append)
+            for need in ("word_atlas_reader/word_atlas_reader.py", "word_atlas_reader/reader_data.py",
+                         "word_atlas_reader/sample/" + os.path.basename(wadb), "word_atlas_reader/START.txt"):
+                if not os.path.exists(os.path.join(tmp, "new", need)):
+                    problems.append(f"{need} not unpacked")
+            n = atlas_dist.unpack(out, os.path.join(tmp, "new"), log=lines.append)
+            if n != 0:
+                problems.append(f"a second unpack wrote {n} files over the first")
+    report(name, not problems, "; ".join(problems) or os.path.basename(wadb))
+
+
 def test_housekeeping(only):
     version = atlas_pages.VERSION
     name = "housekeeping: one version everywhere"
@@ -652,6 +737,8 @@ def main(argv):
     started = time.perf_counter()
     print(f"Word Atlas {atlas_pages.VERSION}: tests" + (" (quick)" if quick else ""))
     test_housekeeping(only)
+    test_workbench(only)
+    test_dist(only)
     atlas = atlas_pages.Atlas()
     test_guards(atlas, only)
     test_window(only)

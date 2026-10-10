@@ -45,6 +45,7 @@ many families keep an echo, and the footer says which family alone
 keeps the ones that stand on the King James family only.
 """
 
+import glob
 import os
 import re
 import sqlite3
@@ -60,7 +61,11 @@ BASE = "KJV"                   # the translation the atlas is built on
 FORMULA_LENGTHS = (3, 4, 5)    # the lengths of run the atlas finds echoes at
 ECHO_MAX_TOTAL = 6             # a run in more verses of a translation is its idiom, not an echo (atlas_text's figure)
 PROBE_PLACES_MAX = 60          # places kept for a probe phrase common in some translation
-FAMILY_GAP = 0.25              # two translations closer than this (the distance below) are one family
+FAMILY_GAP = 0.15              # two translations closer than this (the distance below) are one family:
+                               # at 0.25 a chain of middling likenesses pulled the Douay and Young's
+                               # into the King James's family; at 0.15 the families are the lineages
+                               # (the King James and its revisions, Douay, Geneva, Tyndale) and the
+                               # rest stand alone, each an independent witness, which is the point
 SAMPLE_VERSES = 3000           # verses compared when measuring distance between translations
 PUBLIC_DOMAIN_BEFORE = 1930    # a translation published before this year is public domain in the United States
 
@@ -263,6 +268,173 @@ def words_of(text):
 # Building the index
 # ---------------------------------------------------------------------------
 
+# The numbering traditions TVTMS describes beside the King James's, as
+# its columns name them.  A translation in the database may follow any
+# of them (Challoner's Douay and Wycliffe the Latin's, Brenton the
+# Greek's, the JPS the Hebrew's), and which one is found by trial
+TRADITIONS = ("Hebrew", "Latin", "Greek")
+STEP_TO_KJV = dict(zip(
+    "Gen Exo Lev Num Deu Jos Jdg Rut 1Sa 2Sa 1Ki 2Ki 1Ch 2Ch Ezr Neh Est Job Psa "
+    "Pro Ecc Sng Isa Jer Lam Ezk Dan Hos Jol Amo Oba Jon Mic Nam Hab Zep Hag Zec Mal".split(),
+    ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy", "Joshua", "Judges", "Ruth", "1 Samuel",
+     "2 Samuel", "1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles", "Ezra", "Nehemiah", "Esther", "Job",
+     "Psalms", "Proverbs", "Ecclesiastes", "Song of Solomon", "Isaiah", "Jeremiah", "Lamentations", "Ezekiel",
+     "Daniel", "Hosea", "Joel", "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah",
+     "Haggai", "Zechariah", "Malachi"]))
+ALIGN_SAMPLE = 150             # verses of a book tried under each tradition's map when choosing one
+
+
+def build_tradition_maps(tvtms_path, metadata_path=METADATA_PATH, log=print):
+    """
+    From TVTMS, for each tradition, every Old Testament verse whose
+    number differs from the King James's: (tradition, book, chapter,
+    verse) -> (King James chapter, verse).  A Psalm title that is a
+    verse of its own is mapped to the King James verse 1, where the
+    King James prints it.  Written to metadata.db's tradition_verse_map
+    with the TVTMS credit; a verse not in the table keeps its number.
+    """
+    from pathlib import Path
+    from atlas_versification import TvtmsReader, parse_simple_ref, TVTMS_CREDIT
+    TITLE = re.compile(r"^([1-4]?[A-Za-z]{2,3})\.(\d+):Title$")
+    rows = {}
+    for record in TvtmsReader(Path(tvtms_path)).records():
+        if "English KJV" not in record.columns:
+            continue
+        eng_col = record.columns.index("English KJV")
+        for tradition in TRADITIONS:
+            if tradition not in record.columns:
+                continue
+            col = record.columns.index(tradition)
+            for row_type, cells in record.rows:
+                if row_type.startswith(("#", "TEST", "$")) or max(eng_col, col) >= len(cells):
+                    continue
+                eng_text, their_text = cells[eng_col], cells[col]
+                theirs = parse_simple_ref(their_text)
+                if not theirs:
+                    continue
+                m = TITLE.match(eng_text)
+                if m and m.group(1) in STEP_TO_KJV:
+                    for tb, tc, tv in theirs:
+                        rows[(tradition, STEP_TO_KJV[tb], tc, tv)] = (int(m.group(2)), 1, "title")
+                    continue
+                eng = parse_simple_ref(eng_text)
+                if not eng or len(eng) != len(theirs):
+                    continue
+                for (eb, ec, ev), (tb, tc, tv) in zip(eng, theirs):
+                    if eb in STEP_TO_KJV and tb in STEP_TO_KJV and (ec, ev) != (tc, tv):
+                        rows[(tradition, STEP_TO_KJV[tb], tc, tv)] = (ec, ev, record.title.lstrip("$"))
+    db = sqlite3.connect(metadata_path)
+    db.execute("DROP TABLE IF EXISTS tradition_verse_map")
+    db.execute("CREATE TABLE tradition_verse_map (tradition TEXT, book TEXT, chapter INTEGER, verse INTEGER, "
+               "kjv_chapter INTEGER, kjv_verse INTEGER, note TEXT, PRIMARY KEY (tradition, book, chapter, verse))")
+    db.executemany("INSERT INTO tradition_verse_map VALUES (?,?,?,?,?,?,?)",
+                   [(t, b, c, v, kc, kv, n) for (t, b, c, v), (kc, kv, n) in rows.items()])
+    db.execute("CREATE TABLE IF NOT EXISTS meta_info (key TEXT PRIMARY KEY, value TEXT)")
+    db.execute("INSERT OR REPLACE INTO meta_info (key, value) VALUES ('tradition_verse_map_source', ?)",
+               (TVTMS_CREDIT,))
+    db.commit()
+    db.close()
+    for tradition in TRADITIONS:
+        n = sum(1 for k in rows if k[0] == tradition)
+        log(f"  {tradition}: {n} verses numbered otherwise than the King James")
+    log(f"written to {metadata_path} (tradition_verse_map)")
+    return len(rows)
+
+
+def load_tradition_maps(metadata_path=METADATA_PATH):
+    """{tradition: {(book, chapter, verse): (King James chapter, verse)}} from metadata.db, or {}."""
+    if not os.path.exists(metadata_path):
+        return {}
+    db = sqlite3.connect("file:" + metadata_path.replace("\\", "/") + "?mode=ro", uri=True)
+    try:
+        maps = {}
+        for t, b, c, v, kc, kv in db.execute(
+                "SELECT tradition, book, chapter, verse, kjv_chapter, kjv_verse FROM tradition_verse_map"):
+            maps.setdefault(t, {})[(b, c, v)] = (kc, kv)
+        return maps
+    except sqlite3.Error:
+        return {}
+    finally:
+        db.close()
+
+
+def remap_rows(rows, book, mapping):
+    """
+    A translation's rows of one book, [(reference, book, text)], with
+    their verse numbers turned into the King James's by a tradition's
+    map.  Two verses that land on one King James verse (a title verse
+    with the verse after it) are joined; a verse the map says has no
+    King James counterpart is dropped.
+    """
+    out = {}
+    order = []
+    for ref, b, text in rows:
+        m = re.match(r"^(.+) (\d+):(\d+)$", ref)
+        if not m:
+            continue
+        c, v = int(m.group(2)), int(m.group(3))
+        kc, kv = mapping.get((book, c, v), (c, v))
+        key = f"{book} {kc}:{kv}"
+        if key in out:
+            out[key] = out[key] + " " + text
+        else:
+            out[key] = text
+            order.append(key)
+    return [(key, book, out[key]) for key in order]
+
+
+def align_texts(texts, translations, norm, base_tid, maps, log=None):
+    """
+    For every translation but the base, book by book, try the text as
+    it stands and under each tradition's map, and keep whichever
+    brings it closest to the base on a sample of the book's verses.
+    Returns the texts, remapped where a map won, and logs each choice.
+    The Psalms are where it matters (Wycliffe, Challoner and the
+    Catholic Public Domain follow the Vulgate's numbering, Brenton the
+    Septuagint's, the JPS the Hebrew's); a seam elsewhere (Joel 3,
+    Malachi 4, the chapter breaks of Genesis 32) is caught the same way.
+    """
+    if not maps:
+        return texts
+    base_rows = {}
+    for ref, book, text in texts[base_tid]:
+        base_rows.setdefault(book, {})[ref] = [norm.root(w) for w in words_of(text)]
+    out = {base_tid: texts[base_tid]}
+    for tid, abbr, _ in translations:
+        if tid == base_tid:
+            continue
+        by_book = {}
+        for row in texts[tid]:
+            by_book.setdefault(row[1], []).append(row)
+        new_rows = []
+        chosen = []
+        for book, rows in by_book.items():
+            base_book = base_rows.get(book)
+            if not base_book or not any((book, c, v) in m for m in maps.values() for (b, c, v) in
+                                        [(book, int(r[0].rsplit(" ", 1)[1].split(":")[0]),
+                                          int(r[0].rsplit(":", 1)[1])) for r in rows[:ALIGN_SAMPLE]]):
+                # No tradition numbers this book otherwise: nothing to try
+                new_rows.extend(rows)
+                continue
+            best_name, best_rows, best_score = "as is", rows, None
+            for name, mapping in [("as is", {})] + list(maps.items()):
+                candidate = remap_rows(rows, book, mapping) if mapping else rows
+                sample = [r for r in candidate if r[0] in base_book][:ALIGN_SAMPLE]
+                if not sample:
+                    continue
+                score = sum(closeness([norm.root(w) for w in words_of(t)], base_book[ref])
+                            for ref, _, t in sample) / len(sample)
+                if best_score is None or score > best_score + 0.01:
+                    best_name, best_rows, best_score = name, candidate, score
+            new_rows.extend(best_rows)
+            if best_name != "as is":
+                chosen.append(f"{book} by the {best_name}")
+        out[tid] = new_rows
+        if chosen and log:
+            log(f"  {abbr}: renumbered {', '.join(chosen)}")
+    return out
+
+
 def read_translations(src, metadata_path=METADATA_PATH, log=None):
     """(id, abbreviation, name) of every translation used, King James first; the excluded ones left out and named."""
     rows = src.execute("SELECT id, abbreviation, name FROM translations ORDER BY id").fetchall()
@@ -390,6 +562,12 @@ def build(index_path=INDEX_PATH, source_path=None, atlas_path=None, metadata_pat
             vocabulary.update(words_of(text))
     norm = Normaliser(vocabulary, spellings)
     log(f"  {len(vocabulary)} distinct words in all")
+    base_tid = next((tid for tid, abbr, _ in translations if abbr == BASE), translations[0][0])
+    maps = load_tradition_maps(metadata_path)
+    if not maps:
+        log("  WARNING: no tradition_verse_map in metadata.db (python3 atlas_translations.py maps): a translation "
+            "numbered the Vulgate's or the Hebrew's way is compared verse for verse against the wrong verses")
+    texts = align_texts(texts, translations, norm, base_tid, maps, log)
 
     zones = zones_from_atlas(atlas_path) or zones_from_source(src)
     probes = probe_phrases(atlas_path)
@@ -397,7 +575,6 @@ def build(index_path=INDEX_PATH, source_path=None, atlas_path=None, metadata_pat
     log(f"  {len(probes)} King James English echoes to look for")
 
     # The base translation's verses, normalised, for the identity share
-    base_tid = next((tid for tid, abbr, _ in translations if abbr == BASE), translations[0][0])
     base_words = {ref: [norm.root(w) for w in words_of(text)] for ref, _, text in texts[base_tid]}
 
     # A translation metadata.db gives no family to is grouped by its
@@ -537,6 +714,18 @@ def sample_distances(texts, translations, norm, base_tid, sample=SAMPLE_VERSES):
         return sum(closeness(normalised[a][r], normalised[b][r]) for r in shared) / len(shared)
 
     ids = [tid for tid, _, _ in translations]
+    # The base against each translation on the Psalms alone, where the
+    # verse numbering differs most between traditions: a translation
+    # whose Psalms stand far further from the base than its other
+    # books do is numbered the Hebrew or the Vulgate way in the
+    # database and needs a map before its counts are trusted
+    psalms = [r for r in refs if r.startswith("Psalms ")]
+    psalm_dist = {}
+    for tid in ids:
+        shared = [r for r in psalms if r in normalised[tid] and r in normalised[base_tid]]
+        psalm_dist[tid] = (1 - sum(closeness(normalised[tid][r], normalised[base_tid][r]) for r in shared) / len(shared)
+                           if shared else None)
+    sample_distances.psalms = psalm_dist
     return {(a, b): 1 - mean_closeness(a, b) for a in ids for b in ids if a < b}, refs
 
 
@@ -554,13 +743,19 @@ def survey(source_path=None, metadata_path=METADATA_PATH, write=False, log=print
         raise SystemExit("No database with more than one translation found.")
     spellings = spellings_from(metadata_path)
     translations = read_translations(src, metadata_path, log)
-    texts = {tid: dict((ref, text) for ref, _, text in read_verses(src, tid)) for tid, _, _ in translations}
+    raw = {tid: read_verses(src, tid) for tid, _, _ in translations}
     vocabulary = set()
-    for rows in texts.values():
-        for text in rows.values():
+    for rows in raw.values():
+        for _, _, text in rows:
             vocabulary.update(words_of(text))
     norm = Normaliser(vocabulary, spellings)
     base_tid = next((tid for tid, abbr, _ in translations if abbr == BASE), translations[0][0])
+    maps = load_tradition_maps(metadata_path)
+    if not maps:
+        log("  no tradition_verse_map in metadata.db yet (python3 atlas_translations.py maps): the Psalms column "
+            "below will flag any translation numbered another way")
+    raw = align_texts(raw, translations, norm, base_tid, maps, log)
+    texts = {tid: dict((ref, text) for ref, _, text in rows) for tid, rows in raw.items()}
     dist, refs = sample_distances(texts, translations, norm, base_tid, sample)
     ids = [tid for tid, _, _ in translations]
     names = {tid: abbr for tid, abbr, _ in translations}
@@ -569,7 +764,9 @@ def survey(source_path=None, metadata_path=METADATA_PATH, write=False, log=print
     result = []
     log(f"{len(translations)} translations in {src_path}; distance is 1 - the share of words two translations have "
         f"in common over {len(refs)} sampled verses, spelled alike and stemmed; families join below a gap of {FAMILY_GAP}")
-    log(f"{'abbr':10} {'year':>5} {'verses':>6} {'from ' + BASE:>9}  family (proposed / in metadata.db)   copyright    name")
+    log(f"{'abbr':10} {'year':>5} {'verses':>6} {'from ' + BASE:>9} {'Psalms':>7}  family (proposed / in metadata.db)   "
+        f"copyright    name")
+    psalm_dist = getattr(sample_distances, "psalms", {})
     for tid, abbr, name in translations:
         year = YEARS.get(abbr.upper())
         d = 0.0 if tid == base_tid else dist[(min(tid, base_tid), max(tid, base_tid))]
@@ -578,8 +775,13 @@ def survey(source_path=None, metadata_path=METADATA_PATH, write=False, log=print
         standing = STANDING.get(abbr.upper()) or (
             "public domain" if year and year < PUBLIC_DOMAIN_BEFORE else
             "CHECK: year unknown" if not year else "CHECK: published " + str(year))
-        log(f"{abbr:10} {year or '?':>5} {len(texts[tid]):6} {d:9.3f}  {proposed:18} / {existing.get(abbr, '-'):18} "
-            f"{standing:22} {name}")
+        pd = psalm_dist.get(tid)
+        psalms_cell = f"{pd:7.3f}" if pd is not None else f"{'-':>7}"
+        # A Psalms distance well above the whole is the sign of another numbering
+        if pd is not None and d and pd > d + 0.15:
+            psalms_cell += "!"
+        log(f"{abbr:10} {year or '?':>5} {len(texts[tid]):6} {d:9.3f} {psalms_cell:>8}  {proposed:18} / "
+            f"{existing.get(abbr, '-'):18} {standing:22} {name}")
         result.append((abbr, name, year, family, d))
     # The nearest neighbour of each, so a family border can be judged by eye
     log("nearest neighbours:")
@@ -873,6 +1075,7 @@ def footer_for(sec, translations, supports):
 
 USAGE = """\
 usage:
+  python3 atlas_translations.py maps [TVTMS.txt]       build the verse maps of the Hebrew, Latin and Greek numberings (once)
   python3 atlas_translations.py build [SOURCE.db]      tokenise the translations and write translations_index.db
   python3 atlas_translations.py survey [--write]       distances from the King James, proposed families, copyright
   python3 atlas_translations.py show "WORDING" REF REF  how the translations stand to one echo between two verses
@@ -885,7 +1088,12 @@ def main(argv):
         print(USAGE)
         return 0
     cmd = argv[1]
-    if cmd == "build":
+    if cmd == "maps":
+        path = argv[2] if len(argv) > 2 else next(iter(sorted(glob.glob(os.path.join(PROGRAM_DIR, "data", "TVTMS*.txt")))), None)
+        if not path:
+            raise SystemExit("no TVTMS*.txt under data/; give its path")
+        build_tradition_maps(os.path.expanduser(path))
+    elif cmd == "build":
         build(source_path=argv[2] if len(argv) > 2 else None)
     elif cmd == "survey":
         survey(write="--write" in argv, source_path=next((a for a in argv[2:] if not a.startswith("--")), None))

@@ -44,6 +44,25 @@ corpora in place the pages gain the Septuagint layer (`atlas_septuagint.py`,
 section 28d): a New Testament book's Greek against the Septuagint, its
 Septuagint words, and the echoes across the testaments in Greek.
 
+## Everything under one menu
+
+    python3 atlas_workbench.py
+
+opens the Workbench: menus for the pages, dossiers, results
+questions, builds, translations, Sefaria links, backups, tests and
+git, each run as its own process with the command line shown and the
+output in a log. The same tools, without remembering their arguments.
+
+## A new install, or a copy to give away
+
+    python3 atlas_dist.py check          what this folder has and what it still has to make
+    python3 atlas_dist.py reader         a zip of the Reader with the newest dataset
+    python3 atlas_dist.py atlas          a zip of Word Atlas's sources with the metadata backup
+    python3 atlas_dist.py unpack ZIP DIR open either into a folder
+
+The Workbench's Install menu runs the same, with the steps of a new
+install in order.
+
 ## Sharing the results without the program
 
     python atlas_query.py dossier all --results

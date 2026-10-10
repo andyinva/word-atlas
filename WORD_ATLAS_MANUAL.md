@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.82. Andrew Hopkins, with Claude.
+For version 0.10.85. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -278,6 +278,27 @@ references behind every row. `atlas_query.py` renders a Report as
 text and `word_atlas.py` renders it as tables and pictures. One set of
 logic, two displays, so a saved report and the window never disagree.
 
+**A new install.** The Workbench's Install menu (0.10.85), or
+`python3 atlas_dist.py check`, says what a folder has and what it
+still has to make, with the command for each in order: restore
+metadata.db from its text backup, build atlas.db from bibles.db,
+build lxx.db and add the Greek New Testament and the tagged Hebrew,
+then the tests, the canon run and the packed dataset. `atlas_dist.py
+atlas` makes a zip of the sources with the metadata backup and the
+cross references for carrying to another machine, and `atlas_dist.py
+reader` a zip of the Reader with the newest dataset for giving away;
+`unpack` opens either into a folder.
+
+**The Workbench.** From 0.10.84 every command in this section and
+the ones below (the dossiers, the results questions, the builds, the
+backups, the translations, the Sefaria links, the tests, git) is also
+a menu item of `python3 atlas_workbench.py`, a window that asks for
+the book or the number it needs, shows the command line it composed,
+runs it as its own process and streams the output into a log. It is
+the same tools under a menu, so a command that works there works at
+the prompt; the window is for the days when the spelling of a tool's
+arguments is one thing too many to remember.
+
 ## 9. Builds: rebuilding, keeping and going back
 
 All the measurements come from rules in `atlas_text.py` (the stop
@@ -336,6 +357,8 @@ English ones.
 | `atlas_report.py` | The reporting module: Report and Section, the text layout, trimming, the dossier's head, and the results database writer (section 11a) |
 | `sefaria_links.py` | The rabbinic library's citations as a second web: `hebrew` builds the Hebrew-to-King-James verse map from TVTMS, `import` reads Sefaria's links export, `pairs` derives the verse pairs cited together, `survey` and `treasury` report on them; behind the `cited` column and footers of sections 4 and 6 |
 | `sefaria_links.db` | What `sefaria_links.py` writes beside the program: the links with a Tanakh verse at either end and the derived pairs; never committed, as `data/sefaria/` (the export) is not |
+| `atlas_dist.py` | Bundles for a new install: `reader` zips the Reader's files with the newest dataset (and the guest key when asked), `atlas` zips Word Atlas's sources with metadata_backup.sql and cross_references.db, `unpack` opens a bundle into a folder, `check` says what an install has and what it still has to make, `list` shows what a bundle holds (0.10.85) |
+| `atlas_workbench.py` | Every command under one menu: `python3 atlas_workbench.py` opens a window whose menus run the pages, dossiers, results questions, builds, Septuagint maintenance, translations, Sefaria links, backups, tests and git as separate processes, with the command line shown and the output in a log (0.10.84) |
 | `atlas_translations.py` | The other English translations as witnesses to the echoes found by wording: `build` writes `translations_index.db` from `translations.db` (an export of Bible Search Lite's text tables) or `bibles.db`; `survey` measures the translations' distance from the King James and proposes families; behind the `translations` and `families` columns and footers of sections 4 and 4f |
 | `translations.db` | An export of the four text tables of Bible Search Lite's `bibles.db` (books, translations, verses, verse_texts), never committed; `translations_index.db` is what `build` makes of it, never committed either |
 | `atlas_listed.py` | The cross references (OpenBible.info on the Treasury of Scripture Knowledge, from bibles.db) behind the `listed` column and footers of sections 4, 4e and 6 |
@@ -873,7 +896,22 @@ it are one witness, not twelve. Words are compared once spelled alike
 `translation_spellings` table adds to them) and stemmed by the atlas's
 own stemmer, so 'sheweth' and 'shows' are one word; Wycliffe's
 spellings fall outside the folds and his counts are the lower for it,
-which the footer's closeness figure makes visible. The families are
+which the footer's closeness figure makes visible. A translation in the database may
+follow another verse numbering than the King James's (Challoner's
+Douay, Wycliffe and the Catholic Public Domain the Vulgate's, where
+Psalm 9 and 10 are one and every Psalm to 147 is a number off;
+Brenton the Septuagint's; the JPS the Hebrew's, with the titles as
+verses), and compared verse for verse it would stand against the
+wrong verses; so `python3 atlas_translations.py maps` builds a map for
+each tradition from STEPBible's TVTMS file (the one the Septuagint map
+uses; metadata.db's `tradition_verse_map` table), and the survey and
+the build try each map on each book of each translation and keep the
+one that brings it closest to the King James, saying so ("CPD:
+renumbered Psalms by the Latin"); a title verse and the verse after
+it that land on one King James verse are joined. The survey's `Psalms`
+column shows each translation's distance on the Psalms alone and
+marks with `!` one that stands far above its distance elsewhere, the
+sign of a numbering the maps have not caught. The families are
 measured, not assumed: `python3 atlas_translations.py survey` prints
 each translation's distance from the King James (one minus the share
 of words the two have in common over three thousand sampled verses,
@@ -4891,6 +4929,50 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.85.** Bundles for a new install (`atlas_dist.py`) and the
+Workbench's Install menu. `reader` zips the Reader's program files
+with the newest dataset in its sample folder (and the guest key when
+asked), so a copy runs anywhere Python and PyQt6 are; `atlas` zips
+Word Atlas's sources with the metadata backup and the cross
+references, what git carries and the two data files a fresh copy
+wants first; `unpack` opens a bundle into a folder without touching
+files already there; `check` lists what an install has and the
+command for each thing it lacks, in the order they are made; `list`
+shows a bundle's contents. The Install menu runs them, with the
+Reader's data (pack, bundle, guest key) and a step-by-step list for a
+new install (restore the metadata, build the atlas, build the
+Septuagint layer, tests, canon run, pack). The Reader's tests take
+the newest dataset in sample/, so an unpacked copy tests itself
+(Reader 0.3.6). Two guards.
+
+**0.10.84.** The Workbench (`atlas_workbench.py`): a window whose
+menus run every command-line tool of the project (pages with their
+options, dossiers and the canon run, the results questions, the
+builds and metadata, atlas_lxx's books, versification, equivalents
+and tags, the translations layer, the Sefaria links, the backups,
+the tests, git and git_tracker, the Reader when its folder stands
+beside this one), each as its own process in the program folder,
+the command line shown so it can be copied, the output streamed into
+a log, a Stop button, a Recent menu, and the long or destructive ones
+behind a question. A guard test opens it offscreen.
+
+**0.10.83.** The translations numbered another way. `maps` builds
+the Hebrew, Latin and Greek numberings' maps from TVTMS into
+metadata.db, and the survey and the build try each on each book of
+each translation and keep the one that brings it closest to the King
+James (the Psalms of Challoner, Wycliffe and the Catholic Public
+Domain by the Latin, Brenton's by the Greek, the JPS's by the Hebrew,
+and smaller seams in Daniel, Jonah, Haggai, Ecclesiastes and the
+Song), joining a title verse to the verse after it. The survey's
+Psalms column, which flagged the five, now shows them in step. The
+six copyrighted translations' exclusion stands. The first survey of
+the full set found 33 translations in about twenty families at a gap
+of 0.15, the King James line (the Revised, the American Standard, A
+Conservative Version, the JPS, Darby, the World English and the New
+Heart editions), Douay with Challoner, the two Genevas, the two
+Tyndales, the Open English pair with the Twentieth Century, and the
+rest each alone.
 
 **0.10.82.** The reviewer's read of 0.10.81, and the translations
 layer resumed. 4f: an article both sides have inside a run counts as
