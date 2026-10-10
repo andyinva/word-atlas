@@ -314,6 +314,125 @@ def test_guards(atlas, only):
                 problems.append(f"footer counts {parsed}")
             report(name, not problems, "; ".join(problems) or (f"{parsed[3]} of {parsed[2]} links held" if parsed else ""))
 
+    # The cited pairs (0.10.81): on an Old Testament book's table 4 the
+    # cited column stands beside listed, a pair the Talmud reads together
+    # (Isaiah 52:7 with Nahum 1:15, the feet of him that bringeth good
+    # tidings) carries its passages, the footer reads back, and a New
+    # Testament book's table has no such column
+    name = "guard: cited pairs on table 4 (Sefaria's library)"
+    if not only or only in name:
+        import atlas_listed
+        cited = atlas_listed.get_cited(atlas)
+        if not cited.available:
+            skip(name, "no sefaria_links.db beside the program (python3 sefaria_links.py import, then pairs)")
+        else:
+            import atlas_report
+            problems = []
+            rep = atlas_report.Report("t", "Book page [Isaiah] (KJV)")
+            atlas_pages.echoes_section(atlas, rep, "4. Echoes [Isaiah] -> other books", "Isaiah")
+            sec = rep.sections[0]
+            if "cited" not in sec.columns:
+                problems.append("no cited column on Isaiah")
+            else:
+                ci = sec.columns.index("cited")
+                hit = next((r for r in sec.rows if "Isaiah 52:7" in str(r[2]) and "Nahum 1:15" in str(r[3])), None)
+                if hit is None:
+                    problems.append("Isaiah 52:7 -> Nahum 1:15 not among the rows")
+                elif not isinstance(hit[ci], int) or hit[ci] < 1:
+                    problems.append(f"its cited passages are {hit[ci]!r}")
+            parsed = next((atlas_listed.parse_footer(f) for f in sec.footer if f.startswith("Cited pairs")), None)
+            if not parsed:
+                problems.append("no readable cited-pairs footer")
+            elif parsed[0] != atlas_listed.CITED_MIN or parsed[3] < 1:
+                problems.append(f"footer counts {parsed}")
+            rep2 = atlas_report.Report("t", "Book page [Jude] (KJV)")
+            atlas_pages.echoes_section(atlas, rep2, "4. Echoes [Jude] -> other books", "Jude")
+            if "cited" in rep2.sections[0].columns:
+                problems.append("Jude, a New Testament book, got a cited column")
+            report(name, not problems, "; ".join(problems) or (f"{parsed[3]} of {parsed[2]} pairs held" if parsed else ""))
+
+    # The other translations as witnesses (0.10.80): a small source of
+    # three translations is built into an index in a temporary folder,
+    # and an echo between two verses is kept by the translation that
+    # spells the King James anew, not by the one with other words
+    name = "guard: translations index keeps an echo spelled anew and drops one reworded"
+    if not only or only in name:
+        import tempfile
+        import sqlite3
+        import atlas_translations as tr
+        problems = []
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, "source.db")
+            db = sqlite3.connect(src)
+            db.executescript("""
+                CREATE TABLE books (id INTEGER PRIMARY KEY, name TEXT, abbreviation TEXT, testament TEXT, order_index INTEGER);
+                CREATE TABLE translations (id INTEGER PRIMARY KEY, name TEXT, abbreviation TEXT, description TEXT);
+                CREATE TABLE verses (id INTEGER PRIMARY KEY, book_id INTEGER, chapter INTEGER, verse_number INTEGER);
+                CREATE TABLE verse_texts (id INTEGER PRIMARY KEY, verse_id INTEGER, translation_id INTEGER, text TEXT);
+                INSERT INTO books VALUES (1, 'Isaiah', 'Isa', 'Old', 1), (2, 'Matthew', 'Mat', 'New', 2);
+                INSERT INTO translations VALUES (1, 'King James', 'KJV', NULL), (2, 'Spelled Anew', 'SPL', NULL),
+                                                (3, 'Other Words', 'OTH', NULL);
+                INSERT INTO verses VALUES (1, 1, 7, 14), (2, 1, 9, 6), (3, 2, 1, 23), (4, 2, 2, 6);
+            """)
+            texts = {1: ("a virgin shall conceive and bear a son", "unto us a child is born",
+                         "behold a virgin shall conceive and bring forth a son", "out of thee shall come a governor"),
+                     2: ("a virgin shall conceive and beare a sonne", "to us a child is born",
+                         "behold a virgin shall conceive and bring forth a sonne", "out of thee shall come a governor"),
+                     3: ("the young woman will conceive and give birth", "to us a child is born",
+                         "the virgin will be with child and will give birth", "out of you will come a ruler")}
+            for tid, vs in texts.items():
+                for vid, text in enumerate(vs, 1):
+                    db.execute("INSERT INTO verse_texts (verse_id, translation_id, text) VALUES (?,?,?)", (vid, tid, text))
+            db.commit()
+            db.close()
+            index = os.path.join(tmp, "index.db")
+            tr.build(index_path=index, source_path=src, atlas_path=os.path.join(tmp, "none.db"),
+                     metadata_path=os.path.join(tmp, "none.db"), log=lambda *a: None)
+            t = tr.Translations(index)
+            if not t.available:
+                problems.append("the index did not load")
+            else:
+                s_ = t.support("a virgin shall conceive", ["Isaiah 7:14"], ["Matthew 1:23"])
+                # SPL keeps the run (its old spellings lie outside it),
+                # OTH has 'the young woman'; both have the verses
+                if s_.cells() != ("1/2", "1/2"):
+                    problems.append(f"'a virgin shall conceive' cells {s_.cells()}, wanted ('1/2', '1/2')")
+                if s_.names("kept") != ["SPL"] or s_.names("differs") != ["OTH"]:
+                    problems.append(f"verdicts {s_.verdict}")
+                s2 = t.support("us a child is born", ["Isaiah 9:6"], ["Matthew 2:6"])
+                # The run is in one verse of each translation only: never on both sides
+                if s2.kept != 0:
+                    problems.append(f"'us a child is born' kept by {s2.kept}")
+                if t.phrase("shew unto us") != t.phrase("show to us"):
+                    problems.append(f"spelling not folded: {t.phrase('shew unto us')!r} vs {t.phrase('show to us')!r}")
+        report(name, not problems, "; ".join(problems))
+
+    # With an index beside the program, Jude's table 4 carries the two
+    # columns, each English echo a 'kept/asked' pair, and the footer
+    name = "guard: translations columns on table 4 (needs translations_index.db)"
+    if not only or only in name:
+        import atlas_translations as tr
+        t = tr.get(atlas)
+        if not t.available:
+            skip(name, "no translations_index.db beside the program (python3 atlas_translations.py build)")
+        else:
+            import atlas_report
+            rep = atlas_report.Report("t", "Book page [Jude] (KJV)")
+            atlas_pages.echoes_section(atlas, rep, "4. Echoes [Jude] -> other books", "Jude")
+            sec = rep.sections[0]
+            problems = []
+            if "translations" not in sec.columns or "families" not in sec.columns:
+                problems.append("columns missing")
+            else:
+                ti, gi = sec.columns.index("translations"), sec.columns.index("grade")
+                english = [r for r in sec.rows if r[gi] == "by English"]
+                bad = [r[ti] for r in english if not re.fullmatch(r"\d+/\d+", str(r[ti]))]
+                if bad:
+                    problems.append(f"cells not kept/asked: {bad[:3]}")
+                if not any(f.startswith("Of the ") and "echoes by English wording" in f for f in sec.footer):
+                    problems.append("no translations footer")
+            report(name, not problems, "; ".join(problems) or f"{len(t.others)} other translations")
+
     # 4f's three-way Greek test (0.10.78): a quotation with one word
     # changed, one with its words in another order, and a departure
     name = "guard: 4f tells 'whole in Greek', 'one word changed' and 'same words, other order' from 'departs'"

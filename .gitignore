@@ -26,5 +26,11 @@ Claude outputs/
 *.docx
 richness_cache.json
 data/
-data/
 cross_references.db
+
+# The translations layer (0.10.80): the export and the index, built locally
+translations.db
+translations_index.db
+
+# The cited layer (0.10.81): Sefaria's export lives under data/, the derived pairs here
+sefaria_links.db

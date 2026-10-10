@@ -7,7 +7,7 @@ with the version that carried them. Add to it whenever a review or a
 conversation raises something; the manual's version history records
 what shipped, this records what has not.
 
-Last updated 2026-10-06, at version 0.10.79.
+Last updated 2026-10-10, at version 0.10.81.
 
 ## Standing work
 
@@ -167,6 +167,147 @@ one idea, and one should read the other.
 the testament. If a section of Daniel's Aramaic chapters were ever set
 against a Hebrew baseline, 1b would need a language test too, and the
 English bridge to carry it, as the echoes have.
+
+## The translations layer (on hold, 2026-10-10)
+
+**Where it stands.** 0.10.80 shipped the layer whole and it is
+dormant until an index is built: `atlas_translations.py` (build,
+survey, show, status), the `translations` and `families` columns and
+footers on tables 4 and 4f, `atlas_results.py idiom`, two guard tests,
+manual section 12 and 19, Appendix C. The pages add the columns only
+when `translations_index.db` stands beside the program, so with no
+index every page is as it was at 0.10.79 and nothing needs undoing to
+hold here. The Reader (0.3.3) has the `idiom` question and the column
+help and runs either way.
+
+**What the first survey showed (2026-10-09).** Bible Search Lite's
+`bibles.db` holds 39 translations, not 32. The survey's first measure,
+whole-verse identity, was useless (every translation but a revision
+sat at 0.9 to 1.0 from the King James); it was replaced the same day
+by the share of words two translations have in common per verse,
+spelled alike and stemmed, with the family gap raised from 0.12 to
+0.25, and that version has not yet been run on the full set. Years
+and standing were added for Bible Search Lite's own abbreviations (DBT
+Darby, BIS Bishops, COV Coverdale, GEN and GN2 Geneva, TYD Tyndale,
+AND Anderson, HAW Haweis, DRC Douay Challoner, NOY Noyes, ROT
+Rotherham, TWE Twentieth Century, EDG Emphatic Diaglott, NHE NHJ NHM
+New Heart, OEC Open English, CPD Catholic Public Domain, BSB Berean,
+LIT Green's Literal, MKJ Modern KJV); these are guesses from the
+abbreviations and the survey now prints each translation's full name
+so they can be checked. Eight translations are under copyright (JUB,
+LEB, NET, LIT, MKJ, BBE, and the standing of some modern public-domain
+ones rests on their makers' dedication); a report carries counts and
+names only, never their text, so nothing stops their use, but an
+exclusion list is a one-line change if wanted. Wycliffe, Coverdale,
+Tyndale and the Emphatic Diaglott sat at 1.000 on the old measure,
+which says the spelling folds do not reach their spellings or their
+text carries something odd (the Diaglott at 1.000 against Young's is
+suspicious); that needs the text in front of whoever looks, which the
+export below gives.
+
+**To pick it up again.** (1) In `~/projects/word_atlas` make the
+export (`translations.db`, the four text tables of Bible Search
+Lite's `bibles.db`, about 110 MB, gitignored) so the survey can be
+read with the text at hand; the command is in the session notes and
+is four lines of sqlite3 ATTACH and CREATE TABLE AS SELECT. (2) Run
+`python3 atlas_translations.py survey` with the word-share measure
+and read the families and the nearest-neighbour list; adjust
+`FAMILY_GAP` or the `translation_spellings` folds for the old
+spellings (Wycliffe, Coverdale, Tyndale) as the figures ask. (3)
+`survey --write`, edit `translation_families` in metadata.db by hand
+where the grouping is wrong, then `python3 atlas_translations.py
+build` (a few minutes), `python3 test_atlas.py --quick` (the second
+guard then runs instead of skipping), and a canon run, after which
+`atlas_results.py idiom` says which English echoes no other family
+keeps. (4) Versification: check the Douay and Brenton Psalms against
+the King James numbering in the export before trusting their counts;
+an offset table in metadata.db is the fix if a book is out of step.
+
+**The union of the bridges (idea, after the above).** The index holds
+more than the King James echoes: for every translation, every run of
+three to five words it has in at most six verses across a language
+seam (the `rare` table of `translations_index.db`). Read the other
+way, that finds the quotations the King James wording never pairs
+because the evangelist's English differs from the prophet's
+(Matthew's Micah 5:2, Hosea 11:1, Isaiah 53:4): an echo any
+translation finds between a New Testament verse and an Old Testament
+one, counted by how many translations and families find it, offered
+on 4f as rows the King James bridge missed, with the Greek test run on
+them as on the others. Union, not intersection, so one translation's
+good wording is enough to raise the pair; the counts then say how many
+agree. From the reviewer's comments on the 0.10.79 read.
+
+## The Sefaria layer (idea, 2026-10-10)
+
+Sefaria (sefaria.org) is an open library of Jewish texts: the
+Masoretic Tanakh, the Targumim (Onkelos on the Torah, Jonathan on the
+Prophets), Mishnah, both Talmuds, the Midrash and the medieval
+commentators, each version under its own licence (public domain,
+Creative Commons, some non-commercial), with an API that needs no key
+and a monthly export of the whole library and its links to public
+Google Cloud Storage buckets. What it adds that the atlas lacks is
+its links: every place the rabbinic library quotes or comments on a
+Bible verse, and the commentators' own cross references between
+Tanakh verses. Andrew's order of interest, which sets the order here:
+relationships between Hebrew Old Testament passages first; then Greek
+New Testament against Septuagint against Old Testament; then the Old
+Testament against the Aramaic; then the links to the Greek New
+Testament.
+
+**Phase 1, Hebrew against Hebrew (done at 0.10.81, with follow-ups).**
+Built: `sefaria_links.py` (hebrew, import, pairs, survey, treasury),
+the `cited` column and footers on the Old Testament pages' tables 4
+and 6, `atlas_results.py cited`, the Reader's menu item. The first
+survey of the full export (2026-10-10): 1.2 million links touch a
+Tanakh verse, 5,834 join two Tanakh verses directly (mostly the
+Chronicles parallels), 527,000 pairs when derived through
+commentaries and by co-citation, 93,000 of them in two or more
+passages; the most cited pairs share wording (the two Decalogues, the
+kid in its mother's milk, Isaiah 6:3 with Ezekiel 3:12), the rabbinic
+gezerah shavah doing by hand what the echo tables do by root, so this
+web tests the method on its own ground where the Treasury tests it on
+theme; the overlap between the two webs is 1 to 3 percent of
+Sefaria's pairs and 7 to 35 percent of the Treasury's. Follow-ups:
+(a) the licence of Sefaria's links as a set is not stated on the
+pages read so far; confirm it before a dataset with cited counts is
+distributed (the texts are licensed one by one, the links are
+Sefaria's metadata; counts only travel). (b) The raw citation count
+of a verse is the lectionary (the most cited verses are the openings
+of the weekly portions), so a per-verse `cited` figure on Word or
+Chapter pages would need the commentary-on-its-own-verse links left
+out; not built. (c) A results question setting the two webs against
+each other and the atlas's echoes (both list, one lists, neither) on
+the rows of 4 and 6, now that both columns stand on the page. (d) The
+co-citation floor of two passages and the list ceiling of twelve
+verses are first guesses; `sefaria_links.py treasury` is the place
+to try others. (e) `survey` could report the hand-made against the
+automatically detected links by type, which the export's type column
+allows.
+
+**Phase 2, Greek New Testament, Septuagint, Old Testament.** Sefaria
+holds no New Testament and no Septuagint, so it adds nothing here
+directly; this is the atlas's own 4e and 4f, and the translations
+layer's union of the bridges (above) is the next step for it.
+
+**Phase 3, the Old Testament against the Aramaic.** The Targumim are
+the Old Testament's counterpart to the Septuagint layer: a second
+ancient rendering, in a language the atlas already meets in Daniel
+and Ezra. The obstacle is tagging: Sefaria's Targum text carries no
+Strong's numbers, so matching it to the Hebrew would rest on the
+atlas's own stemming of Aramaic, which is thin, or on a Targum
+tagged elsewhere. Worth a survey of what tagged Targum text exists
+before any design.
+
+**Phase 4, the links to the Greek New Testament.** Where a New
+Testament quotation agrees with the Targum against both the Hebrew
+and the Septuagint (Mark 4:12 on Isaiah 6:9-10, 'and it should be
+forgiven them', is the classic case), the Targum is the witness 4f
+lacks when it says 'departs'. This needs phase 3 first.
+
+**Practical note.** The export is large; the way in is to download
+the links file (and later a Targum) on Andrew's machine into the
+project folder and stage it, as cross_references.db was, rather than
+calling the API verse by verse.
 
 ## The nouns layer (next after the reviews)
 
@@ -359,7 +500,7 @@ go, and the README says what a visitor must supply.
 
 ## DONE
 
-2026-10-03 the repository public with 0.10.37 pushed. 0.10.79 4f's 'whole in Greek', articles stepped over, root counts. 0.10.78 4f's three-way Greek test. 0.10.77 4f's listed four-word echoes; `atlas_results.py unlisted`, a results query that samples the unlisted echo rows for grading by hand. 0.10.76 listings counted once, 4 and 4e reconciled, three-word Greek runs on listed pairs. 0.10.75 the cross references as a check on the echo tables (listed column, footers, results question). 0.10.74 the packed file named after its run. 0.10.73 atlas_pack.py and the Word Atlas Reader (its own repository). 0.10.72 figure-like text columns right-aligned. 0.10.71 the window's double-click crash. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
+2026-10-03 the repository public with 0.10.37 pushed. 0.10.81 the rabbinic library's pairs as a second web (sefaria_links.py; the cited column and footers on 4 and 6; `atlas_results.py cited`). 0.10.80 the other English translations as witnesses to the English echoes (atlas_translations.py; translations and families columns on 4 and 4f; `atlas_results.py idiom`). 0.10.79 4f's 'whole in Greek', articles stepped over, root counts. 0.10.78 4f's three-way Greek test. 0.10.77 4f's listed four-word echoes; `atlas_results.py unlisted`, a results query that samples the unlisted echo rows for grading by hand. 0.10.76 listings counted once, 4 and 4e reconciled, three-word Greek runs on listed pairs. 0.10.75 the cross references as a check on the echo tables (listed column, footers, results question). 0.10.74 the packed file named after its run. 0.10.73 atlas_pack.py and the Word Atlas Reader (its own repository). 0.10.72 figure-like text columns right-aligned. 0.10.71 the window's double-click crash. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
 splits. 0.10.50 1d a language at a time for Daniel and Ezra. 0.10.49 a run figure for the once-here share. 0.10.48 1c and 1d refusals and the sibling caution. 0.10.47 nearest beyond the kind under 1c and 1d. 0.10.46 1d's run figures cached. 0.10.45 1d's run columns. 0.10.44 vocabulary richness (1d); Hebrews in parts. 0.10.43 the kind's own size yardsticks. 0.10.42 nine-in-ten yardsticks and a no-pronoun Delta. 0.10.41 cautions and a size yardstick on 1c and 7d; three more
 letters in parts. 0.10.40 the function-word layer, 1c and 7d (New Testament). 0.10.39 section 7's leading words floored and ended early. 0.10.38 2 Corinthians, Galatians and Ephesians in parts. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
 words, 3 to 5). 0.10.34 1b stops at a keyness floor (6.63); three occurrences for a

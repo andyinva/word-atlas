@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.79. Andrew Hopkins, with Claude.
+For version 0.10.81. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -334,6 +334,10 @@ English ones.
 | `build_gnt.py`, `build_tahot.py` | Import STEPBible's TAGNT Greek New Testament and TAHOT Hebrew Old Testament into `lxx.db` (section 28c) |
 | `atlas_lift.py`, `atlas_lxx.py`, `build_lxx.py`, `septuagint_bridge.py` | The command-line line of work on fair baselines, passages and the Septuagint; `METADATA_IN_WORD_ATLAS.md` and `NORMALIZATION_IN_WORD_ATLAS.md` describe it |
 | `atlas_report.py` | The reporting module: Report and Section, the text layout, trimming, the dossier's head, and the results database writer (section 11a) |
+| `sefaria_links.py` | The rabbinic library's citations as a second web: `hebrew` builds the Hebrew-to-King-James verse map from TVTMS, `import` reads Sefaria's links export, `pairs` derives the verse pairs cited together, `survey` and `treasury` report on them; behind the `cited` column and footers of sections 4 and 6 |
+| `sefaria_links.db` | What `sefaria_links.py` writes beside the program: the links with a Tanakh verse at either end and the derived pairs; never committed, as `data/sefaria/` (the export) is not |
+| `atlas_translations.py` | The other English translations as witnesses to the echoes found by wording: `build` writes `translations_index.db` from `translations.db` (an export of Bible Search Lite's text tables) or `bibles.db`; `survey` measures the translations' distance from the King James and proposes families; behind the `translations` and `families` columns and footers of sections 4 and 4f |
+| `translations.db` | An export of the four text tables of Bible Search Lite's `bibles.db` (books, translations, verses, verse_texts), never committed; `translations_index.db` is what `build` makes of it, never committed either |
 | `atlas_listed.py` | The cross references (OpenBible.info on the Treasury of Scripture Knowledge, from bibles.db) behind the `listed` column and footers of sections 4, 4e and 6 |
 | `atlas_results.py` | Questions across the canon asked of reports/results.db, each answer saved as a text file under reports/ (section 19) |
 | `atlas_pack.py` | Packs reports/results.db with a manifest into one `.wadb` file for the Word Atlas Reader, the separate viewer for readers who have the dataset and not the program (section 19) |
@@ -840,6 +844,102 @@ not a grade of the echo. Without the table (an older `bibles.db`, or
 no `cross_references.db` beside the program) the column is left out
 and the footer says so.
 
+**The translations and families columns** (sections 4 and 4f;
+0.10.80). An echo found by English wording rests on the King James
+translators' choices, and the same two verses may sound alike in
+their English when the originals do not. The other old English
+translations are the check: a run the King James shares between two
+verses because the Hebrew or Greek shares it should survive in
+translations made by other hands from the same originals; a run its
+translators made on their own should not. Bible Search Lite's
+`bibles.db` holds some thirty such translations, Wycliffe to the
+American Standard, all before 1930 and out of copyright. `python3
+atlas_translations.py build` reads them once (from `translations.db`,
+an export of its text tables placed beside the program, or from
+`bibles.db` itself) and writes `translations_index.db`: for every
+translation, each run of three to five words it has in at most six of
+its verses across a language seam, and the count and places of every
+King James English echo. The pages read the index, never the text,
+and a results file carries counts and names only. On table 4 every
+'by English' row, and on 4f every row, gets two cells: `translations`
+is how many of the other translations keep the echo between the same
+verses, with the run as rare there as the atlas asks of the King
+James (in at most six of that translation's verses), over how many
+have text for the verses; `families` is the same count by family of
+translation, since a dozen revisions of the King James agreeing with
+it are one witness, not twelve. Words are compared once spelled alike
+(shew and show, honour and honor, thee and you; the folds are
+`atlas_translations.SPELLINGS`, and metadata.db's
+`translation_spellings` table adds to them) and stemmed by the atlas's
+own stemmer, so 'sheweth' and 'shows' are one word; Wycliffe's
+spellings fall outside the folds and his counts are the lower for it,
+which the footer's closeness figure makes visible. The families are
+measured, not assumed: `python3 atlas_translations.py survey` prints
+each translation's distance from the King James (one minus the share
+of words the two have in common over three thousand sampled verses,
+once folded and stemmed, so a verse with one word changed counts as
+nearly the same), its nearest neighbours, its year and its copyright
+standing, and groups the translations by single linkage below a gap of
+0.25; `survey --write` puts the grouping in metadata.db's
+`translation_families` table, where a hand can move a translation
+(the `family` column), and the next `build` reads it back. Nothing
+is weighted: the reader sees counts, and the footer says how many of
+the table's English echoes no other translation keeps, how many the
+King James family alone keeps (the likeliest translators' idiom) and
+how many every family asked keeps (the originals' own words), then
+each family's share beside the share of its members' words that are
+the King James's, the background a share is read against. `atlas_results.py idiom`
+gathers the English echoes of a whole run by these counts (section
+19). Without the index the columns are left out and the pages are as
+before.
+
+**The cited column and the cited-pairs footer** (sections 4 and 6,
+Old Testament books; 0.10.81). A second web of connections, from
+Jewish readers, beside the Treasury's. Sefaria (sefaria.org) keeps a
+link between a Bible verse and every place its library quotes or
+comments on it: the Mishnah, both Talmuds, the Midrash, the Targumim
+and the medieval commentators. Its own links between two Tanakh
+verses are few (some six thousand, mostly the parallels of
+Chronicles and Kings); the web worth having is one step removed, and
+`sefaria_links.py pairs` derives it: when Rashi on Genesis 1:1 cites
+a Psalm, the pair is Genesis 1:1 with the Psalm, through the
+commentary's base verse; and when one passage of the Talmud or the
+Midrash cites two Tanakh verses, that is a pair by co-citation,
+counted once per passage, passages citing more than twelve verses set
+aside as lists. Some 527,000 pairs come out, 93,000 of them cited in
+two or more passages. The figure for a pair is the number of passages
+that cite the two verses together, which plays the part the
+Treasury's votes play: a pair in two passages is attested, a pair in
+ten is a tradition. On an Old Testament book's table 4 a `cited`
+column stands beside `listed` with that figure for the verses on each
+side of the echo, blank when they were never cited together; under 4
+and 6 a footer in the same form as the listed-links footer counts the
+attested pairs from the text's verses, says how many the table holds
+and names the strongest it lacks. A New Testament book has no cited
+pairs and no column. The first survey showed why this web is the
+better check of the two on the method's own ground: the pairs the
+library cites together most are the two Decalogues (Exodus 20:8 with
+Deuteronomy 5:12), the kid in its mother's milk three times, the
+corners of the field twice, Isaiah 6:3 with Ezekiel 3:12, verses that
+share wording, because the rabbinic rule of gezerah shavah reads two
+verses together for a word they share, which is what the echo tables
+do with roots; the Treasury's strongest links (Isaiah 55:8 with
+Jeremiah 29:11) join verses by theme, which no shared wording carries.
+So where `listed` tests the tables against readers' sense of what
+belongs together, `cited` tests them against readers who were
+looking for the same thing. The export's verse numbers follow the
+Hebrew Bible (the Psalm titles are verses, Joel has four chapters),
+so `sefaria_links.py hebrew` builds a Hebrew-to-King-James map into
+metadata.db's `hebrew_verse_map` table from STEPBible's TVTMS file,
+the one the Septuagint map uses, and `import` turns every verse into
+the King James numbering as it reads. `atlas_results.py cited`
+gathers the counts for every book of a run (section 19). The links
+export is Sefaria's own metadata, and a report carries counts only,
+credited to Sefaria; the licence on the links as a set should be
+confirmed before a dataset with these counts is distributed. Without
+`sefaria_links.db` beside the program the column and footers are left
+out.
+
 **Section 4f, Quoted by English, not in the Septuagint's words**
 (0.10.60). The other half of 4e: the echoes section 4's English
 bridge found across the testaments (five or more words when grown, in
@@ -1249,6 +1349,14 @@ its reason), `section Isaiah 7d` (one section of one page as stored),
 counts from the 4, 4e and 6 footers, with the share held; 0.10.75),
 `unlisted 100` (a random sample of the echo rows no cross reference
 lists, with a blank verdict column for grading by hand; 0.10.77),
+`idiom` (the echoes found by English wording, table 4's 'by English'
+rows and every 4f row, by how many other translations and families
+keep them: the ones no other family keeps, the likeliest translators'
+idiom, then the ones every family keeps, then a count by book;
+0.10.80),
+`cited` (the echo tables against the pairs the rabbinic library cites
+together, from the cited-pairs footers of 4 and 6, with the share
+held, in the form of `listed`; 0.10.81),
 `diff 1 2` (the cells that differ between two runs, pages matched by
 title, sections by number and rows by their first cell, which is the
 reviewer's diff of two dossiers made exact), and `sql "SELECT ..."`
@@ -4759,6 +4867,43 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.81.** The rabbinic library's pairs as a second web
+(`sefaria_links.py`). Sefaria's links export is read once, kept to
+the links with a Tanakh verse at either end, and turned into verse
+pairs: direct, through a commentary's base verse, and by co-citation
+in one passage; the figure for a pair is the passages that cite the
+two verses together. Old Testament tables 4 and 6 carry a `cited`
+column beside `listed` and a cited-pairs footer in the listed-links
+form (atlas_listed generalised to carry either web; the pairs a
+table found are indexed, since a scan of them for each of ten
+thousand pairs took a minute). A Hebrew-to-King-James verse map is
+built from TVTMS into metadata.db (`hebrew_verse_map`) and applied
+at import. `atlas_results.py cited`; the Reader 0.3.4 follows. The
+first survey: 527,000 pairs, the most cited being verses that share
+wording (the two Decalogues, the kid in its mother's milk), so the
+web agrees with the method where the Treasury joins by theme. A
+guard test.
+
+**0.10.80.** The other English translations as witnesses.
+`atlas_translations.py` indexes the translations in Bible Search
+Lite's `bibles.db` (or `translations.db`, an export of its text tables
+beside the program) once, `build` writing `translations_index.db`,
+and tables 4 and 4f carry `translations` and `families` columns on
+every echo found by English wording: how many of the other
+translations keep the same run between the same verses, as rare
+there as here (in at most six of that translation's verses), over how
+many have text for the verses, and the same by family of translation.
+Words are compared spelled alike and stemmed. The families are
+measured by `survey` (distance from the King James on a sample of
+verses, single linkage) and kept in metadata.db's
+`translation_families` table for a hand to edit; `survey` also lists
+each translation's year and copyright standing. Footers count the
+echoes no other translation keeps, the King James family alone keeps
+and every family keeps, and give each family's share beside its
+closeness to the King James. `atlas_results.py idiom` gathers a run's
+English echoes by these counts. Counts, never scores; no translation's
+text leaves the machine in a results file. Two guard tests.
 
 **0.10.79.** 4f's test, the reviewer's second read. 'whole in
 Greek': a run that covers the whole Greek of the echo's own words on

@@ -64,6 +64,7 @@ from collections import Counter, defaultdict
 
 from atlas_text import log_likelihood
 import atlas_listed
+import atlas_translations
 
 # --- the rules ------------------------------------------------------------
 ECHO_MIN_WORDS = 4        # roots a shared run needs to be an echo
@@ -1014,8 +1015,12 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
         greek = " ".join(texts.surface[a_vid][start:end]) if n else ""
         rows.append((rank, phrase, h, e, greek, n, test + tag))
     rows.sort(key=lambda r: r[0])          # stable: rarity order kept within each kind
+    translations = atlas_translations.get(atlas)
+    columns = ["English echo", "here", far_col, "Greek shared", "words", "test"]
+    if translations.available:
+        columns += atlas_translations.COLUMNS
     sec = report.section(
-        title, ["English echo", "here", far_col, "Greek shared", "words", "test"],
+        title, columns,
         note=f"Section 4's English bridge finds echoes across the testaments by the King James wording; these are "
              f"the ones ({QUOTE_MIN_WORDS_OF(atlas)} or more words when grown, in at most {ENGLISH_MAX_VERSES} verses "
              f"of the Bible, section 4's 'by English' grade loosened by two verses so a saying the Synoptics share is "
@@ -1041,12 +1046,24 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
              f"differs from the prophet's), there is nothing here to test: the method's edge.  An English run one "
              f"word short of the floor is admitted when the two verses are a listed cross reference with "
              f"{atlas_listed.MIN_VOTES} or more votes (OpenBible.info, on the Treasury of Scripture Knowledge), "
-             f"marked '(listed, 4 words)' in the test column.")
+             f"marked '(listed, 4 words)' in the test column."
+             + (atlas_translations.note_for(translations) if translations.available else ""))
     # Every departure and every whole-in-Greek row is shown whatever its
     # rank: the two findings of the table
     shown = rows[:top_n()] + [r for r in rows[top_n():] if r[0] <= 1]
+    supports = []
     for rank, phrase, h, e, greek, n, test in shown:
-        sec.add([phrase, h, e, greek, n or "", test], refs=[h, e], link={"phrase": phrase, "key": "en:" + phrase})
+        row = [phrase, h, e, greek, n or "", test]
+        if translations.available:
+            # The other translations' witness: a departure they all keep
+            # is a quotation made from the Hebrew; one none keeps is the
+            # King James translators' own English
+            support = translations.support_of_echo(phrase, [h], [e])
+            supports.append(support)
+            row.extend(support.cells())
+        sec.add(row, refs=[h, e], link={"phrase": phrase, "key": "en:" + phrase})
+    if translations.available:
+        atlas_translations.footer_for(sec, translations, supports)
     if len(rows) > len(shown):
         sec.footer.append(f"{len(rows) - len(shown)} more rows of commoner words not shown.")
     kinds = Counter(r[6].split(" (")[0] for r in rows)
