@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.85. Andrew Hopkins, with Claude.
+For version 0.10.86. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -891,10 +891,17 @@ James (in at most six of that translation's verses), over how many
 have text for the verses; `families` is the same count by family of
 translation, since a dozen revisions of the King James agreeing with
 it are one witness, not twelve. Words are compared once spelled alike
-(shew and show, honour and honor, thee and you; the folds are
-`atlas_translations.SPELLINGS`, and metadata.db's
+(shew and show, honour and honor, thee and you, shall and will; the
+folds are `atlas_translations.SPELLINGS`, and metadata.db's
 `translation_spellings` table adds to them) and stemmed by the atlas's
-own stemmer, so 'sheweth' and 'shows' are one word; Wycliffe's
+own stemmer, so 'sheweth' and 'shows' are one word; the divine name
+is read as 'the lord' wherever a translation prints Jehovah, Yahweh
+or HaShem without the article (0.10.86), since 'the LORD rebuke
+thee' and 'Jehovah rebuke thee' had broken on the article in every
+such translation and Jude 1:9 against Zechariah 3:2 went from kept
+by 4 of 21 to 10 of 21 when they stopped; where an echo has several
+verses on a side the counts are for the pair most translations keep,
+named in the families cell; Wycliffe's
 spellings fall outside the folds and his counts are the lower for it,
 which the footer's closeness figure makes visible. A translation in the database may
 follow another verse numbering than the King James's (Challoner's
@@ -924,7 +931,13 @@ standing, and groups the translations by single linkage below a gap of
 is weighted: the reader sees counts, and the footer says how many of
 the table's English echoes no other translation keeps, how many the
 King James family alone keeps (the likeliest translators' idiom) and
-how many every family asked keeps (the originals' own words), then
+how many every family asked keeps (the originals' own words), leaving
+out of the idiom tally the pairs 4e holds in Greek and counting them
+apart (0.10.86), since a quotation of the Septuagint is kept by few
+translations because they render the Hebrew where the writer quoted
+the Greek, which is no idiom of the King James (Hebrews 1:7 against
+Psalm 104:4, 'who maketh his angels spirits', 1 of 23); then, from
+five echoes,
 each family's share beside the share of its members' words that are
 the King James's, the background a share is read against. `atlas_results.py idiom`
 gathers the English echoes of a whole run by these counts (section
@@ -4929,6 +4942,22 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.86.** The reviewer's read of 0.10.85. The translations
+matcher reads the divine name as 'the lord' wherever a translation
+prints Jehovah, Yahweh or HaShem without the article, and folds
+shall to will, so the verbatim quotations with the name in them are
+kept as they should be (Jude 1:9 against Zechariah 3:2 from 4 to 10
+of 21, Hebrews 10:30 against Deuteronomy 32:36 from 1 to 12); a
+grown echo's trailing function word is trimmed before the index is
+asked; where a side holds several verses the best pair is counted
+and named; the footer leaves the pairs 4e holds in Greek out of its
+idiom tally and says why, prints the family breakdown from five
+echoes, and has its plural right. 4f prints the content-word count
+beside 'whole in Greek'. The denominators that differ from row to
+row on one page are right: Noyes and the Open English have the
+Psalms and not Deuteronomy, so a Psalm pair on Hebrews is asked of
+23 and a Deuteronomy pair of 21.
 
 **0.10.85.** Bundles for a new install (`atlas_dist.py`) and the
 Workbench's Install menu. `reader` zips the Reader's program files

@@ -1011,8 +1011,8 @@ def classify_pair(a_keys, a_stop, b_keys, roots, all_roots, nt_keys, ot_keys, fa
         # have is the common stock of the language, not a quotation
         places = far_places(tuple(span)) if far_places else None
         if places is not None and places > ECHO_MAX_PLACES:
-            return 2, f"whole in Greek, common stock ({places} verses)", n, start, end
-        return 1, "whole in Greek", n, start, end
+            return 2, f"whole in Greek, common stock ({places} verses, {len(roots)} content word{'s' if len(roots) != 1 else ''})", n, start, end
+        return 1, f"whole in Greek ({len(roots)} content word{'s' if len(roots) != 1 else ''})", n, start, end
     if n >= ECHO_MIN_WORDS:
         return 2, "formula", n, start, end
     # The broken run is measured with the articles in as well as out,
@@ -1123,7 +1123,7 @@ def unconfirmed_section(atlas, report, title, texts, unconfirmed, near, far, far
             # is a quotation made from the Hebrew; one none keeps is the
             # King James translators' own English
             support = translations.support_of_echo(phrase, [h], [e])
-            supports.append(support)
+            supports.append((support, [h], [e]))
             row.extend(support.cells())
         sec.add(row, refs=[h, e], link={"phrase": phrase, "key": "en:" + phrase})
     if translations.available:
@@ -1349,6 +1349,10 @@ def echoes_section(atlas, report, title, book, chapters=None):
     atlas_listed.footer_for(sec, crossrefs, scope, other_books=far_books,
                             what="the Old Testament" if far == "LXX" else "the New Testament",
                             found=candidates)
+    # The pairs this table holds in Greek, for table 4's translations
+    # footer (atlas_translations.reconcile): a Septuagint quotation is
+    # kept by few translations and is no idiom of the King James
+    sec.greek_pairs = set(candidates) | {(e, h) for h, e in candidates}
     # The English bridge's cross-testament echoes that no Greek run
     # confirms: a quotation the writer made from the Hebrew, or from
     # memory, rather than in the Septuagint's words.  Drawn from the

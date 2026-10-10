@@ -53,7 +53,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.85"   # the program version; the window title and every report print it
+VERSION = "0.10.86"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -2260,7 +2260,7 @@ def echoes_section(atlas, report, title, book, chapter=None, scope_name=None, da
             # translations; one by root is the originals' own already
             if wordings:
                 support = translations.support_of_echo(shown, here, there, wordings)
-                supports.append(support)
+                supports.append((support, list(here), list(there)))
                 row.extend(support.cells())
             else:
                 row.extend(["", ""])
@@ -2827,6 +2827,7 @@ def book_page(atlas, book_name):
     far = "Greek Old Testament" if info["testament"] == "New" else "New Testament, in Greek"
     septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{book}] -> {far}", book)
     atlas_listed.reconcile(report)
+    atlas_translations.reconcile(report)
     if atlas.has_depth:
         reach_depth_section(atlas, report, f"5. Reach and depth [{book}]", book, info)
     if info["chapters"] > 2:
@@ -3172,6 +3173,7 @@ def section_page(atlas, book_name, section_name):
     far = "Greek Old Testament" if atlas.book_info[book]["testament"] == "New" else "New Testament, in Greek"
     septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{label}] -> {far}", book, chapters)
     atlas_listed.reconcile(report)
+    atlas_translations.reconcile(report)
     if len(chapters) > 1:
         within_book_section(atlas, report, f"6. Echoes within [{label}]: chapter against chapter",
                             book, chapter_range=chapters)
@@ -3247,6 +3249,7 @@ def cross_section_page(atlas, name, group=None):
         septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{name}: {book} {span_text(chs)}] -> {far}",
                                   book, chs)
     atlas_listed.reconcile(report)
+    atlas_translations.reconcile(report)
 
     # 7. The division at section scale: every section of it, with its
     # leading words against the rest of the touched books
@@ -4111,6 +4114,7 @@ def chapter_page(atlas, book_name, chapter):
     far = "Greek Old Testament" if atlas.book_info[book]["testament"] == "New" else "New Testament, in Greek"
     septuagint_echoes_section(atlas, report, f"4e. Septuagint echoes [{label}] -> {far}", book, [chapter])
     atlas_listed.reconcile(report)
+    atlas_translations.reconcile(report)
     synopsis_section(atlas, report, book, chapter, verses)
     kin_section(atlas, report, book, chapter)
     return report

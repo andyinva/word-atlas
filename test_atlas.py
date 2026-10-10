@@ -427,6 +427,7 @@ def test_guards(atlas, only):
     name = "guard: translations columns on table 4 (needs translations_index.db)"
     if not only or only in name:
         import atlas_translations as tr
+        import atlas_translations
         t = tr.get(atlas)
         if not t.available:
             skip(name, "no translations_index.db beside the program (python3 atlas_translations.py build)")
@@ -442,6 +443,13 @@ def test_guards(atlas, only):
                 ti, gi = sec.columns.index("translations"), sec.columns.index("grade")
                 english = [r for r in sec.rows if r[gi] == "by English"]
                 bad = [r[ti] for r in english if not re.fullmatch(r"\d+/\d+", str(r[ti]))]
+                # 0.10.86: the divine name folded, so 'the LORD rebuke thee' (Jude 1:9 against
+                # Zechariah 3:2) is kept by the translations that print Jehovah
+                tr_ = atlas_translations.get(atlas)
+                s_ = tr_.support_of_echo("the lord rebuke thee", ["Jude 1:9"], ["Zechariah 3:2"])
+                if s_.asked and s_.kept < 8:
+                    problems.append(f"'the LORD rebuke thee' kept by {s_.kept} of {s_.asked}: the divine name not folded "
+                                    f"(rebuild the index)")
                 if bad:
                     problems.append(f"cells not kept/asked: {bad[:3]}")
                 if not any(f.startswith("Of the ") and "echoes by English wording" in f for f in sec.footer):
@@ -483,7 +491,7 @@ def test_guards(atlas, only):
                                                       for i in range(len(ks) - len(span) + 1)))
                 got = sept.classify_pair(texts.keys[a], texts.stop[a], texts.keys[b], roots, all_roots,
                                          texts.keys[a], texts.keys[b], far_places=far_places)[1]
-                if got != want and got.split(" (")[0] != want:
+                if got != want and got.split(" (")[0] != want and got.split(",")[0] != want:
                     problems.append(f"{here} against {there}: {got!r}, wanted {want!r}")
             report(name, not problems, "; ".join(problems))
 

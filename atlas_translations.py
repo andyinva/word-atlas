@@ -129,8 +129,35 @@ SPELLINGS = {
     "ye": "you", "thee": "you", "thou": "you", "thy": "your", "thine": "your", "hath": "has", "doth": "does",
     "unto": "to", "spake": "spoke", "brake": "broke", "sware": "swore", "bare": "bore", "gat": "got",
     "wist": "knew", "wot": "know", "wotteth": "knoweth", "holpen": "helped", "stablish": "establish",
-    "stablished": "established", "jehovah": "lord", "yahweh": "lord", "yhwh": "lord",
+    "stablished": "established", "jehovah": "lord", "yahweh": "lord", "yhwh": "lord", "jah": "lord",
+    "hashem": "lord", "g-d": "god", "adonai": "lord",
+    # The modern 'will' for the King James's 'shall' (Deuteronomy 32:36, 'the LORD shall judge his people',
+    # is 'Jehovah will judge' in the American Standard): one future, two spellings
+    "shall": "will", "shalt": "will", "wilt": "will",
 }
+
+# The divine name.  The King James prints 'the LORD' where the American
+# Standard prints 'Jehovah', the World English 'Yahweh' and the JPS
+# 'HaShem', with no article, so 'the LORD rebuke thee' and 'Jehovah
+# rebuke thee' broke on the article in every one of them.  A name on
+# this list is read as the two words 'the lord' unless an article or a
+# vocative 'O' already stands before it, which puts those translations
+# in the King James's spelling where the King James has the article
+# (nearly always) and costs a mismatch only in the vocative.
+DIVINE_NAMES = {"jehovah", "yahweh", "yhwh", "hashem", "jah"}
+
+
+def expand_divine_name(words):
+    """The words with a divine name read as 'the lord' where no article or 'o' precedes it."""
+    out = []
+    for w in words:
+        if w in DIVINE_NAMES:
+            if not out or out[-1] not in ("the", "o"):
+                out.append("the")
+            out.append("lord")
+        else:
+            out.append(w)
+    return out
 
 # Translations left out of the index altogether: under copyright, and
 # though a report carries counts and names only, the index itself holds
@@ -254,14 +281,14 @@ class Normaliser:
     def phrase(self, wording):
         """A run of words as the index spells it."""
         pattern, apostrophes = load_text_tools()
-        words = [w.lower() for w in pattern.findall(wording.translate(apostrophes))]
+        words = expand_divine_name([w.lower() for w in pattern.findall(wording.translate(apostrophes))])
         return " ".join(self.root(w) for w in words)
 
 
 def words_of(text):
-    """The words of a verse, lower case, cut the atlas's way."""
+    """The words of a verse, lower case, cut the atlas's way, the divine name read as 'the lord'."""
     pattern, apostrophes = load_text_tools()
-    return [w.lower() for w in pattern.findall(text.translate(apostrophes))]
+    return expand_divine_name([w.lower() for w in pattern.findall(text.translate(apostrophes))])
 
 
 # ---------------------------------------------------------------------------
@@ -882,12 +909,27 @@ class Translations:
 
     def phrase(self, wording):
         """The index's spelling of a King James wording."""
-        pattern, apostrophes = load_text_tools()
-        words = [w.lower() for w in pattern.findall(wording.translate(apostrophes))]
+        words = words_of(wording)
         # A word the index met has its root stored; one it never met is
         # folded by spelling and left as it is
-        return " ".join(self.roots.get(w) or self.roots.get(self.spellings.get(w, w)) or self.spellings.get(w, w)
-                        for w in words)
+        roots = [self.roots.get(w) or self.roots.get(self.spellings.get(w, w)) or self.spellings.get(w, w)
+                 for w in words]
+        return " ".join(roots)
+
+    def probe_phrase(self, wording):
+        """
+        The index's spelling of a wording as a run the index could hold:
+        the index cuts runs that never end on a function word, as the
+        atlas does, so a grown echo's trailing 'thee' or 'them' is
+        trimmed before the lookup ('the LORD rebuke thee' is asked for
+        as 'lord rebuke').  Fewer than three words left means nothing to
+        ask, and an empty string comes back.
+        """
+        from atlas_text import STOPLIST
+        roots = self.phrase(wording).split()
+        while roots and (roots[-1] in STOPLIST or self.spellings.get(roots[-1], roots[-1]) in STOPLIST):
+            roots.pop()
+        return " ".join(roots) if len(roots) >= min(FORMULA_LENGTHS) else ""
 
     def has_text(self, tid, ref):
         """Whether a translation has the book of a verse (nine tenths of its verses at least)."""
@@ -905,9 +947,11 @@ class Translations:
         idiom, in more verses than that), 'differs' (its wording differs
         on one side or both).
         """
-        phrase = self.phrase(wording)
+        phrase = self.probe_phrase(wording)
         here, there = list(here), list(there)
         verdict = {}
+        if not phrase:
+            return Support(self, verdict)
         for tid in self.others:
             if not all(self.has_text(tid, r) for r in here + there):
                 continue
@@ -953,15 +997,26 @@ class Translations:
         the runs, and otherwise gets the best verdict any run earns.
         """
         pieces = list(dict.fromkeys(list(wordings or []) + self.pieces(wording)))
-        if len(pieces) == 1:
-            return self.support(pieces[0], here, there)
         rank = {"kept": 2, "common": 1, "differs": 0}
-        best = {}
-        for piece in pieces:
-            for tid, v in self.support(piece, here, there).verdict.items():
-                if rank[v] > rank.get(best.get(tid), -1):
-                    best[tid] = v
-        return Support(self, best)
+        here, there = list(here), list(there)
+
+        def best_over_pieces(h, t):
+            best = {}
+            for piece in pieces:
+                for tid, v in self.support(piece, [h], [t]).verdict.items():
+                    if rank[v] > rank.get(best.get(tid), -1):
+                        best[tid] = v
+            return Support(self, best)
+
+        # One pair: the verdicts over the pieces.  Several verses on a
+        # side: the pair kept by most translations stands for the row,
+        # and is named in the cell when it is not the only pair
+        results = [(best_over_pieces(h, t), h, t) for h in here for t in there]
+        results.sort(key=lambda r: (-r[0].kept, -r[0].asked))
+        support, h, t = results[0] if results else (Support(self, {}), None, None)
+        if len(results) > 1 and support.asked:
+            support.pair = (t if len(there) > 1 else h) if len(here) == 1 or len(there) == 1 else f"{h} with {t}"
+        return support
 
 
 class Support:
@@ -994,10 +1049,17 @@ class Support:
         return [self.t.names[tid] for tid, v in sorted(self.verdict.items()) if v == which]
 
     def cells(self):
-        """The two cells: 'kept/asked' translations and 'kept/asked' families; blank when no translation could be asked."""
+        """
+        The two cells: 'kept/asked' translations and 'kept/asked'
+        families; blank when no translation could be asked.  When the
+        echo had several verses on a side the counts are for the best
+        pair, and the families cell names its verse so the reader knows
+        which (see Support.pair).
+        """
         if not self.verdict:
             return "", ""
-        return f"{self.kept}/{self.asked}", f"{len(self.families_kept())}/{len(self.families_asked())}"
+        tail = f" ({self.pair})" if getattr(self, "pair", None) else ""
+        return f"{self.kept}/{self.asked}", f"{len(self.families_kept())}/{len(self.families_asked())}" + tail
 
     def base_family_only(self):
         """Whether every translation keeping the echo is of the base's family."""
@@ -1026,29 +1088,62 @@ def note_for(translations):
             f"{translations.names.get(translations.base, BASE)} and editable in metadata.db), since "
             f"revisions of one translation agreeing are one witness.  A low count means the echo may be "
             f"the translators' idiom rather than the originals'; a run kept by every family is "
-            f"the originals' own.  Counts, not scores: the translations are not weighed against each other.")
+            f"the originals' own.  A quotation of the Septuagint (one 4e holds in Greek) is often kept by few, since "
+            f"the other translations render the Hebrew where the New Testament writer quotes the Greek; the footer "
+            f"counts those apart.  Where an echo has several verses on a side the counts are for the pair most "
+            f"translations keep, named in the families cell.  Counts, not scores: the translations are not weighed "
+            f"against each other.")
 
 
-def footer_for(sec, translations, supports):
+FOOTER_BREAKDOWN_MIN = 5    # the family breakdown is printed from this many English echoes
+
+
+def footer_for(sec, translations, supports, confirmed=()):
     """
     The footer lines under a table whose rows carry the two columns:
     how many echoes stand on the base's family alone or on none, the
     families' own shares, and the translations' closeness to the base
-    as the background those shares are read against.
+    as the background those shares are read against.  confirmed holds
+    the (here, there) pairs 4e holds in Greek: a quotation of the
+    Septuagint is kept by few translations because they render the
+    Hebrew, so those rows are left out of the idiom tally and counted
+    apart.  The data is kept on the section so reconcile() can render
+    the footer again once 4e is known.
     """
     if not supports:
         return
+    sec.translation_supports = {"supports": supports, "confirmed": set(confirmed), "web": translations}
+    sec.footer.append(render_footer(sec))
+    if len(supports) >= FOOTER_BREAKDOWN_MIN:
+        line = family_line(translations, [s for s, _, _ in supports])
+        if line:
+            sec.footer.append(line)
+
+
+def render_footer(sec):
+    """The first footer line from the data kept on the section."""
+    data = sec.translation_supports
+    translations, confirmed = data["web"], data["confirmed"]
     base_family = translations.family[translations.base]
-    only = sum(1 for s in supports if s.base_family_only())
-    none = sum(1 for s in supports if s.asked and s.kept == 0)
-    every = sum(1 for s in supports if s.asked and s.families_kept() >= s.families_asked())
-    sec.footer.append(f"Of the {len(supports)} echoes by English wording, {none} are kept by no other translation, "
-                      f"{only} by the {base_family} alone, {every} by every family asked: the first two are the "
-                      f"likeliest to be the translators' idiom, the last the originals' own words.")
-    # Each family's share of the echoes it was asked about, beside the
-    # closeness of its members to the base, the background a share is
-    # read against (a revision of the base keeping an echo says less
-    # than a fresh translation keeping it)
+    rows = [(s, h, t) for s, h, t in data["supports"]]
+    greek = [r for r in rows if any((hh, tt) in confirmed for hh in r[1] for tt in r[2])]
+    tally = [s for s, h, t in rows if (s, h, t) not in greek]
+    only = sum(1 for s in tally if s.base_family_only())
+    none = sum(1 for s in tally if s.asked and s.kept == 0)
+    every = sum(1 for s, _, _ in rows if s.asked and s.families_kept() >= s.families_asked())
+    n = len(rows)
+    line = (f"Of the {n} echo{'es' if n != 1 else ''} by English wording, {none} {'are' if none != 1 else 'is'} kept "
+            f"by no other translation, {only} by the {base_family} alone, {every} by every family asked: the first "
+            f"two are the likeliest to be the translators' idiom, the last the originals' own words.")
+    if greek:
+        line += (f"  {len(greek)} confirmed in Greek by 4e {'are' if len(greek) != 1 else 'is'} left out of the idiom "
+                 f"tally: a quotation of the Septuagint is kept by few translations because they render the Hebrew, "
+                 f"which is not the King James inventing the echo.")
+    return line
+
+
+def family_line(translations, supports):
+    """Each family's share of the echoes it was asked about, beside its members' closeness to the base."""
     parts = []
     for family in translations.families:
         members = [t for t in translations.others if translations.family[t] == family]
@@ -1065,8 +1160,24 @@ def footer_for(sec, translations, supports):
         close = sum(translations.identity[t] for t in members) / len(members)
         parts.append(f"{family} ({', '.join(translations.names[t] for t in members)}) keeps {kept} of {asked}, "
                      f"its words {close:.0%} the {translations.names[translations.base]}'s")
-    if parts:
-        sec.footer.append("By family: " + "; ".join(parts) + ".")
+    return "By family: " + "; ".join(parts) + "." if parts else ""
+
+
+def reconcile(report):
+    """
+    Once a page has table 4e, let table 4's translations footer leave
+    the pairs 4e holds in Greek out of its idiom tally.  Called where
+    atlas_listed.reconcile is; a page without 4e is left as it is.
+    """
+    from atlas_report import number_of
+    fours = [s for s in report.sections if number_of(s.title) == "4" and hasattr(s, "translation_supports")]
+    four_es = [s for s in report.sections if number_of(s.title) == "4e" and hasattr(s, "greek_pairs")]
+    if not fours or not four_es:
+        return
+    confirmed = set().union(*(s.greek_pairs for s in four_es))
+    for s in fours:
+        s.translation_supports["confirmed"] = confirmed
+        s.footer = [render_footer(s) if f.startswith("Of the ") and "by English wording" in f else f for f in s.footer]
 
 
 # ---------------------------------------------------------------------------
