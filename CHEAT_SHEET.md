@@ -279,6 +279,7 @@ time and need no rebuild; just restart the program.
 | `atlas_query.py` | Command-line version: `python atlas_query.py book Joel` |
 | `atlas_workbench.py` | The Workbench tab: every tool under menus |
 | `atlas_usb.py`, `atlas_usb_dialog.py`, `usb_install.py` | The USB drive: making it, its window, and the installer it carries |
+| `atlas_source.py` | `make` takes Word Atlas's own Bible text out of bibles.db into `atlas_source.db`; `show` says what it holds |
 | `atlas.db` | The working atlas (made by build_atlas.py) |
 | `builds/` | Kept builds and their rules |
 | `reports/` | Pages saved as text |

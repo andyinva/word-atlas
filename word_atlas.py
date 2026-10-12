@@ -742,7 +742,8 @@ class WordAtlasWindow(QMainWindow):
             (problem or "atlas.db was not found.") + "\n\n"
             "The pages are read from atlas.db, which this folder does not have (or has from an older version).  "
             "On the Workbench tab:\n\n"
-            "    Builds > Build atlas.db:  makes it from bibles.db, in about a minute.\n"
+            "    Builds > Build atlas.db:  makes it from the Bible text (atlas_source.db, or bibles.db), "
+            "in about a minute.\n"
             "    Install > Check this install:  lists what is here and what is still to make.\n"
             "    Install > New install, step by step:  walks through all of it in order.\n\n"
             "When the build finishes, this tab opens with the pages.")
@@ -905,7 +906,7 @@ class WordAtlasWindow(QMainWindow):
         self.dossier_btn.clicked.connect(self.save_dossier)
         bar.addWidget(self.dossier_btn)
 
-        # Rebuild atlas.db from bibles.db with the rules now in
+        # Rebuild atlas.db from the Bible text with the rules now in
         # atlas_text.py, then reload the modules and the page on screen.
         # For the trial-and-error phase: change a rule, click, compare.
         self.rebuild_btn = QPushButton("Rebuild atlas")

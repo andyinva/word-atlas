@@ -9,7 +9,7 @@ here, so that build_atlas.py (which fills atlas.db) and atlas_query.py
     - the settings from the Word Atlas plan (window, stoplist, voice
       tags, formula lengths)
     - the Stemmer that gathers KJV spellings under one root
-    - the tokenizer (BibleText) that reads a translation from bibles.db
+    - the tokenizer (BibleText) that reads a translation from atlas_source.db (or bibles.db)
     - the log-likelihood measure used for keyness and pull
 
 Author: Andrew Hopkins (with Claude)
@@ -26,8 +26,12 @@ from collections import Counter, defaultdict
 # Changing any of them means rebuilding atlas.db.
 # ---------------------------------------------------------------------------
 
-# Where bibles.db may be found.  The first path that exists is used.
+# Where the Bible text may be found.  The first path that exists is
+# used: Word Atlas's own atlas_source.db (the parts of bibles.db it
+# reads, taken out by atlas_source.py), then bibles.db itself.  The
+# build asks atlas_source.py, which keeps this same order.
 DATABASE_CANDIDATES = [
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "atlas_source.db"),
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "bibles.db"),
     os.path.expanduser("~/projects/bible-search-lite/database/bibles.db"),
     os.path.expanduser("~/Documents/BibleSearchLite/database/bibles.db"),
@@ -938,11 +942,12 @@ def dating_dispute(book, partner, date=None):
 
 
 def find_database():
-    """Return the first bibles.db path that exists, or stop with a message."""
+    """Return the first Bible text database that exists (atlas_source.db, else bibles.db), or stop with a message."""
     for path in DATABASE_CANDIDATES:
         if os.path.exists(path):
             return path
-    raise SystemExit("bibles.db not found.  Looked in:\n  " + "\n  ".join(DATABASE_CANDIDATES))
+    raise SystemExit("No Bible text found.  Looked for:\n  " + "\n  ".join(DATABASE_CANDIDATES) +
+                     "\npython3 atlas_source.py make  writes atlas_source.db where bibles.db is")
 
 
 def has_substance(phrase):

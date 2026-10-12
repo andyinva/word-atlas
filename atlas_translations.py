@@ -22,10 +22,11 @@ echo.  A second count folds the translations into families, since a
 dozen revisions of the King James agreeing with it is one witness,
 not twelve.
 
-The data come from bibles.db (the Bible Search Lite database, which
-holds the translations the user has gathered) or from translations.db
-beside the program, an export of its four text tables.  Neither is
-read at page time: `python3 atlas_translations.py build` tokenises
+The data come from atlas_source.db beside the program (the parts of
+Bible Search Lite's bibles.db that Word Atlas reads, taken out by
+atlas_source.py: the translations free of copyright among them), or
+from translations.db, an older export of the four text tables, or from
+bibles.db itself.  None is read at page time: `python3 atlas_translations.py build` tokenises
 every translation once and writes translations_index.db beside the
 program, small enough to load whole: the rare runs each translation
 shares across the testaments, and the count and places of every King
@@ -182,20 +183,23 @@ APOSTROPHES = None
 
 def candidate_paths():
     """Where the translations' text may be, in the order tried."""
-    paths = [EXPORT_PATH]
+    # Word Atlas's own text first (atlas_source.py takes the translations
+    # free of copyright out of bibles.db along with the King James),
+    # then translations.db, the older export, then bibles.db itself
     try:
-        import atlas_text
-        paths.append(atlas_text.find_database())
-    except (ImportError, SystemExit):
-        pass
-    return paths
+        import atlas_source
+        found = atlas_source.candidates()
+    except ImportError:
+        found = []
+    own = [p for p in found if os.path.basename(p) == "atlas_source.db"]
+    return own + [EXPORT_PATH] + [p for p in found if p not in own]
 
 
 def open_source(path=None):
     """
     Open the first database holding more than one translation.  Returns
-    (connection, path) or (None, None).  A bibles.db with the King James
-    alone (the atlas's own copy) is passed over.
+    (connection, path) or (None, None).  A database with the King James
+    alone (an atlas_source.db made with --kjv-only) is passed over.
     """
     for p in ([path] if path else candidate_paths()):
         if not (p and os.path.exists(p)):

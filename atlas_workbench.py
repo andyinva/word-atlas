@@ -278,6 +278,16 @@ class WorkbenchPanel(QWidget):
         m = bar.addMenu("&Builds")
         self._action(m, "Build &atlas.db (build_atlas.py)...", self.build_atlas)
         m.addSeparator()
+        # Word Atlas's own Bible text: the parts of bibles.db it reads,
+        # in a file of its own beside the program (atlas_source.py)
+        self._action(m, "Take Word Atlas's own te&xt out of bibles.db (atlas_source.py make)",
+                     lambda: self.confirm_then(
+                         "atlas_source.py writes atlas_source.db beside the program: the King James text, its "
+                         "Strong's numbers and the translations free of copyright, taken out of bibles.db "
+                         "(which is only read).  About ten seconds.  Run it?", ["atlas_source.py", "make"]))
+        self._action(m, "Show what the text &source holds (atlas_source.py show)",
+                     lambda: self.run_tool("atlas_source.py", ["show"]))
+        m.addSeparator()
         self._action(m, "Import the Greek New Testament (build_&gnt.py)",
                      lambda: self.confirm_then("build_gnt.py adds the tagged Greek New Testament to lxx.db.  Run it?",
                                                ["build_gnt.py"]))
@@ -401,17 +411,20 @@ class WorkbenchPanel(QWidget):
         self._action(steps, "1. Restore metadata.db from its backup",
                      lambda: self.confirm_then("Rebuild metadata.db from metadata_backup.sql?",
                                                ["atlas_backup.py", "restore", "--yes"]))
-        self._action(steps, "2. Build atlas.db from bibles.db", self.build_atlas)
-        self._action(steps, "3. Build lxx.db: the Septuagint",
+        self._action(steps, "2. Take Word Atlas's own text out of bibles.db (not needed where atlas_source.db "
+                            "came with the install)",
+                     lambda: self.confirm_then("Write atlas_source.db from bibles.db?", ["atlas_source.py", "make"]))
+        self._action(steps, "3. Build atlas.db from the Bible text (atlas_source.db, or bibles.db)", self.build_atlas)
+        self._action(steps, "4. Build lxx.db: the Septuagint",
                      lambda: self.confirm_then("Run build_lxx.py (needs the Rahlfs data folder)?", ["build_lxx.py"]))
-        self._action(steps, "4. Add the Greek New Testament to lxx.db",
+        self._action(steps, "5. Add the Greek New Testament to lxx.db",
                      lambda: self.confirm_then("Run build_gnt.py (needs the TAGNT files under data/)?", ["build_gnt.py"]))
-        self._action(steps, "5. Add the tagged Hebrew to lxx.db",
+        self._action(steps, "6. Add the tagged Hebrew to lxx.db",
                      lambda: self.confirm_then("Run build_tahot.py (needs the TAHOT files under data/)?", ["build_tahot.py"]))
-        self._action(steps, "6. Quick tests", lambda: self.run_tool("test_atlas.py", ["--quick"]))
-        self._action(steps, "7. Canon run (every dossier, results.db)",
+        self._action(steps, "7. Quick tests", lambda: self.run_tool("test_atlas.py", ["--quick"]))
+        self._action(steps, "8. Canon run (every dossier, results.db)",
                      lambda: self.confirm_then("Start the canon run?", ["atlas_query.py", "dossier", "all", "--results"]))
-        self._action(steps, "8. Pack the dataset for the Reader", self.pack)
+        self._action(steps, "9. Pack the dataset for the Reader", self.pack)
 
         # Recent
         self.recent_menu = bar.addMenu("Rece&nt")
@@ -694,8 +707,9 @@ class WorkbenchPanel(QWidget):
                           [("label", "Keep a copy as builds/<label>.db (optional):", ""),
                            ("translation", "Translation (KJV):", "KJV"),
                            ("roots", "Roots: strongs or english:", "strongs")], parent=self,
-                          note="build_atlas.py rebuilds atlas.db from bibles.db in about a minute; the window and "
-                               "every page read the result.")
+                          note="build_atlas.py rebuilds atlas.db from Word Atlas's own text (atlas_source.db, "
+                               "or bibles.db where there is none) in about a minute; the window and every page "
+                               "read the result.")
         if d.exec():
             v = d.values()
             args = []

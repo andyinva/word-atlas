@@ -806,6 +806,124 @@ def test_dist(only):
     report(name, not problems, "; ".join(problems) or os.path.basename(wadb))
 
 
+def test_source(only):
+    """
+    atlas_source.py (0.10.92): from a small stand-in for bibles.db
+    (three translations, one of them under copyright; tags; the cross
+    references; a table and a view of Bible Search Lite's own), the
+    source file takes the King James, its tags and the free
+    translation with their ids, and nothing else; bibles.db is left
+    as it was; and the file is the first place the text is looked for.
+    """
+    name = "guard: atlas_source takes the atlas's own text out of a bibles.db and leaves the rest"
+    if only and only not in name:
+        return
+    import hashlib
+    import sqlite3
+    import tempfile
+    import atlas_source
+    problems = []
+    with tempfile.TemporaryDirectory() as tmp:
+        bibles = os.path.join(tmp, "bibles.db")
+        db = sqlite3.connect(bibles)
+        db.executescript("""
+            CREATE TABLE books (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, abbreviation TEXT NOT NULL,
+                                testament TEXT NOT NULL, order_index INTEGER NOT NULL UNIQUE);
+            CREATE TABLE translations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+                                       abbreviation TEXT NOT NULL UNIQUE, description TEXT);
+            CREATE TABLE verses (id INTEGER PRIMARY KEY AUTOINCREMENT, book_id INTEGER NOT NULL, chapter INTEGER NOT NULL,
+                                 verse_number INTEGER NOT NULL, UNIQUE(book_id, chapter, verse_number));
+            CREATE TABLE verse_texts (id INTEGER PRIMARY KEY AUTOINCREMENT, verse_id INTEGER NOT NULL,
+                                      translation_id INTEGER NOT NULL, text TEXT NOT NULL, UNIQUE(verse_id, translation_id));
+            CREATE TABLE verse_strongs (id INTEGER PRIMARY KEY AUTOINCREMENT, verse_id INTEGER NOT NULL,
+                                        word_position INTEGER NOT NULL, strongs_number TEXT NOT NULL, morphology TEXT,
+                                        word_text TEXT);
+            CREATE TABLE cross_references (id INTEGER PRIMARY KEY AUTOINCREMENT, from_reference TEXT, from_book TEXT,
+                                           from_chapter INTEGER, from_verse_start INTEGER, from_verse_end INTEGER,
+                                           to_reference TEXT, to_book TEXT, to_chapter INTEGER, to_verse_start INTEGER,
+                                           to_verse_end INTEGER, relevance_score INTEGER);
+            CREATE TABLE subjects (id INTEGER PRIMARY KEY, name TEXT);
+            CREATE INDEX idx_verse_texts_composite ON verse_texts(translation_id, verse_id);
+            CREATE INDEX idx_strongs_verse ON verse_strongs(verse_id);
+            CREATE VIEW verse_lookup AS SELECT v.id, vt.text FROM verse_texts vt JOIN verses v ON vt.verse_id = v.id;
+            INSERT INTO books VALUES (1, 'Genesis', 'Gen', 'Old', 1), (43, 'John', 'Joh', 'New', 43);
+            INSERT INTO translations VALUES (1, 'King James Bible', 'KJV', ''), (2, 'American Standard Version', 'ASV', ''),
+                                            (15, 'NET Bible', 'NET', '');
+            INSERT INTO verses VALUES (1, 1, 1, 1), (2, 1, 1, 2), (900, 43, 1, 1);
+            INSERT INTO verse_texts VALUES
+                (10, 1, 1, 'In the beginning God created the heaven and the earth.'),
+                (11, 2, 1, 'And the earth was without form, and void.'),
+                (12, 900, 1, 'In the beginning was the Word.'),
+                (20, 1, 2, 'In the beginning God created the heavens and the earth.'),
+                (30, 1, 15, 'A verse of a translation that is under copyright.'),
+                (31, 900, 15, 'Another verse of the same.');
+            INSERT INTO verse_strongs VALUES (5, 1, 1, 'H7225', 'N', 'beginning'), (6, 1, 2, 'H430', 'N', 'God'),
+                                             (77, 900, 1, 'G746', 'N', 'beginning');
+            INSERT INTO cross_references VALUES (1, 'Genesis 1:1', 'Genesis', 1, 1, 1, 'John 1:1', 'John', 1, 1, 1, 300);
+            INSERT INTO subjects VALUES (1, 'a subject of the reader''s own');
+        """)
+        db.commit()
+        db.close()
+        with open(bibles, "rb") as f:
+            before = hashlib.sha256(f.read()).hexdigest()
+        out = os.path.join(tmp, atlas_source.SOURCE_NAME)
+        lines = []
+        atlas_source.make(bibles, out=out, log=lines.append)
+        with open(bibles, "rb") as f:
+            if hashlib.sha256(f.read()).hexdigest() != before:
+                problems.append("bibles.db was changed by the reading of it")
+        if not os.path.exists(out):
+            problems.append("no atlas_source.db written")
+        else:
+            db = sqlite3.connect(out)
+            tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type IN ('table', 'view')")} \
+                - {"sqlite_sequence"}
+            if tables != {"books", "translations", "verses", "verse_texts", "verse_strongs", "source_info"}:
+                problems.append(f"the file holds {sorted(tables)}")
+            if [r[0] for r in db.execute("SELECT abbreviation FROM translations ORDER BY id")] != ["KJV", "ASV"]:
+                problems.append("the translations kept are not the King James and the free one")
+            if db.execute("SELECT count(*) FROM verse_texts WHERE text LIKE '%copyright%' OR translation_id = 15").fetchone()[0]:
+                problems.append("a verse of the translation under copyright came along")
+            # The rows keep their numbers, so the build reads them in the same order
+            if db.execute("SELECT id, verse_id, translation_id FROM verse_texts ORDER BY id").fetchall() != \
+                    [(10, 1, 1), (11, 2, 1), (12, 900, 1), (20, 1, 2)]:
+                problems.append("the verse texts did not keep their ids")
+            if db.execute("SELECT id, verse_id, strongs_number FROM verse_strongs ORDER BY id").fetchall() != \
+                    [(5, 1, "H7225"), (6, 1, "H430"), (77, 900, "G746")]:
+                problems.append("the Strong's tags did not come through whole")
+            db.close()
+            made = atlas_source.info(out)
+            if made.get("left_out") != "NET" or made.get("translations") != "KJV, ASV":
+                problems.append(f"the file's own account is {made.get('translations')!r}, left out {made.get('left_out')!r}")
+            # The file is looked for first, and bibles.db after it
+            found = atlas_source.candidates(tmp)
+            if [os.path.basename(p) for p in found] != [atlas_source.SOURCE_NAME, "bibles.db"]:
+                problems.append(f"the text is looked for in {[os.path.basename(p) for p in found]}")
+            # The cross references went to their own file, since there was none
+            if not os.path.exists(os.path.join(tmp, "cross_references.db")):
+                problems.append("no cross_references.db written where there was none")
+            # A change to bibles.db since is noticed
+            if atlas_source.changed_since(out, tmp):
+                problems.append("bibles.db is called changed when it is not")
+            os.utime(bibles, ns=(1, 1))
+            if not atlas_source.changed_since(out, tmp):
+                problems.append("a changed bibles.db goes unnoticed")
+            # --kjv-only keeps the King James alone, over the file already there
+            atlas_source.make(bibles, out=out, kjv_only=True, log=lines.append)
+            db = sqlite3.connect(out)
+            if db.execute("SELECT abbreviation FROM translations").fetchall() != [("KJV",)] or \
+                    db.execute("SELECT count(*) FROM verse_texts").fetchone()[0] != 3:
+                problems.append("--kjv-only kept more than the King James")
+            db.close()
+            # A source file is not taken for a bibles.db to make another from
+            try:
+                atlas_source.make(out, out=os.path.join(tmp, "second.db"), log=lines.append)
+                problems.append("an atlas_source.db was accepted as if it were bibles.db")
+            except SystemExit:
+                pass
+    report(name, not problems, "; ".join(problems) or "2 of 3 translations taken, the one under copyright left")
+
+
 def test_housekeeping(only):
     version = atlas_pages.VERSION
     name = "housekeeping: one version everywhere"
@@ -863,6 +981,7 @@ def main(argv):
             print("determinism:", " ".join(args))
         print("guard: names test; Greek New Testament verses; equivalents lemma keys; pronouns; the window's double-click")
         print("guard: the window's two tabs; the workbench's commands; atlas_dist's bundle; atlas_usb's drive and installer")
+        print("guard: atlas_source's own text taken out of a bibles.db")
         print("housekeeping: one version everywhere; no em dash; every module compiles")
         return 0
     started = time.perf_counter()
@@ -871,6 +990,7 @@ def main(argv):
     test_workbench(only)
     test_dist(only)
     test_usb(only)
+    test_source(only)
     atlas = atlas_pages.Atlas()
     test_guards(atlas, only)
     test_window(only)

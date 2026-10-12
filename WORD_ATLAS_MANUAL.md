@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.91. Andrew Hopkins, with Claude.
+For version 0.10.92. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -75,7 +75,10 @@ There are seven kinds of page.
 | Passage | A named passage of the catalogue (`metadata.db`): any set of verse ranges in any books, measured as one text (section 14a) |
 | Compare | Two books chapter against chapter: a map of shared rare phrasing, each chapter's closest chapter in the other book both ways, whether one follows the other's order, and the verses that are parallel |
 
-Word Atlas reads the same `bibles.db` that Bible Search Lite uses, and
+Word Atlas began by reading the same `bibles.db` that Bible Search
+Lite uses. From 0.10.92 it keeps the parts of that database it reads
+in a file of its own, `atlas_source.db` (section 2), so a copy of Word
+Atlas stands on its own. Either way
 it uses the word-by-word Strong's tagging that database carries, so
 the words it counts are the Hebrew and Greek words behind the King
 James wording, not the English spellings. Section 21 explains what
@@ -88,12 +91,42 @@ It needs Python 3, the PyQt6 package for the window (the command-line
 version needs nothing beyond Python), and two data files that are not
 in the repository:
 
-`bibles.db`, the Bible Search Lite database. It must hold the KJV in
-the Bible Search Lite layout (books, verses, translations, verse_texts)
-and a `verse_strongs` table (verse_id, word_position, strongs_number,
-morphology, word_text). The script `inspect_strongs.py` reports whether
-a database has what is needed. The builder looks for `bibles.db`
+`atlas_source.db`, Word Atlas's own Bible text: the King James in
+the Bible Search Lite layout (books, verses, translations, verse_texts),
+its `verse_strongs` table (verse_id, word_position, strongs_number,
+morphology, word_text), and the other English translations that are
+free of copyright, which the translations columns are counted from.
+It is made once, where Bible Search Lite's `bibles.db` is, by
+
+    python3 atlas_source.py make
+
+(the Workbench's Builds menu has the same), and it travels from then
+on: the USB drive carries it, and an installed copy rebuilds its atlas
+from it with no `bibles.db` anywhere. Where there is no
+`atlas_source.db` the builder reads `bibles.db` as it always did,
 beside the scripts first, then in `~/projects/bible-search-lite/database/`.
+The script `inspect_strongs.py` reports whether a database has what is
+needed.
+
+**What is taken from bibles.db, and what is left.** `atlas_source.py`
+opens `bibles.db` for reading only and copies four things, with the
+row numbers they have there, so the atlas built from the copy is the
+atlas built from the original, table for table (checked at 0.10.92 by
+building both and comparing every row of every table): the list of
+books and verses;
+the King James text; its Strong's tags; and the text of every
+translation `atlas_translations.py` reads. Left behind are the
+translations under copyright (the six that module names as EXCLUDED:
+NET, LEB, BBE, JUB and Green's two, and any marked `excluded` in the
+catalogue), the cross references (Word Atlas keeps its own
+`cross_references.db`, and `make` writes one from the table when
+there is none), Bible Search Lite's views, and anything else that
+program adds. `python3 atlas_source.py show` says what the file
+holds, where and when it was taken, and whether `bibles.db` has
+changed since; `build_atlas.py` says the same in a line when it has.
+Run `make` again after a change to `bibles.db`. `make --kjv-only`
+writes a much smaller file, the King James and its tags alone, which
+rebuilds the atlas but not the translations index.
 
 `strongs.csv`, the Strong's dictionary from the strongs3 project. It is
 read from `strongs3-master/data_processed/` or from beside the scripts,
@@ -291,7 +324,8 @@ logic, two displays, so a saved report and the window never disagree.
 **A new install.** The Workbench tab's Install menu (0.10.85), or
 `python3 atlas_dist.py check`, says what a folder has and what it
 still has to make, with the command for each in order: restore
-metadata.db from its text backup, build atlas.db from bibles.db,
+metadata.db from its text backup, take Word Atlas's own text out of
+bibles.db (or carry `atlas_source.db` in), build atlas.db from it,
 build lxx.db and add the Greek New Testament and the tagged Hebrew,
 then the tests, the canon run and the packed dataset. `atlas_dist.py
 atlas` makes a zip of the sources with the metadata backup and the
@@ -356,15 +390,16 @@ else on the drive is read or changed, and the drive is never
 formatted. The ticks are remembered for next time.
 
 **What is ticked the first time, and why.** `atlas.db`,
-`translations_index.db` and `strongs.csv` are ticked: they are built
-from public-domain and freely licensed material. Four are left for
-you to tick. `lxx.db` holds Rahlfs' Septuagint, which may be passed
+`translations_index.db`, `strongs.csv` and `atlas_source.db` are
+ticked: they are built from public-domain and freely licensed
+material, and the last is what lets the installed copy rebuild its
+own atlas (0.10.92). Four are left for you to tick. `lxx.db` holds Rahlfs' Septuagint, which may be passed
 on with its credit but never sold (CC BY-NC-SA), beside STEPBible's
 texts. `sefaria_links.db` waits on confirming Sefaria's licence for
 the links as a set (section 12, the cited column). `results.db` is large, and the
 Reader's dataset already carries its pages. `bibles.db` holds
 translations still under copyright and belongs only on your own
-computers. Rest the pointer on any of them in the window to read the
+computers; with `atlas_source.db` on the drive it is not needed. Rest the pointer on any of them in the window to read the
 same note.
 
 **Bringing it up to date.** Press the same button another day. The
@@ -476,8 +511,10 @@ English ones.
 | `atlas_dist.py` | Bundles for a new install: `reader` zips the Reader's files with the newest dataset (and the guest key when asked), `atlas` zips Word Atlas's sources with metadata_backup.sql and cross_references.db, `unpack` opens a bundle into a folder, `check` says what an install has and what it still has to make, `list` shows what a bundle holds (0.10.85) |
 | `atlas_workbench.py` | Every command under one menu: the Workbench tab of the window, whose menus run the pages, dossiers, results questions, builds, Septuagint maintenance, translations, Sefaria links, backups, tests, git and installs as separate processes, with the command line shown and the output in a log (0.10.84; a tab of `word_atlas.py` from 0.10.88) |
 | `atlas_usb.py`, `atlas_usb_dialog.py`, `usb_install.py` | The USB drive (section 8a): `atlas_usb.py` finds the drives, makes or updates the `WordAtlas` folder on one and fetches PyQt6 for it; `atlas_usb_dialog.py` is its window; `usb_install.py` is the installer, copied to the drive as `install.py`. The same three files are in the Reader's folder (0.10.88) |
-| `atlas_translations.py` | The other English translations as witnesses to the echoes found by wording: `build` writes `translations_index.db` from `translations.db` (an export of Bible Search Lite's text tables) or `bibles.db`; `survey` measures the translations' distance from the King James and proposes families; behind the `translations` and `families` columns and footers of sections 4 and 4f |
-| `translations.db` | An export of the four text tables of Bible Search Lite's `bibles.db` (books, translations, verses, verse_texts), never committed; `translations_index.db` is what `build` makes of it, never committed either |
+| `atlas_source.py` | Word Atlas's own Bible text (0.10.92): `make` takes out of Bible Search Lite's `bibles.db` the parts Word Atlas reads (the King James, its Strong's tags, the translations free of copyright) and writes `atlas_source.db`; `show` says what it holds and whether `bibles.db` has changed since (section 2) |
+| `atlas_source.db` | What `atlas_source.py make` writes beside the program: read first by the build, the translations index and the USB drive; never committed |
+| `atlas_translations.py` | The other English translations as witnesses to the echoes found by wording: `build` writes `translations_index.db` from `atlas_source.db` (else `translations.db`, an older export of Bible Search Lite's text tables, else `bibles.db`); `survey` measures the translations' distance from the King James and proposes families; behind the `translations` and `families` columns and footers of sections 4 and 4f |
+| `translations.db` | An older export of the four text tables of Bible Search Lite's `bibles.db` (books, translations, verses, verse_texts), never committed; `atlas_source.db` carries the translations from 0.10.92 and is read before it, so it can be deleted; `translations_index.db` is what `build` makes of it, never committed either |
 | `atlas_listed.py` | The cross references (OpenBible.info on the Treasury of Scripture Knowledge, from bibles.db) behind the `listed` column and footers of sections 4, 4e and 6 |
 | `atlas_results.py` | Questions across the canon asked of reports/results.db, each answer saved as a text file under reports/ (section 19) |
 | `atlas_pack.py` | Packs reports/results.db with a manifest into one `.wadb` file for the Word Atlas Reader, the separate viewer for readers who have the dataset and not the program (section 19) |
@@ -1738,8 +1775,9 @@ looks like there. Steps 1 to 8 happen once, in `build_atlas.py`, and
 write `atlas.db`; steps 9 and 10 happen every time a page is asked
 for and write nothing but the report.
 
-1. **Read the source.** `bibles.db` (shared with Bible Search Lite,
-   never written) supplies the verse, its text in the chosen
+1. **Read the source.** `atlas_source.db` (Word Atlas's own copy of
+   the parts of Bible Search Lite's `bibles.db` it reads; where there
+   is none, `bibles.db` itself, never written) supplies the verse, its text in the chosen
    translation, and its tagging. The verse is one row of `verses`
    (id 1, book 1, chapter 1, verse 1), its text one row of
    `verse_texts` ("In the beginning God created the heaven and the
@@ -5063,6 +5101,26 @@ fall when no partner changes side.
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
 
+**0.10.92.** Word Atlas's own Bible text. `atlas_source.py make`
+takes out of Bible Search Lite's `bibles.db` the parts Word Atlas
+reads and writes them to `atlas_source.db` beside the program: the
+books and verses, the King James text, its Strong's tags, and the
+translations free of copyright (33 of the 39 at this writing; the six
+under copyright stay in `bibles.db`, with the cross references, the
+views and whatever else Bible Search Lite keeps). Rows keep their
+numbers, and the atlas built from the file was compared with the
+atlas built from `bibles.db` and found the same in every table.
+`build_atlas.py`, `atlas_translations.py` and `atlas_listed.py` look
+for the file first and for `bibles.db` after it; the lookup lives in
+`atlas_source.py` so that restoring an older build's rules, which
+copies an older `atlas_text.py` back, does not take it away. The USB
+drive carries `atlas_source.db` (ticked the first time), so an
+installed copy can rebuild its atlas with no `bibles.db`;
+`atlas_dist.py check` and the Workbench's install steps name it; the
+Builds menu makes and shows it. `translations.db`, the older export,
+is read after it and can be deleted. One guard: a stand-in `bibles.db`
+with a translation under copyright, from which only the rest may come.
+
 **0.10.91.** `openbible_import.py`: the cross references refreshed
 from OpenBible.info's own download, the file beside the program read
 before bibles.db's table, so a newer vote count reaches the listed
@@ -5585,10 +5643,12 @@ file, and the Build box is where it is chosen.
 
 **Sources and licence.** The code and documents in this repository are
 released under the MIT licence (see `LICENSE`). The atlas is built from
-files that are not in the repository: `bibles.db`, the Bible Search
+files that are not in the repository: `atlas_source.db`, taken by
+`atlas_source.py` out of `bibles.db`, the Bible Search
 Lite database, whose King James text is public domain and whose
 `verse_strongs` table carries the public-domain Strong's tagging of
-it; and `strongs.csv`, the Strong's dictionary from the strongs3
+it (the translations still under copyright in that database are left
+in it); and `strongs.csv`, the Strong's dictionary from the strongs3
 project (MIT licence). To build the atlas from scratch you need a
 `bibles.db` with the KJV in the Bible Search Lite layout (books,
 verses, translations, verse_texts) and a `verse_strongs` table

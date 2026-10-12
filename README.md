@@ -22,7 +22,8 @@ with one click.
     cd ~/projects/word_atlas
     source venv/bin/activate      (Linux)
     venv\Scripts\activate         (Windows)
-    python build_atlas.py         (once, about a minute; needs bibles.db and strongs.csv)
+    python atlas_source.py make   (once, where bibles.db is: writes atlas_source.db, Word Atlas's own text)
+    python build_atlas.py         (once, about a minute; needs atlas_source.db or bibles.db, and strongs.csv)
     python word_atlas.py          (the window; needs PyQt6)
 
 The window has two tabs. **Atlas** is the pages. **Workbench** is
@@ -36,10 +37,15 @@ The same pages print as text without the window:
     python atlas_query.py compare Exodus x Leviticus
     python atlas_query.py dossier Ezekiel --brief
 
-Word Atlas reads the same `bibles.db` that Bible Search Lite uses; it
-needs the `verse_strongs` table in it and the Strong's dictionary
-`strongs.csv` from the strongs3 project. Neither file is in this
-repository. The Greek layer (`lxx.db`) is built separately from the
+Word Atlas keeps its own Bible text in `atlas_source.db`:
+`atlas_source.py make` takes it out of Bible Search Lite's `bibles.db`
+(the King James, its `verse_strongs` tags, and the translations free
+of copyright; the rest of that database is left where it is). After
+that Word Atlas needs no `bibles.db`, and the USB drive carries the
+file to an installed copy. Where there is no `atlas_source.db` it
+reads `bibles.db` as before. It also needs the Strong's dictionary
+`strongs.csv` from the strongs3 project. None of these files is in
+this repository. The Greek layer (`lxx.db`) is built separately from the
 Septuagint files (`build_lxx.py`), STEPBible's TAGNT Greek New
 Testament (`build_gnt.py`, two files downloaded into `data/tagnt/`)
 and STEPBible's TAHOT Hebrew Old Testament (`build_tahot.py`, four
@@ -84,6 +90,7 @@ touching `metadata.db`, reports or kept builds. The manual's section
 ## A new install, or a copy to give away
 
     python3 atlas_dist.py check          what this folder has and what it still has to make
+    python3 atlas_source.py show         what Word Atlas's own Bible text holds, and whether bibles.db has changed since
     python3 atlas_dist.py reader         a zip of the Reader with the newest dataset
     python3 atlas_dist.py atlas          a zip of Word Atlas's sources with the metadata backup
     python3 atlas_dist.py unpack ZIP DIR open either into a folder

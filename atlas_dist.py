@@ -7,8 +7,8 @@ The Reader needs two things to run somewhere else: its program files
 which atlas_pack.py makes from reports/results.db).  Word Atlas
 itself needs its source files, the text backup of metadata.db (the
 database itself is rebuilt from the backup), the cross references,
-and then the builds that only run where bibles.db and the Greek and
-Hebrew data are.  This module makes and opens the zip files that
+and then the builds that only run where the Bible text
+(atlas_source.db, or bibles.db) and the Greek and Hebrew data are.  This module makes and opens the zip files that
 carry each, and says what a fresh install still has to build.
 
     python3 atlas_dist.py reader [--wadb FILE] [--out ZIP] [--guest-key] [--reader DIR]
@@ -65,7 +65,7 @@ READER_FILES = ["word_atlas_reader.py", "reader_data.py", "reader_claude.py", "r
 # Word Atlas's data files that are not source and not built: carried in the bundle
 ATLAS_DATA = ["metadata_backup.sql", "cross_references.db", "LICENSE", "requirements.txt"]
 # Built or copyrighted or large: never in the bundle (git ignores them too)
-ATLAS_SKIP = {"atlas.db", "lxx.db", "bibles.db", "metadata.db", "translations.db", "translations_index.db",
+ATLAS_SKIP = {"atlas.db", "atlas_source.db", "lxx.db", "bibles.db", "metadata.db", "translations.db", "translations_index.db",
               "sefaria_links.db", "richness_cache.json", "test_bibles.db", "lxx_backup.db", "metadata_test_backup.db"}
 ATLAS_SKIP_DIRS = {"__pycache__", "reports", "builds", "venv", "data", "strongs3-master", "Sept With Strongs",
                    "Claude outputs", ".git"}
@@ -73,8 +73,8 @@ ATLAS_SKIP_DIRS = {"__pycache__", "reports", "builds", "venv", "data", "strongs3
 # What a Word Atlas install has to have or make, in the order it is made
 ATLAS_NEEDS = [
     ("metadata.db", "python3 atlas_backup.py restore", "the catalogue, rebuilt from metadata_backup.sql"),
-    ("bibles.db (or Bible Search Lite's)", "copy bibles.db beside the program, or install Bible Search Lite",
-     "the King James text with Strong's numbers; the atlas is built from it"),
+    ("atlas_source.db (or bibles.db)", "python3 atlas_source.py make where bibles.db is, or copy it from the USB drive",
+     "the King James text with Strong's numbers and the free translations; the atlas is built from it"),
     ("atlas.db", "python3 build_atlas.py", "the atlas itself, about a minute"),
     ("lxx.db", "python3 build_lxx.py, then build_gnt.py and build_tahot.py",
      "the Septuagint layer, from the Rahlfs, TAGNT and TAHOT data"),
@@ -171,7 +171,8 @@ def atlas_bundle(out=None, program_dir=PROGRAM_DIR, log=print):
         for rel in files:
             z.write(os.path.join(program_dir, rel), "word_atlas/" + rel)
         z.writestr("word_atlas/START.txt",
-                   "Word Atlas\n\nUnpack beside a copy of Bible Search Lite (or put bibles.db in this folder), then\n\n"
+                   "Word Atlas\n\nPut atlas_source.db in this folder (python3 atlas_source.py make writes it where "
+                   "bibles.db is; the USB drive carries it), or unpack beside a copy of Bible Search Lite, then\n\n"
                    "    pip install PyQt6\n    python3 atlas_backup.py restore\n    python3 build_atlas.py\n"
                    "    python3 word_atlas.py\n\nWith no atlas.db yet the window opens on its Workbench tab, whose "
                    "Install menu says what is still to build.  README.md and WORD_ATLAS_MANUAL.md say the rest.\n")
@@ -220,12 +221,16 @@ def check(folder=PROGRAM_DIR, log=print):
         plain = name.split(" ")[0]
         path = os.path.join(folder, plain)
         present = os.path.exists(path)
-        if plain == "bibles.db" and not present:
+        if plain == "atlas_source.db" and not present:
+            # No text of its own: bibles.db, beside it or Bible Search Lite's, serves as before
             try:
-                sys.path.insert(0, folder)
-                import atlas_text
-                present = os.path.exists(atlas_text.find_database())
-            except Exception:           # noqa: BLE001
+                import atlas_source
+                found = atlas_source.find_bibles_db(folder)
+                present = found is not None
+                if present:
+                    name = "bibles.db (no atlas_source.db yet)"
+                    path = found
+            except ImportError:
                 present = False
         size = f" ({os.path.getsize(path) / 1e6:.0f} MB)" if present and os.path.exists(path) else ""
         log(f"  {name:34} {'present' + size if present else 'to make:  ' + how}    [{what}]")

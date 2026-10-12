@@ -115,8 +115,9 @@ HELP = {
             "output in a log.",
     "workbench_menus": "The Workbench's menus.  Each item runs one of the program's tools as its own "
                        "process in the program folder; an item ending in three dots asks a question or "
-                       "two first (which book, how many rows).  Install holds the USB drive and the "
-                       "bundles; Recent lists the commands run this session.",
+                       "two first (which book, how many rows).  Builds makes the atlas and Word Atlas's "
+                       "own Bible text (atlas_source.db, taken out of bibles.db); Install holds the USB "
+                       "drive and the bundles; Recent lists the commands run this session.",
     "workbench_command": "The command line the last menu item composed, exactly as it would be typed in "
                          "a terminal.  Change it and press Run (or Enter) to run it as it stands; copy "
                          "it into a note to keep a record of what was run.",

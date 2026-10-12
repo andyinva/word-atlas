@@ -2,6 +2,9 @@ reports/
 __pycache__/
 bibles.db
 atlas.db
+# Word Atlas's own text, taken out of bibles.db by atlas_source.py
+atlas_source.db
+*.db.part
 builds/
 venv/
 strongs_export.tsv.gz

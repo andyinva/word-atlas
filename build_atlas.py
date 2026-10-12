@@ -61,7 +61,11 @@ from collections import Counter, defaultdict
 
 from atlas_text import (ATLAS_PATH, BUILDS_DIR, ECHO_MAX_TOTAL, FORMULA_LENGTHS, FORMULA_ROOTS,
                         LEXICON_CANDIDATES, ROOTS, STOPLIST, TRANSLATION, VOICE_TAGS, WINDOW,
-                        BibleText, find_database, has_substance, log_likelihood)
+                        BibleText, has_substance, log_likelihood)
+# Where the text is read from is atlas_source.py's to say, not
+# atlas_text.py's: restoring an older build's rules copies an older
+# atlas_text.py over this one, and the lookup must not go back with it
+import atlas_source
 
 # Bible-scale pairs with a count below this are not stored; one meeting
 # is not neighbors, and it keeps the table a sensible size.  Book-scale
@@ -628,8 +632,13 @@ def main(argv):
             roots = args.pop(0)
         else:
             raise SystemExit(__doc__)
-    db_path = find_database()
+    db_path = atlas_source.find_database()
     print(f"Reading {translation} from {db_path} ...")
+    # Word Atlas's own text was taken from bibles.db on some day: say so
+    # when bibles.db has changed since, as this build will not see it
+    stale = atlas_source.changed_since() if atlas_source.is_own_source(db_path) else ""
+    if stale:
+        print(f"  note: {stale}")
     bible = BibleText(db_path, translation, roots)
     print(f"  {len(bible.verses)} verses, {len(bible.books)} books, roots = {roots}")
     if bible.tags_total:
