@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.92. Andrew Hopkins, with Claude.
+For version 0.10.93. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -393,13 +393,14 @@ formatted. The ticks are remembered for next time.
 `translations_index.db`, `strongs.csv` and `atlas_source.db` are
 ticked: they are built from public-domain and freely licensed
 material, and the last is what lets the installed copy rebuild its
-own atlas (0.10.92). Four are left for you to tick. `lxx.db` holds Rahlfs' Septuagint, which may be passed
+own atlas (0.10.92). Three are left for you to tick. `lxx.db` holds Rahlfs' Septuagint, which may be passed
 on with its credit but never sold (CC BY-NC-SA), beside STEPBible's
 texts. `sefaria_links.db` waits on confirming Sefaria's licence for
 the links as a set (section 12, the cited column). `results.db` is large, and the
-Reader's dataset already carries its pages. `bibles.db` holds
-translations still under copyright and belongs only on your own
-computers; with `atlas_source.db` on the drive it is not needed. Rest the pointer on any of them in the window to read the
+Reader's dataset already carries its pages. `bibles.db`, Bible
+Search Lite's whole database, is not on the list (it was until
+0.10.93): Word Atlas reads `atlas_source.db` in its place, and it
+holds translations still under copyright. Rest the pointer on any of them in the window to read the
 same note.
 
 **Bringing it up to date.** Press the same button another day. The
@@ -5100,6 +5101,17 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.93.** The USB drive's window, seen on a real screen: the
+dataset's line (its name, size, runs, pages and date in one tick box)
+was wider than the window, so the choices grew a sideways scroll bar
+and the Choose button slid out of sight. The name stays on the tick
+box and the rest goes on a wrapped line beneath, as do the folders the
+two programs are taken from; every tick box may now be narrowed to the
+pane, so no line can widen it again. The window opens a little taller.
+And `bibles.db` is gone from the databases the drive offers: with
+`atlas_source.db` Word Atlas does not read it, and the 436 MB line
+suggested it did.
 
 **0.10.92.** Word Atlas's own Bible text. `atlas_source.py make`
 takes out of Bible Search Lite's `bibles.db` the parts Word Atlas

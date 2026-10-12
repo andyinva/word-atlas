@@ -725,6 +725,11 @@ def test_usb(only):
         with open(os.path.join(root, "Install-Windows.bat"), "rb") as f:
             if b"\r\n" not in f.read():
                 problems.append("Install-Windows.bat lacks Windows line ends")
+        # Bible Search Lite's whole database is not a thing the drive offers (0.10.93):
+        # Word Atlas reads its own atlas_source.db, and bibles.db holds translations under copyright
+        offered = [key for key, _rel, _default, _note in atlas_usb.ATLAS_DATA]
+        if "bibles.db" in offered or "atlas_source.db" not in offered:
+            problems.append(f"the drive offers {offered}")
         # Nothing built or private rides along as a program file
         strays = [rel for rel in manifest["files"] if rel.endswith((".db", ".json")) and "cross_references" not in rel]
         if strays:
