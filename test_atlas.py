@@ -895,9 +895,12 @@ def test_source(only):
             made = atlas_source.info(out)
             if made.get("left_out") != "NET" or made.get("translations") != "KJV, ASV":
                 problems.append(f"the file's own account is {made.get('translations')!r}, left out {made.get('left_out')!r}")
-            # The file is looked for first, and bibles.db after it
+            # The file is looked for first, and the bibles.db beside it next.
+            # Only the first two places are this test's: on a computer with
+            # Bible Search Lite installed its own bibles.db follows them
+            # (0.10.92 counted that one too, and failed where it was found)
             found = atlas_source.candidates(tmp)
-            if [os.path.basename(p) for p in found] != [atlas_source.SOURCE_NAME, "bibles.db"]:
+            if found[:2] != [out, bibles]:
                 problems.append(f"the text is looked for in {[os.path.basename(p) for p in found]}")
             # The cross references went to their own file, since there was none
             if not os.path.exists(os.path.join(tmp, "cross_references.db")):
