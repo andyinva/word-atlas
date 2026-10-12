@@ -2,12 +2,6 @@
 """
 atlas_workbench.py  -  every Word Atlas command under one menu
 
-The Workbench is the second tab of the Word Atlas window (0.10.88;
-before that it was a window of its own).  word_atlas.py puts the
-WorkbenchPanel of this file behind its "Workbench" tab, so the pages
-open as they always did and the commands are one click away, with no
-third program to start.
-
 Word Atlas has grown a dozen command-line tools: the pages and
 dossiers (atlas_query.py), the results questions (atlas_results.py),
 the builds (build_atlas.py, build_gnt.py, build_lxx.py,
@@ -16,7 +10,7 @@ maintenance (atlas_lxx.py), the translations layer
 (atlas_translations.py), the rabbinic links (sefaria_links.py), the
 backups (atlas_backup.py), the packed dataset (atlas_pack.py), the
 tests (test_atlas.py) and git.  Each is a thing to remember the
-spelling of.  This panel puts them all under menus: pick one, answer
+spelling of.  This window puts them all under menus: pick one, answer
 a question or two (which book, how many rows), and watch it run in
 the log below, with the exact command shown so it can be copied into
 a terminal or a note.
@@ -27,13 +21,10 @@ what they are and a command that works here works at the prompt.
 A running command can be stopped.  Commands run are kept in a Recent
 menu for the session.
 
-    python3 word_atlas.py --workbench      the window, opened at this tab
-    python3 atlas_workbench.py             the same
+    python3 atlas_workbench.py
 
 The Reader (word_atlas_reader.py) and git_tracker live in their own
-folders beside this one and are offered when found.  The Reader's own
-tools (its dataset, its tests, its guest key) are on the Reader's
-Tools tab, not here.
+folders beside this one and are offered when found.
 """
 
 import os
@@ -42,24 +33,18 @@ import sqlite3
 import sys
 from datetime import datetime
 
-from PyQt6.QtCore import QProcess, QProcessEnvironment, Qt, pyqtSignal
+from PyQt6.QtCore import QProcess, Qt
 from PyQt6.QtGui import QAction, QFont, QKeySequence, QTextCursor
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QDialog, QDialogButtonBox, QFileDialog, QFormLayout,
-                             QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMenuBar, QMessageBox,
+                             QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMessageBox,
                              QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-VERSION = "0.3.0"
+VERSION = "0.2.0"
 PROGRAM_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(PROGRAM_DIR)
 READER_DIR = os.path.join(PARENT_DIR, "word_atlas_reader")
 TRACKER_DIR = os.path.join(PARENT_DIR, "git_tracker")
 PYTHON = sys.executable or "python3"
-# Started without a terminal on Windows, the program runs under
-# pythonw.exe, which gives the tools no output to print to: they are
-# run with the python.exe beside it instead
-if os.path.basename(PYTHON).lower() == "pythonw.exe" and \
-        os.path.exists(os.path.join(os.path.dirname(PYTHON), "python.exe")):
-    PYTHON = os.path.join(os.path.dirname(PYTHON), "python.exe")
 RECENT_MAX = 15
 
 # The results questions, as atlas_results.py names them, with a label
@@ -129,30 +114,19 @@ class OptionsDialog(QDialog):
         return out
 
 
-class WorkbenchPanel(QWidget):
-    """
-    The Workbench tab: a menu bar of commands, the command line they
-    compose, and the log they run into.  The menu bar sits inside the
-    panel, so its menus are only on screen while the tab is.
+class Workbench(QMainWindow):
+    """The window: a menu bar of commands, the command line they compose, and the log they run into."""
 
-    The window that holds the panel listens to two signals to keep its
-    own pages in step: command_started (before a command runs) and
-    command_finished (after, with the exit code).  Each carries the
-    command as a list of words.
-    """
-
-    command_started = pyqtSignal(list)
-    command_finished = pyqtSignal(list, int)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle(f"Word Atlas Workbench {VERSION}")
+        self.resize(1100, 750)
         self.process = None
-        self.running = []           # the command now running, as a list of words
         self.recent = []
         self.books = books_available()
         self._build_widgets()
         self._build_menus()
-        self.log_line(f"Word Atlas Workbench.  Program folder: {PROGRAM_DIR}")
+        self.log_line(f"Word Atlas Workbench {VERSION}.  Program folder: {PROGRAM_DIR}")
         self.log_line(f"Python: {PYTHON}")
         self.log_line(f"{len(self.books)} books known from atlas.db." if self.books else
                       "atlas.db not found: book names will be asked for as text.")
@@ -160,19 +134,13 @@ class WorkbenchPanel(QWidget):
 
     # --- widgets ------------------------------------------------------------------------
     def _build_widgets(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 6, 6, 4)
-        # The panel's own menu bar, laid out as the first thing in the tab
-        self.menu_bar = QMenuBar(self)
-        self.menu_bar.setNativeMenuBar(False)     # in the tab, never in a desktop's global bar
-        self.menu_bar.setProperty("help", "workbench_menus")
-        layout.setMenuBar(self.menu_bar)
+        central = QWidget()
+        layout = QVBoxLayout(central)
         row = QHBoxLayout()
         row.addWidget(QLabel("Command:"))
         self.command_edit = QLineEdit()
         self.command_edit.setPlaceholderText("the command the menu composed; edit it and press Run to run it as typed")
         self.command_edit.returnPressed.connect(self.run_typed)
-        self.command_edit.setProperty("help", "workbench_command")
         row.addWidget(self.command_edit, 1)
         self.run_button = QPushButton("Run")
         self.run_button.clicked.connect(self.run_typed)
@@ -188,38 +156,28 @@ class WorkbenchPanel(QWidget):
         font.setStyleHint(QFont.StyleHint.TypeWriter)
         self.log.setFont(font)
         self.log.setMaximumBlockCount(200000)
-        self.log.setProperty("help", "workbench_log")
         layout.addWidget(self.log, 1)
-        # One line under the log: what is running, or what a menu item would run
-        self.state = QLabel("Ready")
-        self.state.setObjectName("note")
-        layout.addWidget(self.state)
-
-    def menuBar(self):
-        """The panel's menu bar (named as a window's is, so code written for the old window still reads)."""
-        return self.menu_bar
-
-    def set_state(self, text, _timeout=0):
-        self.state.setText(text)
+        self.setCentralWidget(central)
+        self.statusBar().showMessage("Ready")
 
     def _action(self, menu, label, slot, shortcut=None, tip=None):
         action = QAction(label, self)
         if shortcut:
             action.setShortcut(QKeySequence(shortcut))
         if tip:
-            # Shown on the line under the log while the pointer is on the item
             action.setStatusTip(tip)
-            action.hovered.connect(lambda t=tip: self.set_state(t))
         action.triggered.connect(slot)
         menu.addAction(action)
         return action
 
     # --- menus ----------------------------------------------------------------------------
     def _build_menus(self):
-        bar = self.menu_bar
+        bar = self.menuBar()
 
-        # File: the Reader, the folders, the log
+        # File: the other windows, the folders, the log
         m = bar.addMenu("&File")
+        self._action(m, "Open the Word Atlas &window", lambda: self.run_tool("word_atlas.py", detach=True),
+                     tip="python3 word_atlas.py, as a separate program")
         if os.path.exists(os.path.join(READER_DIR, "word_atlas_reader.py")):
             self._action(m, "Open the Word Atlas &Reader",
                          lambda: self.run_tool("word_atlas_reader.py", cwd=READER_DIR, detach=True))
@@ -230,6 +188,8 @@ class WorkbenchPanel(QWidget):
         m.addSeparator()
         self._action(m, "&Save the log as text...", self.save_log, "Ctrl+S")
         self._action(m, "&Clear the log", self.log.clear, "Ctrl+L")
+        m.addSeparator()
+        self._action(m, "&Quit", self.close, QKeySequence.StandardKey.Quit)
 
         # Pages: one page of one kind, printed to the log
         m = bar.addMenu("&Pages")
@@ -328,7 +288,7 @@ class WorkbenchPanel(QWidget):
         self._action(m, "Sho&w how the translations stand to one echo...", self.translations_show)
 
         # Sefaria: the rabbinic library's links
-        m = bar.addMenu("&Sefaria")
+        m = bar.addMenu("&Sefaria and cross references")
         self._action(m, "Build the &Hebrew-to-King-James verse map (hebrew)",
                      lambda: self.run_tool("sefaria_links.py", ["hebrew"]))
         self._action(m, "&Import the links export...", self.sefaria_import)
@@ -337,6 +297,8 @@ class WorkbenchPanel(QWidget):
                                                ["sefaria_links.py", "pairs"]))
         self._action(m, "&Survey the links", lambda: self.run_tool("sefaria_links.py", ["survey"]))
         self._action(m, "Pairs against the &Treasury for one book...", self.sefaria_treasury)
+        m.addSeparator()
+        self._action(m, "Refresh the cross references from an &OpenBible.info download...", self.openbible_import)
 
         # Backup: metadata.db's text backup
         m = bar.addMenu("Bac&kup")
@@ -345,8 +307,7 @@ class WorkbenchPanel(QWidget):
         self._action(m, "&Write metadata_backup.sql", lambda: self.run_tool("atlas_backup.py", ["backup"]))
         self._action(m, "&Restore metadata.db from the backup",
                      lambda: self.confirm_then("Restore rebuilds metadata.db from metadata_backup.sql, replacing what "
-                                               "is there (the present file is kept under another name).  Go on?",
-                                               ["atlas_backup.py", "restore", "--yes"]))
+                                               "is there.  Go on?", ["atlas_backup.py", "restore"]))
 
         # Tests
         m = bar.addMenu("T&ests")
@@ -355,7 +316,9 @@ class WorkbenchPanel(QWidget):
         self._action(m, "&Housekeeping only", lambda: self.run_tool("test_atlas.py", ["housekeeping"]))
         self._action(m, "&One test by name...", self.test_one)
         self._action(m, "&List the tests", lambda: self.run_tool("test_atlas.py", ["--list"]))
-        # (The Reader's own tests are run from the Reader: its Tools tab.)
+        if os.path.exists(os.path.join(READER_DIR, "test_reader.py")):
+            m.addSeparator()
+            self._action(m, "The &Reader's tests", lambda: self.run_tool("test_reader.py", cwd=READER_DIR))
 
         # Git
         m = bar.addMenu("&Git")
@@ -373,22 +336,21 @@ class WorkbenchPanel(QWidget):
                          lambda: self.run_tool("git_tracker.py", ["update"], cwd=TRACKER_DIR))
             self._action(m, "git_tracker: &report", lambda: self.run_tool("git_tracker.py", ["report"], cwd=TRACKER_DIR))
 
-        # Install: a USB drive, the Reader's data, bundles for a new install, what an install lacks
+        # Install: the Reader's data, bundles for a new install, what an install lacks
         m = bar.addMenu("&Install")
-        self._action(m, "Build or update a &USB drive...", self.usb_dialog,
-                     tip="a drive that installs Word Atlas and the Reader, with their data, on Windows or Linux")
-        self._action(m, "USB: the drives plugged in", lambda: self.run_tool("atlas_usb.py", ["drives"]))
-        self._action(m, "USB: what a drive holds, and what a build would change...", self.usb_status)
-        m.addSeparator()
         self._action(m, "&Check this install: what is present, what to make",
                      lambda: self.run_tool("atlas_dist.py", ["check"]))
         self._action(m, "Check an install in another folder...", self.check_folder)
         m.addSeparator()
-        # What Word Atlas makes for the Reader is the dataset.  The rest of
-        # what was here until 0.10.88 (the Reader's bundle, its guest key)
-        # is the Reader's own business and is on the Reader's Tools tab.
-        self._action(m, "&Pack results.db into a dataset for the Reader (.wadb)...", self.pack,
-                     tip="python3 atlas_pack.py: the one file the Reader opens")
+        reader = m.addMenu("The &Reader's data")
+        self._action(reader, "&Pack results.db into a dataset (.wadb)...", self.pack)
+        self._action(reader, "&Make a Reader bundle: program files and the newest dataset...", self.reader_bundle)
+        self._action(reader, "Make a Reader bundle with the &guest key...", lambda: self.reader_bundle(guest=True))
+        if os.path.exists(os.path.join(READER_DIR, "reader_guest.py")):
+            reader.addSeparator()
+            self._action(reader, "Guest key: make one (reader_guest.py make)...", self.guest_key_make)
+            self._action(reader, "Guest key: show its end date",
+                         lambda: self.run_tool("reader_guest.py", ["show"], cwd=READER_DIR))
         m.addSeparator()
         self._action(m, "Make a &Word Atlas source bundle (program, metadata backup, cross references)",
                      lambda: self.run_tool("atlas_dist.py", ["atlas"]))
@@ -397,8 +359,7 @@ class WorkbenchPanel(QWidget):
         m.addSeparator()
         steps = m.addMenu("&New install, step by step")
         self._action(steps, "1. Restore metadata.db from its backup",
-                     lambda: self.confirm_then("Rebuild metadata.db from metadata_backup.sql?",
-                                               ["atlas_backup.py", "restore", "--yes"]))
+                     lambda: self.confirm_then("Rebuild metadata.db from metadata_backup.sql?", ["atlas_backup.py", "restore"]))
         self._action(steps, "2. Build atlas.db from bibles.db", self.build_atlas)
         self._action(steps, "3. Build lxx.db: the Septuagint",
                      lambda: self.confirm_then("Run build_lxx.py (needs the Rahlfs data folder)?", ["build_lxx.py"]))
@@ -418,8 +379,8 @@ class WorkbenchPanel(QWidget):
         # Help
         m = bar.addMenu("&Help")
         for tool in ("atlas_query.py", "atlas_results.py", "atlas_lxx.py", "atlas_translations.py",
-                     "sefaria_links.py", "atlas_backup.py", "atlas_pack.py", "atlas_dist.py", "atlas_usb.py",
-                     "build_atlas.py", "test_atlas.py"):
+                     "sefaria_links.py", "atlas_backup.py", "atlas_pack.py", "atlas_dist.py", "build_atlas.py",
+                     "test_atlas.py"):
             self._action(m, f"Usage of {tool}", lambda checked=False, t=tool: self.usage(t))
         m.addSeparator()
         self._action(m, "&About", self.about)
@@ -446,32 +407,22 @@ class WorkbenchPanel(QWidget):
             return
         self.command_edit.setText(shown)
         self._remember(shown, command, cwd)
-        # The window closes its hold on atlas.db here when the command is a build
-        self.running = list(command)
-        self.command_started.emit(self.running)
         self.log_line(f"\n[{datetime.now().strftime('%H:%M:%S')}] $ {shown}" + (f"    (in {cwd})" if cwd != PROGRAM_DIR else ""))
         self.log.appendPlainText("")          # the output starts on a line of its own
         self.process = QProcess(self)
         self.process.setWorkingDirectory(cwd)
         self.process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
-        # Line-buffered output from the child, so the log keeps pace.
-        # The child's environment starts from this program's own (home
-        # folder, path, display, git's and ssh's settings): a fresh
-        # QProcess environment is empty, and setting one variable on it
-        # would hand the tool that one variable and nothing else
-        env = QProcessEnvironment.systemEnvironment()
+        # Line-buffered output from the child, so the log keeps pace
+        env = self.process.processEnvironment()
         env.insert("PYTHONUNBUFFERED", "1")
         self.process.setProcessEnvironment(env)
         self.process.readyReadStandardOutput.connect(self._read_output)
         self.process.finished.connect(self._finished)
         self.process.errorOccurred.connect(lambda err: self.log_line(f"(could not run: {err.name})"))
         self.process.start(command[0], command[1:])
-        # Nobody can type into a tool run here: with its input closed, a
-        # tool that asks a question gets an end of input, not a wait for ever
-        self.process.closeWriteChannel()
         self.stop_button.setEnabled(True)
         self.run_button.setEnabled(False)
-        self.set_state("Running: " + shown)
+        self.statusBar().showMessage("Running: " + shown)
 
     def run_typed(self):
         """Run the command line as it stands (edited by hand, or recalled)."""
@@ -507,21 +458,7 @@ class WorkbenchPanel(QWidget):
         self.log_line(f"[{datetime.now().strftime('%H:%M:%S')}] {word}.")
         self.stop_button.setEnabled(False)
         self.run_button.setEnabled(True)
-        self.set_state("Ready")
-        self.command_finished.emit(self.running, code)
-
-    def is_running(self):
-        return self.process is not None and self.process.state() != QProcess.ProcessState.NotRunning
-
-    def can_close(self):
-        """Asked by the window as it closes: False keeps it open (a command is running and is to go on)."""
-        if not self.is_running():
-            return True
-        if QMessageBox.question(self, "Still running", "A Workbench command is still running.  Stop it and quit?") \
-                != QMessageBox.StandardButton.Yes:
-            return False
-        self.stop()
-        return True
+        self.statusBar().showMessage("Ready")
 
     def log_line(self, text):
         self.log.appendPlainText(text)
@@ -743,30 +680,48 @@ class WorkbenchPanel(QWidget):
         if folder:
             self.run_tool("sefaria_links.py", ["import", folder])
 
+    def openbible_import(self):
+        path, _ = QFileDialog.getOpenFileName(self, "OpenBible.info's cross-references.zip or cross_references.txt",
+                                              os.path.expanduser("~/Downloads"), "Data (*.zip *.txt)")
+        if path:
+            self.run_tool("openbible_import.py", [path])
+
     def sefaria_treasury(self):
         book = self.ask_book("Pairs against the Treasury: which book?")
         if book:
             self.run_tool("sefaria_links.py", ["treasury", book])
 
     # --- Install --------------------------------------------------------------------------
-    def usb_dialog(self):
-        """The USB drive window (atlas_usb_dialog.py): pick the drive, tick what goes on it, build or update."""
-        try:
-            from atlas_usb_dialog import UsbDialog
-        except ImportError as e:
-            QMessageBox.warning(self, "USB drive", f"atlas_usb_dialog.py could not be loaded: {e}")
-            return
-        UsbDialog(self).exec()
-
-    def usb_status(self):
-        folder = QFileDialog.getExistingDirectory(self, "Which drive (or folder)?", os.path.expanduser("~"))
-        if folder:
-            self.run_tool("atlas_usb.py", ["status", folder])
-
     def check_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Which install?", PARENT_DIR)
         if folder:
             self.run_tool("atlas_dist.py", ["check", folder])
+
+    def reader_bundle(self, guest=False):
+        d = OptionsDialog("Reader bundle",
+                          [("wadb", "Dataset (.wadb; blank for the newest under reports/):", ""),
+                           ("out", "Write to (blank for reports/word_atlas_reader_<version>_<date>.zip):", "")],
+                          parent=self,
+                          note="A zip of the Reader's program files with the dataset in its sample folder, "
+                               "for someone with Python and PyQt6 and nothing else of Word Atlas."
+                               + ("  The guest key beside the Reader goes in too." if guest else ""))
+        if d.exec():
+            v = d.values()
+            args = ["reader"]
+            if v["wadb"]:
+                args += ["--wadb", v["wadb"]]
+            if v["out"]:
+                args += ["--out", v["out"]]
+            if guest:
+                args.append("--guest-key")
+            self.run_tool("atlas_dist.py", args)
+
+    def guest_key_make(self):
+        d = OptionsDialog("Guest key", [("key", "API key from a capped guest workspace:", ""), ("days", "Days it lasts:", "15")],
+                          parent=self, note="Writes guest_key.dat beside the Reader.  Delete the key in the console on its end date.")
+        if d.exec() and d.values()["key"]:
+            v = d.values()
+            self.run_tool("reader_guest.py", ["make", v["key"], v["days"] or "15"], cwd=READER_DIR)
 
     def unpack_bundle(self):
         path, _ = QFileDialog.getOpenFileName(self, "Which bundle?", os.path.join(PROGRAM_DIR, "reports"), "Zip (*.zip)")
@@ -800,10 +755,7 @@ class WorkbenchPanel(QWidget):
         if d.exec() and d.values()["message"]:
             message = d.values()["message"]
             # add, then commit: two commands in one shell so the log shows both
-            if sys.platform.startswith("win"):
-                self.run_command(["cmd", "/c", 'git add -A && git commit -m "' + message.replace('"', "'") + '"'])
-            else:
-                self.run_command(["sh", "-c", f"git add -A && git commit -m {shlex.quote(message)}"])
+            self.run_command(["sh", "-c", f"git add -A && git commit -m {shlex.quote(message)}"])
 
     # --- File menu ------------------------------------------------------------------------
     def show_report(self):
@@ -833,7 +785,7 @@ class WorkbenchPanel(QWidget):
         if path:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(self.log.toPlainText())
-            self.set_state(f"Saved {path}")
+            self.statusBar().showMessage(f"Saved {path}", 5000)
 
     def usage(self, tool):
         """A tool's own usage text: its docstring, printed without running anything heavy."""
@@ -841,23 +793,25 @@ class WorkbenchPanel(QWidget):
 
     def about(self):
         QMessageBox.about(self, "Word Atlas Workbench",
-                          f"The Workbench tab of Word Atlas\n\nEvery Word Atlas command under one menu.  Each action runs "
+                          f"Word Atlas Workbench {VERSION}\n\nEvery Word Atlas command under one menu.  Each action runs "
                           f"the tool it names as its own process in the program folder, shows the command line, and "
                           f"streams the output here.\n\nAndrew Hopkins, with Claude.")
 
-
-# The name the Workbench had while it was a window of its own
-Workbench = WorkbenchPanel
+    def closeEvent(self, event):
+        if self.process is not None and self.process.state() != QProcess.ProcessState.NotRunning:
+            if QMessageBox.question(self, "Still running", "A command is still running.  Stop it and quit?") \
+                    != QMessageBox.StandardButton.Yes:
+                event.ignore()
+                return
+            self.stop()
+        event.accept()
 
 
 def main():
-    """
-    The Workbench is a tab of the Word Atlas window now: starting this
-    file opens that window at the tab, so an old habit or an old
-    launcher entry still lands in the right place.
-    """
-    import word_atlas
-    sys.exit(word_atlas.main(sys.argv[:1] + ["--workbench"] + sys.argv[1:]))
+    app = QApplication(sys.argv)
+    w = Workbench()
+    w.show()
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

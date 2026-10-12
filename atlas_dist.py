@@ -51,10 +51,15 @@ PARENT_DIR = os.path.dirname(PROGRAM_DIR)
 READER_DIR = os.path.join(PARENT_DIR, "word_atlas_reader")
 REPORTS_DIR = os.path.join(PROGRAM_DIR, "reports")
 
-# The Reader's files, as its README lists them
+# The Reader's files, as its README lists them: the ones a bundle is
+# not whole without.  The bundle itself takes every program file in
+# the Reader's folder (reader_program_files below), so a file the
+# Reader gains later goes along without this list being touched; the
+# list is what a missing file is reported against.
 READER_FILES = ["word_atlas_reader.py", "reader_data.py", "reader_claude.py", "reader_guest.py",
-                "reader_questions.py", "reader_help.py", "reader_tools.py", "atlas_report.py", "atlas_results.py",
-                "atlas_listed.py", "atlas_usb.py", "atlas_usb_dialog.py", "usb_install.py",
+                "reader_questions.py", "reader_help.py", "reader_tools.py", "reader_credits.py",
+                "atlas_report.py", "atlas_results.py", "atlas_listed.py",
+                "atlas_usb.py", "atlas_usb_dialog.py", "usb_install.py",
                 "test_reader.py", "word_atlas_reader.spec", "README.md", "requirements.txt"]
 
 # Word Atlas's data files that are not source and not built: carried in the bundle
@@ -87,6 +92,23 @@ def newest_wadb():
     return files[-1] if files else None
 
 
+def reader_program_files(reader_dir):
+    """
+    The files of the Reader that go into a bundle: every program file
+    at the top of its folder (.py, .md, .txt, .spec), by the rule the
+    USB drive uses, so the two never disagree.  The guest key, the
+    datasets and anything in a subfolder are not program files.  Until
+    0.10.90 this was the fixed list above, and a bundle made after the
+    Reader gained a file left that file out.
+    """
+    try:
+        import atlas_usb
+        return atlas_usb.reader_files(reader_dir)
+    except ImportError:
+        return sorted(n for n in os.listdir(reader_dir)
+                      if os.path.isfile(os.path.join(reader_dir, n)) and n.endswith((".py", ".md", ".txt", ".spec")))
+
+
 def reader_bundle(wadb=None, out=None, guest_key=False, reader_dir=READER_DIR, log=print):
     """Zip the Reader's files with a dataset in datasets/ (where the Reader looks when it starts); returns the zip's path."""
     if not os.path.exists(os.path.join(reader_dir, "word_atlas_reader.py")):
@@ -105,10 +127,8 @@ def reader_bundle(wadb=None, out=None, guest_key=False, reader_dir=READER_DIR, l
     if missing:
         log(f"  not in the Reader's folder, left out: {', '.join(missing)}")
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-        for name in READER_FILES:
-            path = os.path.join(reader_dir, name)
-            if os.path.exists(path):
-                z.write(path, "word_atlas_reader/" + name)
+        for name in reader_program_files(reader_dir):
+            z.write(os.path.join(reader_dir, name), "word_atlas_reader/" + name)
         z.write(wadb, "word_atlas_reader/datasets/" + os.path.basename(wadb))
         key = os.path.join(reader_dir, "guest_key.dat")
         if guest_key:
