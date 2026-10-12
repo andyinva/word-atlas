@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.88. Andrew Hopkins, with Claude.
+For version 0.10.91. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -113,12 +113,14 @@ python word_atlas.py
 
 Or pick "Word Atlas" in Project Launcher, which does the same thing.
 
-The window needs `atlas.db` beside it. If that file is missing, build
-it first, either by running `python build_atlas.py` in the terminal
-(about a minute) or by pressing the Rebuild atlas button described in
-the next section. The build prints a tally as it goes, including how
-many words were given a Strong's number by each of the tagging rules,
-and ends by writing `atlas.db` (about 150 MB).
+The pages need `atlas.db` beside the program. If that file is
+missing the window still opens, on its Workbench tab (section 4), and
+the Atlas tab says what is wrong; build the file there with Builds >
+Build atlas.db, or by running `python build_atlas.py` in the terminal
+(about a minute), and the Atlas tab opens with the pages when the
+build ends. The build prints a tally as it goes, including how many
+words were given a Strong's number by each of the tagging rules, and
+ends by writing `atlas.db` (about 150 MB).
 
 ## 4. The window, top to bottom
 
@@ -127,6 +129,14 @@ the top bar) and point at the thing you are wondering about. A note
 appears saying what it is and what clicking it does. Help mode ends
 with a click anywhere, with Escape, or with the button again, so you
 can point at buttons without pressing them.
+
+**The two tabs.** The window opens on **Atlas**, the pages, which is
+everything this section goes on to describe. Beside it is
+**Workbench**, which holds every command-line tool of the program
+under menus, with a log of what each printed (section 8 says what is
+there, section 8a how to make a USB drive from it). It is kept behind
+its tab so that the window you open is the atlas and nothing else;
+`python word_atlas.py --workbench` opens on it directly.
 
 **Top bar** (choosing a page)
 
@@ -278,7 +288,7 @@ references behind every row. `atlas_query.py` renders a Report as
 text and `word_atlas.py` renders it as tables and pictures. One set of
 logic, two displays, so a saved report and the window never disagree.
 
-**A new install.** The Workbench's Install menu (0.10.85), or
+**A new install.** The Workbench tab's Install menu (0.10.85), or
 `python3 atlas_dist.py check`, says what a folder has and what it
 still has to make, with the command for each in order: restore
 metadata.db from its text backup, build atlas.db from bibles.db,
@@ -292,12 +302,117 @@ reader` a zip of the Reader with the newest dataset for giving away;
 **The Workbench.** From 0.10.84 every command in this section and
 the ones below (the dossiers, the results questions, the builds, the
 backups, the translations, the Sefaria links, the tests, git) is also
-a menu item of `python3 atlas_workbench.py`, a window that asks for
-the book or the number it needs, shows the command line it composed,
-runs it as its own process and streams the output into a log. It is
-the same tools under a menu, so a command that works there works at
-the prompt; the window is for the days when the spelling of a tool's
-arguments is one thing too many to remember.
+a menu item of the Workbench, which asks for the book or the number
+it needs, shows the command line it composed, runs it as its own
+process and streams the output into a log. It is the same tools
+under a menu, so a command that works there works at the prompt; it
+is for the days when the spelling of a tool's arguments is one thing
+too many to remember. From 0.10.88 the Workbench is the second tab of
+the Word Atlas window, not a window of its own: its menus (File,
+Pages, Dossiers, Results, Builds, Translations, Sefaria, Backup,
+Tests, Git, Install, Recent, Help) sit inside the tab and are on
+screen only while the tab is. The line under the log says what is
+running, or what the menu item under the pointer would run. A build
+of the atlas started there closes the Atlas tab for the minute it
+takes and reopens it on the new numbers, as the Rebuild atlas button
+does. The command line can be edited and run as typed, and Stop ends
+a command that is running. The tools that are the Reader's own (what
+its dataset holds, its tests, its guest key, a zip of the Reader to
+give away) are on the Reader's Tools tab and not here; what Word
+Atlas makes for the Reader, the packed dataset, is under Install and
+Dossiers.
+
+## 8a. A USB drive that installs both programs
+
+The dataset and the programs change often, and a second computer (the
+Windows side of the same machine, a friend's laptop) should not need a
+day's setting up each time. From 0.10.88 Word Atlas makes a drive that
+does the setting up: Workbench tab, Install menu, **Build or update a
+USB drive**. The Reader has the same window on its Tools tab, so the
+drive can be made, or brought up to date, from either program.
+
+**Making the drive.** Plug the drive in and open the window. It lists
+the drives it finds (Look again after plugging one in; Other folder
+for a drive it does not list, or for a trial run into any folder),
+says what the chosen drive holds now, and offers what could go on it:
+
+- the Reader, with the newest dataset (`.wadb`) under `reports/`. When
+  `results.db` is newer than that dataset the window offers to pack a
+  fresh one first, and the older dataset on the drive is taken off
+  unless you ask to keep it. Opened from the Reader, the window offers
+  the dataset that is open there instead, which is the Reader's own
+  copy of it (the Reader keeps a copy of every dataset it opens in its
+  `datasets` folder); the Dataset line names the file and its size, so
+  a sample cannot go on a drive unnoticed, and Choose picks another;
+- Word Atlas: its program files, `metadata_backup.sql` (brought up to
+  date first) and `cross_references.db` always, and the built
+  databases you tick;
+- PyQt6 for Windows and Linux, fetched from PyPI once (about 180 MB)
+  and kept on this computer for the next drive, so that the computer
+  the drive is plugged into needs no internet.
+
+Everything goes into one folder on the drive, `WordAtlas`. Nothing
+else on the drive is read or changed, and the drive is never
+formatted. The ticks are remembered for next time.
+
+**What is ticked the first time, and why.** `atlas.db`,
+`translations_index.db` and `strongs.csv` are ticked: they are built
+from public-domain and freely licensed material. Four are left for
+you to tick. `lxx.db` holds Rahlfs' Septuagint, which may be passed
+on with its credit but never sold (CC BY-NC-SA), beside STEPBible's
+texts. `sefaria_links.db` waits on confirming Sefaria's licence for
+the links as a set (section 12, the cited column). `results.db` is large, and the
+Reader's dataset already carries its pages. `bibles.db` holds
+translations still under copyright and belongs only on your own
+computers. Rest the pointer on any of them in the window to read the
+same note.
+
+**Bringing it up to date.** Press the same button another day. The
+drive keeps a list of what it holds (`usb_manifest.json`: every file
+with its size, date and checksum), and only files that differ are
+copied; files the drive no longer needs (a program file since removed,
+last week's dataset) are taken off. A build can be stopped; what was
+copied stays, and the next build finishes the rest. **Check the
+drive** reads every file back against its checksum. Eject the drive
+from the file manager before pulling it out.
+
+**Installing from it.** On Windows, double-click
+`Install-Windows.bat` in the drive's `WordAtlas` folder. On Linux,
+open a terminal in that folder and type `bash install-linux.sh`. Both
+start `install.py`, which says what the drive holds and asks two
+things: which program (the Reader, Word Atlas, or both) and where (the
+folder `WordAtlas` in the home folder unless you say otherwise). It
+then copies the program and its data (the Reader's dataset into the
+installed Reader's own `datasets` folder, which it opens at its first
+start); makes `metadata.db` from its backup if there is none yet; sees to PyQt6 (the computer's own if it
+has one, else the copy on the drive unpacked into the install's `libs`
+folder, else pip); writes a starter file for each program
+(`start_word_atlas.pyw`, `start_word_atlas_reader.pyw`); and adds
+entries to the applications menu (on Windows, to the Start menu and
+the Desktop). The computer needs Python 3.10 or later; nothing else.
+On a Windows computer with no Python the launcher says how to get it,
+or installs a built copy of the Reader when the drive carries one
+(`builds/windows`, there when the Reader's folder held a PyInstaller
+`dist` on the Windows side when the drive was made).
+
+**Installing again is an update.** Run the installer from a newer
+drive and it copies only what differs. It never replaces
+`metadata.db` or, where one is installed, its backup; it never
+touches reports, kept builds or settings; and a file that is newer on
+the computer than on the drive is left alone and named (`--force`
+replaces it). It will not install over a folder that is under git,
+which is a working copy and not an install.
+
+**From the command line.** `python3 atlas_usb.py drives` lists the
+drives, `status DRIVE` says what a drive holds and what a build would
+change, `build DRIVE` makes or updates it (`--data atlas.db,lxx.db`
+names the databases, `--no-wheels` leaves PyQt6 off, `--no-reader`
+and `--no-atlas` leave a program off), and `check DRIVE` reads it
+back. On the drive, `python3 install.py --list` says what it holds,
+and `--app reader --dest FOLDER --yes` installs without questions.
+
+The Windows side of this was written on Linux and has not yet been
+run on a Windows machine: the first drive tried there is the test.
 
 ## 9. Builds: rebuilding, keeping and going back
 
@@ -355,11 +470,12 @@ English ones.
 | `build_gnt.py`, `build_tahot.py` | Import STEPBible's TAGNT Greek New Testament and TAHOT Hebrew Old Testament into `lxx.db` (section 28c) |
 | `atlas_lift.py`, `atlas_lxx.py`, `build_lxx.py`, `septuagint_bridge.py` | The command-line line of work on fair baselines, passages and the Septuagint; `METADATA_IN_WORD_ATLAS.md` and `NORMALIZATION_IN_WORD_ATLAS.md` describe it |
 | `atlas_report.py` | The reporting module: Report and Section, the text layout, trimming, the dossier's head, and the results database writer (section 11a) |
-| `openbible_import.py` | Refreshes `cross_references.db` from OpenBible.info's own download (the 2 MB zip from openbible.info/labs/cross-references), keeping the old file and saying what changed; the atlas reads that file before bibles.db's table from 0.10.88 |
+| `openbible_import.py` | Refreshes `cross_references.db` from OpenBible.info's own download (the 2 MB zip from openbible.info/labs/cross-references), keeping the old file and saying what changed; the atlas reads that file before bibles.db's table from 0.10.91 |
 | `sefaria_links.py` | The rabbinic library's citations as a second web: `hebrew` builds the Hebrew-to-King-James verse map from TVTMS, `import` reads Sefaria's links export, `pairs` derives the verse pairs cited together, `survey` and `treasury` report on them; behind the `cited` column and footers of sections 4 and 6 |
 | `sefaria_links.db` | What `sefaria_links.py` writes beside the program: the links with a Tanakh verse at either end and the derived pairs; never committed, as `data/sefaria/` (the export) is not |
 | `atlas_dist.py` | Bundles for a new install: `reader` zips the Reader's files with the newest dataset (and the guest key when asked), `atlas` zips Word Atlas's sources with metadata_backup.sql and cross_references.db, `unpack` opens a bundle into a folder, `check` says what an install has and what it still has to make, `list` shows what a bundle holds (0.10.85) |
-| `atlas_workbench.py` | Every command under one menu: `python3 atlas_workbench.py` opens a window whose menus run the pages, dossiers, results questions, builds, Septuagint maintenance, translations, Sefaria links, backups, tests and git as separate processes, with the command line shown and the output in a log (0.10.84) |
+| `atlas_workbench.py` | Every command under one menu: the Workbench tab of the window, whose menus run the pages, dossiers, results questions, builds, Septuagint maintenance, translations, Sefaria links, backups, tests, git and installs as separate processes, with the command line shown and the output in a log (0.10.84; a tab of `word_atlas.py` from 0.10.88) |
+| `atlas_usb.py`, `atlas_usb_dialog.py`, `usb_install.py` | The USB drive (section 8a): `atlas_usb.py` finds the drives, makes or updates the `WordAtlas` folder on one and fetches PyQt6 for it; `atlas_usb_dialog.py` is its window; `usb_install.py` is the installer, copied to the drive as `install.py`. The same three files are in the Reader's folder (0.10.88) |
 | `atlas_translations.py` | The other English translations as witnesses to the echoes found by wording: `build` writes `translations_index.db` from `translations.db` (an export of Bible Search Lite's text tables) or `bibles.db`; `survey` measures the translations' distance from the King James and proposes families; behind the `translations` and `families` columns and footers of sections 4 and 4f |
 | `translations.db` | An export of the four text tables of Bible Search Lite's `bibles.db` (books, translations, verses, verse_texts), never committed; `translations_index.db` is what `build` makes of it, never committed either |
 | `atlas_listed.py` | The cross references (OpenBible.info on the Treasury of Scripture Knowledge, from bibles.db) behind the `listed` column and footers of sections 4, 4e and 6 |
@@ -4947,11 +5063,60 @@ fall when no partner changes side.
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
 
-**0.10.88.** `openbible_import.py`: the cross references refreshed
+**0.10.91.** `openbible_import.py`: the cross references refreshed
 from OpenBible.info's own download, the file beside the program read
 before bibles.db's table, so a newer vote count reaches the listed
 column without touching Bible Search Lite's database; on the
-Workbench's Sefaria and cross references menu.
+Workbench's Sefaria and cross references menu. (Written in another
+session on top of 0.10.87 and first called 0.10.88; joined here to
+the Workbench tab and the USB drive, which already carry that
+number.) The file the import keeps (`cross_references.db.before-`
+and the date) and the download are left out of git.
+
+**0.10.90.** `atlas_dist.py reader` takes every program file in the
+Reader's folder, by the rule the USB drive uses, where it had a fixed
+list: the Reader gained a credits and licences page (0.3.11,
+`reader_credits.py`), and a bundle made from the list would have left
+it out and failed to start. The list stays as what a missing file is
+reported against.
+
+**0.10.89.** The Reader's own datasets, and quieter tests. The
+drive's installer puts the Reader's dataset in the installed Reader's
+`datasets` folder, where the Reader (0.3.10) now keeps a copy of
+every dataset it opens and looks first when it starts;
+`atlas_dist.py reader` puts its dataset there too, and
+`atlas_usb.py` looks there for a dataset before the tests' sample.
+The drive guard no longer reaches outside the test: the installer
+takes `--no-pyqt` (leave PyQt6 alone: with a home folder of its own
+the installer could miss the computer's PyQt6 and fetch one from the
+internet) and a build can be told not to flush every disk at its end
+(`sync`), either of which could make the guard take a minute.
+
+**0.10.88.** Two programs and a drive. The Workbench is no longer a
+window of its own: it is the second tab of the Word Atlas window
+(`WorkbenchPanel` in `atlas_workbench.py`), so the window opens on
+the pages as before and the commands are one click away, and
+`python3 atlas_workbench.py` opens the window on that tab. A build
+run from the Workbench closes the Atlas tab while it runs and reopens
+the pages on the new atlas; with no `atlas.db` at all the window now
+opens on the Workbench, where one can be built, where before it
+stopped with a message. The parts of the Workbench that were the
+Reader's own (its tests, its guest key, the zip of the Reader with a
+dataset) moved to a Tools tab in the Reader (0.3.9) and are no longer
+on the Workbench's menus; packing a dataset stays, since it reads
+`results.db`, and `atlas_dist.py reader` still works at the prompt.
+New: a USB drive that installs
+either program with its data on Windows or Linux (`atlas_usb.py`, its
+window `atlas_usb_dialog.py`, the installer `usb_install.py`; section
+8a), made and brought up to date from the Workbench's Install menu or
+the Reader's Tools tab, carrying PyQt6 so the other computer needs
+only Python. Mended on the way: a tool run from the Workbench was
+given an empty environment (no home folder, no path, none of git's
+settings), and now inherits the program's; restoring metadata.db from
+the Workbench waited for ever on a question nobody could answer
+(`atlas_backup.py restore --yes`, and a tool's input is closed so no
+question can hang); Commit works on Windows. Two guards (the window's
+tabs, the drive and its installer) and the Workbench's guard widened.
 
 **0.10.87.** `atlas_results.py idiom` after the first canon with the
 translations on it: the rows 4e holds in Greek are read from the 4e

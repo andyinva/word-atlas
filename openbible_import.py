@@ -149,7 +149,7 @@ def main(argv):
     if before:
         print(f"before: {before[0]} listings, {before[1]} votes, best {before[2]}; "
               f"change: {after[0] - before[0]:+} listings, {after[1] - before[1]:+} votes")
-    print("atlas_listed.py reads this file before bibles.db's table from 0.10.88; the listed column and footers "
+    print("atlas_listed.py reads this file before bibles.db's table from 0.10.91; the listed column and footers "
           "use it on the next page.")
     return 0
 

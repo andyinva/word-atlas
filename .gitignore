@@ -27,6 +27,10 @@ Claude outputs/
 richness_cache.json
 data/
 cross_references.db
+# openbible_import.py keeps the file it replaces, and the download it read
+cross_references.db.before-*
+cross-references.zip
+cross_references.txt
 
 # The translations layer (0.10.80): the export and the index, built locally
 translations.db
