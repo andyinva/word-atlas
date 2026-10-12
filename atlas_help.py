@@ -108,6 +108,20 @@ HELP = {
                  "cell, so partners with few echoes stay visible beside the heavy ones.  "
                  "Unticked: one scale for the whole map.",
     "splitter": "Drag here to give more room to the page or to the verse pane.",
+    "tabs": "The two sides of Word Atlas.  Atlas: the pages, as tables and pictures.  Workbench: "
+            "every command-line tool of the program under menus (pages and dossiers as text, the "
+            "results questions, the builds, backups, tests, git, and making a USB drive that "
+            "installs Word Atlas and the Reader), each run with its command line shown and its "
+            "output in a log.",
+    "workbench_menus": "The Workbench's menus.  Each item runs one of the program's tools as its own "
+                       "process in the program folder; an item ending in three dots asks a question or "
+                       "two first (which book, how many rows).  Install holds the USB drive and the "
+                       "bundles; Recent lists the commands run this session.",
+    "workbench_command": "The command line the last menu item composed, exactly as it would be typed in "
+                         "a terminal.  Change it and press Run (or Enter) to run it as it stands; copy "
+                         "it into a note to keep a record of what was run.",
+    "workbench_log": "What the commands print, each under its time and its command line.  File > Save "
+                     "the log as text keeps it; Ctrl+L clears it.",
 }
 
 # ---------------------------------------------------------------------------

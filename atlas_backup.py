@@ -22,6 +22,7 @@ Usage:
     python atlas_backup.py status      is the backup up to date?
     python atlas_backup.py backup      write metadata_backup.sql
     python atlas_backup.py restore     rebuild metadata.db from the backup
+                                       (--yes: without asking first)
                                        (the current metadata.db is kept
                                         as metadata.db.before-restore-<time>)
 """
@@ -195,6 +196,9 @@ def main() -> None:
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     parser.add_argument("--file", type=Path, default=DEFAULT_BACKUP,
                         help="the backup file (default metadata_backup.sql)")
+    # --yes: restore without asking, for the Workbench (which has asked
+    # already) and the installer (where there is nothing yet to replace)
+    parser.add_argument("--yes", action="store_true", help="restore without asking first")
     args = parser.parse_args()
 
     tool = MetadataBackup(args.db, args.file)
@@ -205,11 +209,12 @@ def main() -> None:
             path = tool.backup()
             print(f"Backed up to {path}: {tool.summary()}.")
         else:
-            answer = input(f"Replace {args.db} with the contents of {args.file}? "
-                           "The current file will be kept. [y/N] ")
-            if answer.strip().lower() != "y":
-                print("Nothing changed.")
-                return
+            if not args.yes:
+                answer = input(f"Replace {args.db} with the contents of {args.file}? "
+                               "The current file will be kept. [y/N] ")
+                if answer.strip().lower() != "y":
+                    print("Nothing changed.")
+                    return
             kept = tool.restore()
             print(f"Restored {args.db} from {args.file}.")
             if kept:

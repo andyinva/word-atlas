@@ -25,6 +25,11 @@ with one click.
     python build_atlas.py         (once, about a minute; needs bibles.db and strongs.csv)
     python word_atlas.py          (the window; needs PyQt6)
 
+The window has two tabs. **Atlas** is the pages. **Workbench** is
+every tool of the program under menus (next section). With no
+`atlas.db` yet the window opens on the Workbench, where Builds makes
+one.
+
 The same pages print as text without the window:
 
     python atlas_query.py book Joel
@@ -44,14 +49,37 @@ corpora in place the pages gain the Septuagint layer (`atlas_septuagint.py`,
 section 28d): a New Testament book's Greek against the Septuagint, its
 Septuagint words, and the echoes across the testaments in Greek.
 
-## Everything under one menu
+## Everything under one menu: the Workbench tab
 
-    python3 atlas_workbench.py
+The second tab of the window is the Workbench: menus for the pages,
+dossiers, results questions, builds, translations, Sefaria links,
+backups, tests, git and installs, each run as its own process with
+the command line shown and the output in a log. The same tools,
+without remembering their arguments. `python3 word_atlas.py
+--workbench` opens the window on that tab. (Until 0.10.88 the
+Workbench was a window of its own, `atlas_workbench.py`; it is part
+of Word Atlas now, so there are two programs, Word Atlas and the
+Reader, and no third. The tools that belong to the Reader are on the
+Reader's own Tools tab.)
 
-opens the Workbench: menus for the pages, dossiers, results
-questions, builds, translations, Sefaria links, backups, tests and
-git, each run as its own process with the command line shown and the
-output in a log. The same tools, without remembering their arguments.
+## A USB drive that installs both programs
+
+Workbench tab, Install menu, **Build or update a USB drive**; or
+
+    python3 atlas_usb.py drives          the drives plugged in
+    python3 atlas_usb.py build DRIVE     make the drive, or bring it up to date
+    python3 atlas_usb.py status DRIVE    what it holds and what a build would change
+
+puts one folder, `WordAtlas`, on the drive: both programs, the
+Reader's dataset, the built databases you tick, PyQt6 for Windows and
+Linux, and an installer. On the other computer, double-click
+`Install-Windows.bat` or run `bash install-linux.sh`; it asks which
+program to install and where, copies it with its data, and makes a
+menu entry. The computer needs Python 3.10 or later and nothing else.
+Building again later copies only what has changed, and running the
+installer again from the newer drive updates the install without
+touching `metadata.db`, reports or kept builds. The manual's section
+8a has the details, and what is and is not put on a drive by default.
 
 ## A new install, or a copy to give away
 
@@ -60,8 +88,8 @@ output in a log. The same tools, without remembering their arguments.
     python3 atlas_dist.py atlas          a zip of Word Atlas's sources with the metadata backup
     python3 atlas_dist.py unpack ZIP DIR open either into a folder
 
-The Workbench's Install menu runs the same, with the steps of a new
-install in order.
+The Workbench tab's Install menu runs the same, with the steps of a
+new install in order.
 
 ## Sharing the results without the program
 

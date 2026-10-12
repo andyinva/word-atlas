@@ -38,6 +38,7 @@ have built them; the atlas itself (atlas.db) must be there.
 Author: Andrew Hopkins (with Claude)
 """
 
+import json
 import os
 import re
 import subprocess
@@ -569,6 +570,13 @@ app.processEvents()
 app.processEvents()
 title = w.page_view.body.findChildren(QTableWidget)[0].section.title
 print("opened:", title)
+# The Workbench sits behind the second tab, and the window opens on the first
+print("tabs:", ", ".join(w.tabs.tabText(i) for i in range(w.tabs.count())), "| open on", w.tabs.tabText(w.tabs.currentIndex()))
+# A build run from the Workbench: the pages let go of atlas.db, then open it again
+w.workbench_started([sys.executable, "build_atlas.py"])
+closed = not w.tabs.isTabEnabled(0)
+w.workbench_finished([sys.executable, "build_atlas.py"], 0)
+print("build hook:", "ok" if closed and w.tabs.isTabEnabled(0) and w.atlas.books else "wrong")
 """
 
 
@@ -598,6 +606,18 @@ def test_window(only):
     else:
         tail = (out.stderr.strip().splitlines() or ["no output"])[-1]
         report(name, False, f"exit {out.returncode}: {tail[:120]}")
+    # The same run says how the window is laid out (0.10.88): the pages
+    # first, the Workbench behind the second tab, and a Workbench build
+    # handing atlas.db back to the pages
+    name = "guard: the window opens on the Atlas tab with the Workbench behind the second"
+    if not only or only in name:
+        lines = dict(l.split(": ", 1) for l in out.stdout.splitlines() if ": " in l)
+        problems = []
+        if lines.get("tabs") != "Atlas, Workbench | open on Atlas":
+            problems.append(f"tabs {lines.get('tabs')!r}")
+        if lines.get("build hook") != "ok":
+            problems.append(f"build hook {lines.get('build hook')!r}")
+        report(name, not problems, "; ".join(problems))
 
 
 # --- housekeeping -----------------------------------------------------------------------
@@ -611,7 +631,7 @@ import sys
 from PyQt6.QtWidgets import QApplication
 app = QApplication(sys.argv)
 import atlas_workbench
-w = atlas_workbench.Workbench()
+w = atlas_workbench.WorkbenchPanel()
 got = []
 w.run_tool = lambda script, args=(), **k: got.append([script] + list(args))
 w.page_options = {"top": "5", "only": "1,2", "quiet": True}
@@ -619,11 +639,29 @@ w.query(["book", "Jude"])
 menus = [a.text().replace("&", "") for a in w.menuBar().actions()]
 print("composed:", " ".join(got[0]))
 print("menus:", ", ".join(menus))
+install = [a for a in w.menuBar().actions() if a.text().replace("&", "") == "Install"][0].menu()
+print("usb:", "yes" if any("USB drive" in a.text() for a in install.actions()) else "no")
+# A tool run from the panel gets this program's environment, not an empty one
+import os
+from PyQt6.QtCore import QEventLoop, QTimer
+os.environ["WORD_ATLAS_TEST_MARK"] = "carried"
+del w.run_tool
+loop = QEventLoop()
+w.command_finished.connect(lambda command, code: loop.quit())
+QTimer.singleShot(30000, loop.quit)
+w.run_command([sys.executable, "-c", "import os; print('mark=' + os.environ.get('WORD_ATLAS_TEST_MARK', 'lost'))"])
+loop.exec()
+print("environment:", "carried" if "mark=carried" in w.log.toPlainText() else "lost")
 """
 
 
 def test_workbench(only):
-    """The workbench (0.10.84) composes the command a menu would run, with the page options, in its own process."""
+    """
+    The workbench (0.10.84; a tab of the window from 0.10.88) composes
+    the command a menu would run, with the page options, in its own
+    process; its Install menu offers the USB drive; and a tool it runs
+    inherits the program's environment.
+    """
     name = "guard: the workbench composes commands with the page options"
     if only and only not in name:
         return
@@ -646,7 +684,91 @@ def test_workbench(only):
         for m in ("Pages", "Dossiers", "Results", "Builds", "Translations", "Sefaria", "Backup", "Install", "Tests", "Git"):
             if m not in lines.get("menus", ""):
                 problems.append(f"no {m} menu")
+        if lines.get("usb") != "yes":
+            problems.append("no USB drive item on the Install menu")
+        if lines.get("environment") != "carried":
+            problems.append("a tool run from the panel lost the program's environment")
     report(name, not problems, "; ".join(problems))
+
+
+def test_usb(only):
+    """
+    atlas_usb.py (0.10.88): a drive made into a temporary folder from
+    this program's files (no databases, no PyQt6 fetched), made again
+    with nothing to copy, brought up to date after a change, and
+    installed from by its own installer into a second temporary folder.
+    """
+    name = "guard: atlas_usb makes a drive, updates it, and the drive installs Word Atlas"
+    if only and only not in name:
+        return
+    import tempfile
+    import atlas_usb
+    problems = []
+    with tempfile.TemporaryDirectory() as tmp:
+        drive, dest, home = (os.path.join(tmp, d) for d in ("drive", "installed", "home"))
+        for d in (drive, home):
+            os.makedirs(d)
+        options = atlas_usb.default_options(PROGRAM_DIR, None)
+        # sync off: a test has no drive to pull out, and flushing every
+        # disk on the computer can take a minute when one of them is slow
+        options.update({"reader": False, "dataset": None, "atlas_data": [], "wheels": False, "sync": False})
+        lines = []
+        manifest = atlas_usb.build(drive, options, PROGRAM_DIR, None, log=lines.append)
+        root = atlas_usb.drive_root(drive)
+        for need in ("install.py", "Install-Windows.bat", "install-linux.sh", "README.txt", "usb_manifest.json",
+                     "programs/word_atlas/word_atlas.py", "programs/word_atlas/atlas_workbench.py"):
+            if not os.path.exists(os.path.join(root, *need.split("/"))):
+                problems.append(f"{need} not on the drive")
+        if manifest.get("atlas", {}).get("version") != atlas_pages.VERSION:
+            problems.append(f"the drive says Word Atlas {manifest.get('atlas')}")
+        # The Windows launcher keeps Windows line ends even when written on Linux
+        with open(os.path.join(root, "Install-Windows.bat"), "rb") as f:
+            if b"\r\n" not in f.read():
+                problems.append("Install-Windows.bat lacks Windows line ends")
+        # Nothing built or private rides along as a program file
+        strays = [rel for rel in manifest["files"] if rel.endswith((".db", ".json")) and "cross_references" not in rel]
+        if strays:
+            problems.append(f"on the drive as program files: {strays[:3]}")
+        # A second build finds everything in place
+        items, groups = atlas_usb.gather(options, PROGRAM_DIR, None)
+        plan = atlas_usb.make_plan(root, items, groups, options)
+        if plan.copy or plan.remove:
+            problems.append(f"a second build would copy {len(plan.copy)} and remove {len(plan.remove)}")
+        # A file the drive holds that the program no longer has is taken off by an update
+        stale = os.path.join(root, "programs", "word_atlas", "gone.py")
+        with open(stale, "w") as f:
+            f.write("# a file of an older version")
+        held = atlas_usb.read_manifest(root)
+        held["files"]["programs/word_atlas/gone.py"] = {"size": 28, "mtime": "0", "sha256": "", "group": "atlas"}
+        with open(os.path.join(root, "usb_manifest.json"), "w", encoding="utf-8") as f:
+            json.dump(held, f)
+        atlas_usb.build(drive, options, PROGRAM_DIR, None, log=lines.append)
+        if os.path.exists(stale):
+            problems.append("an update left a stale program file on the drive")
+        if atlas_usb.check_drive(drive, log=lines.append):
+            problems.append("the drive does not read back sound")
+        # The drive's own installer, run as a new user would run it
+        # (--no-pyqt: with a home folder of its own it might not see this
+        # computer's PyQt6, and a test must never fetch one from the internet)
+        env = dict(os.environ, HOME=home, USERPROFILE=home, QT_QPA_PLATFORM="offscreen")
+        out = subprocess.run([sys.executable, os.path.join(root, "install.py"), "--app", "atlas", "--dest", dest,
+                              "--yes", "--no-shortcuts", "--no-pyqt"], capture_output=True, text=True, env=env, timeout=300)
+        if out.returncode != 0:
+            problems.append(f"the installer ended with {out.returncode}: {(out.stdout.strip().splitlines() or [''])[-1][:100]}")
+        for need in ("word_atlas/word_atlas.py", "word_atlas/metadata.db", "start_word_atlas.pyw", "installed.json"):
+            if not os.path.exists(os.path.join(dest, *need.split("/"))):
+                problems.append(f"{need} not installed")
+        # Installing again changes nothing, and a file edited since is left alone
+        edited = os.path.join(dest, "word_atlas", "README.md")
+        if os.path.exists(edited):
+            with open(edited, "a", encoding="utf-8") as f:
+                f.write("\na note of my own\n")
+            out = subprocess.run([sys.executable, os.path.join(root, "install.py"), "--app", "atlas", "--dest", dest,
+                                  "--yes", "--no-shortcuts", "--no-pyqt"], capture_output=True, text=True, env=env,
+                                 timeout=300)
+            if "0 file(s) copied" not in out.stdout or "left alone" not in out.stdout:
+                problems.append("a second install copied files or replaced an edited one")
+    report(name, not problems, "; ".join(problems) or f"{len(manifest['files'])} files")
 
 
 def test_dist(only):
@@ -675,7 +797,7 @@ def test_dist(only):
         else:
             atlas_dist.unpack(out, os.path.join(tmp, "new"), log=lines.append)
             for need in ("word_atlas_reader/word_atlas_reader.py", "word_atlas_reader/reader_data.py",
-                         "word_atlas_reader/sample/" + os.path.basename(wadb), "word_atlas_reader/START.txt"):
+                         "word_atlas_reader/datasets/" + os.path.basename(wadb), "word_atlas_reader/START.txt"):
                 if not os.path.exists(os.path.join(tmp, "new", need)):
                     problems.append(f"{need} not unpacked")
             n = atlas_dist.unpack(out, os.path.join(tmp, "new"), log=lines.append)
@@ -740,6 +862,7 @@ def main(argv):
         for args in DETERMINISM_COMMANDS:
             print("determinism:", " ".join(args))
         print("guard: names test; Greek New Testament verses; equivalents lemma keys; pronouns; the window's double-click")
+        print("guard: the window's two tabs; the workbench's commands; atlas_dist's bundle; atlas_usb's drive and installer")
         print("housekeeping: one version everywhere; no em dash; every module compiles")
         return 0
     started = time.perf_counter()
@@ -747,6 +870,7 @@ def main(argv):
     test_housekeeping(only)
     test_workbench(only)
     test_dist(only)
+    test_usb(only)
     atlas = atlas_pages.Atlas()
     test_guards(atlas, only)
     test_window(only)

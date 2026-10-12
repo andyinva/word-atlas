@@ -9,6 +9,13 @@ atlas.  Pictures come in phase 4.
 
 How it is laid out
 ------------------
+Two tabs.  "Atlas" is the pages, laid out as below and shown first.
+"Workbench" (atlas_workbench.py) holds every command-line tool of the
+program under menus, with a log; it is there so the tools need no
+window of their own, and it stays out of the way until its tab is
+clicked.  When atlas.db has not been built yet the window opens on the
+Workbench, where Builds makes one.
+
 Top bar    the page kind (Book, Chapter, Word, Kin), the book, the
            chapter, the word, and a Go button; back/forward arrows
            step through the pages already visited (the atlas idea of
@@ -26,9 +33,11 @@ Clicking works like an atlas:
     a formula or echo            shows the verses that contain it
 
 Usage:
-    python3 word_atlas.py
+    python3 word_atlas.py                  the window, on the Atlas tab
+    python3 word_atlas.py --workbench      the window, on the Workbench tab
 
-Requires atlas.db beside this file (run build_atlas.py first).
+The pages need atlas.db beside this file (build_atlas.py, or the
+Workbench's Builds menu, makes it).
 
 Author: Andrew Hopkins (with Claude)
 """
@@ -42,7 +51,7 @@ from PyQt6.QtCore import QTimer, QProcess, QRectF, Qt
 from PyQt6.QtGui import QColor, QFont, QKeySequence, QPainter, QPen, QShortcut
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame, QHBoxLayout, QInputDialog, QLabel,
                              QLineEdit, QMainWindow, QMessageBox, QPushButton,
-                             QScrollArea, QSpinBox, QSplitter, QTableWidget,
+                             QScrollArea, QSpinBox, QSplitter, QTabWidget, QTableWidget,
                              QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget,
                              QHeaderView, QAbstractItemView)
 
@@ -63,6 +72,13 @@ try:
     from atlas_backup_dialog import MetadataBackupDialog, backup_if_stale
 except ImportError:
     MetadataBackup = None
+
+# The Workbench tab: every command-line tool under menus.  Optional in
+# the same way: without atlas_workbench.py the window is the pages alone.
+try:
+    from atlas_workbench import WorkbenchPanel
+except ImportError:
+    WorkbenchPanel = None
 
 VERSION = atlas_pages.VERSION     # one version for the window and the reports
 
@@ -92,6 +108,20 @@ QHeaderView::section { background-color: #e6e6e6; color: #333333; padding: 3px 6
 QTextEdit { background-color: #ffffff; border: 1px solid #c8c8c8; }
 QScrollArea { border: none; }
 QFrame#line { color: #c8c8c8; }
+QTabWidget::pane { border: none; border-top: 1px solid #c8c8c8; }
+QTabBar::tab { background-color: #e6e6e6; color: #333333; border: 1px solid #c8c8c8; border-bottom: none;
+               padding: 4px 16px; margin-right: 2px; }
+QTabBar::tab:selected { background-color: #f4f4f4; color: #000000; }
+QTabBar::tab:hover:!selected { background-color: #d8d8d8; }
+QMenuBar { background-color: #ececec; border-bottom: 1px solid #c8c8c8; }
+QMenuBar::item { background: transparent; padding: 4px 9px; }
+QMenuBar::item:selected { background-color: #d6e4f5; }
+QMenu { background-color: #ffffff; border: 1px solid #999999; }
+QMenu::item { padding: 4px 24px; }
+QMenu::item:selected { background-color: #d6e4f5; color: #000000; }
+QMenu::item:disabled { color: #999999; }
+QMenu::separator { height: 1px; background: #d8d8d8; margin: 3px 6px; }
+QPlainTextEdit { background-color: #ffffff; border: 1px solid #c8c8c8; }
 """
 
 
@@ -651,11 +681,21 @@ class PageView(QWidget):
 
 
 class WordAtlasWindow(QMainWindow):
-    """The main window: top bar, page view, verse pane."""
+    """
+    The main window.  Two tabs: Atlas (top bar, page view, verse pane)
+    and Workbench (every command-line tool under menus, with a log).
+    """
 
     PAGE_KINDS = ["Book", "Chapter", "Section", "Passage", "Word", "Kin", "Testament", "Compare"]
 
-    def __init__(self, atlas):
+    def __init__(self, atlas, workbench=False, problem=""):
+        """
+        atlas      the open Atlas, or None when atlas.db could not be
+                   opened (the window then shows the Workbench, where
+                   one can be built)
+        workbench  open on the Workbench tab instead of the Atlas tab
+        problem    why the atlas could not be opened, for the Atlas tab
+        """
         super().__init__()
         self.atlas = atlas
         self.report = None       # the Report on screen, for Save as text
@@ -664,14 +704,59 @@ class WordAtlasWindow(QMainWindow):
         self.history_index = -1
         self.setWindowTitle(f"Word Atlas {VERSION}")
         self.resize(1180, 860)
-        self.build_ui()
+
+        # The two tabs.  The Atlas tab is the window as it always was;
+        # everything new sits behind the second tab.
+        self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
+        self.tabs.tabBar().setProperty("help", "tabs")
+        self.setCentralWidget(self.tabs)
+        if atlas is not None:
+            self.tabs.addTab(self.build_ui(), "Atlas")
+        else:
+            self.tabs.addTab(self.build_waiting(problem), "Atlas")
+        self.workbench = None
+        self.workbench_build = False      # a build_atlas.py started from the Workbench is running
+        if WorkbenchPanel is not None:
+            self.workbench = WorkbenchPanel(self)
+            self.workbench.command_started.connect(self.workbench_started)
+            self.workbench.command_finished.connect(self.workbench_finished)
+            self.tabs.addTab(self.workbench, "Workbench")
+            if workbench or atlas is None:
+                self.tabs.setCurrentWidget(self.workbench)
 
     # -- building the window --------------------------------------------------------
 
+    def build_waiting(self, problem):
+        """
+        The Atlas tab when there is no atlas to show: what is wrong and
+        what to do about it.  The Workbench tab beside it has the builds.
+        """
+        waiting = QWidget()
+        box = QVBoxLayout(waiting)
+        box.setContentsMargins(24, 24, 24, 24)
+        title = QLabel("The atlas has not been built yet")
+        title.setObjectName("title")
+        box.addWidget(title)
+        text = QLabel(
+            (problem or "atlas.db was not found.") + "\n\n"
+            "The pages are read from atlas.db, which this folder does not have (or has from an older version).  "
+            "On the Workbench tab:\n\n"
+            "    Builds > Build atlas.db:  makes it from bibles.db, in about a minute.\n"
+            "    Install > Check this install:  lists what is here and what is still to make.\n"
+            "    Install > New install, step by step:  walks through all of it in order.\n\n"
+            "When the build finishes, this tab opens with the pages.")
+        text.setObjectName("note")
+        text.setWordWrap(True)
+        text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        box.addWidget(text)
+        box.addStretch()
+        self.status = QLabel("")          # the pages' status line, so code that writes to it still can
+        return waiting
+
     def build_ui(self):
-        """Lay out the top bar, the page view and the verse pane."""
+        """Lay out the Atlas tab (the top bar, the page view and the verse pane) and return it."""
         central = QWidget()
-        self.setCentralWidget(central)
         root = QVBoxLayout(central)
         root.setContentsMargins(8, 6, 8, 8)
         root.setSpacing(6)
@@ -923,6 +1008,7 @@ class WordAtlasWindow(QMainWindow):
         self.help_mode = atlas_help.HelpMode(self, self.help_btn)
         self.help_btn.toggled.connect(self.help_mode.set_active)
         QShortcut(QKeySequence("F1"), self, activated=lambda: self.help_btn.toggle())
+        return central
 
     # -- top bar behaviour ------------------------------------------------------------
 
@@ -1272,6 +1358,10 @@ class WordAtlasWindow(QMainWindow):
 
     def closeEvent(self, event):
         """On closing, refresh the metadata backup if metadata.db has changed."""
+        # A Workbench command still running: ask before stopping it
+        if self.workbench is not None and not self.workbench.can_close():
+            event.ignore()
+            return
         if MetadataBackup is not None:
             backup_if_stale()             # quiet, and never blocks closing
         super().closeEvent(event)
@@ -1324,30 +1414,85 @@ class WordAtlasWindow(QMainWindow):
         """Reload the rule modules and the atlas, then redraw the page."""
         self.build_process = None
         self.rebuild_btn.setEnabled(True)
+        # The build log is in the verse pane; redrawing the page clears
+        # the pane, so the log is kept and put back to be read
+        log = self.verse_pane.toPlainText()
+        if self.reload_atlas(exit_code, "see the messages below"):
+            self.verse_header.setText("Rebuild finished; the page above shows the new numbers")
+            self.verse_pane.setPlainText(log)
+
+    def reload_atlas(self, exit_code, where="see the Workbench's log"):
+        """
+        After a build (the Rebuild button's, or one run from the
+        Workbench): reload the rule modules, open the new atlas.db and
+        redraw the page that was showing.  True when the new atlas is
+        open and the build went well.
+        """
         # Reload in dependency order so every module sees the new rules
         importlib.reload(atlas_text)
         importlib.reload(atlas_ask)
         importlib.reload(atlas_pages)
         importlib.reload(atlas_query)
         try:
-            self.atlas = atlas_pages.Atlas()
+            atlas = atlas_pages.Atlas()
         except SystemExit as e:
             QMessageBox.critical(self, "Word Atlas", str(e))
-            return
+            return False
+        if self.atlas is None:
+            # The window opened with no atlas: the Atlas tab was only a
+            # notice until now, and becomes the pages
+            self.atlas = atlas
+            notice = self.tabs.widget(0)
+            self.tabs.removeTab(0)
+            notice.deleteLater()
+            self.tabs.insertTab(0, self.build_ui(), "Atlas")
+            return exit_code == 0
+        self.atlas = atlas
         self.page_view.atlas = self.atlas
         self.fill_build_box()
         if exit_code != 0:
-            self.status.setText(f"Rebuild failed (exit code {exit_code}); see the messages below")
-            return
-        # Redraw whatever page was showing, with the new numbers, then
-        # put the build log back so it can be read
-        log = self.verse_pane.toPlainText()
+            self.status.setText(f"Rebuild failed (exit code {exit_code}); {where}")
+            return False
+        # Redraw whatever page was showing, with the new numbers
         if 0 <= self.history_index < len(self.history):
             kind, book, chapter, word = self.history[self.history_index]
             self.open_page(kind, book, chapter, word, record=False)
-        self.verse_header.setText("Rebuild finished; the page above shows the new numbers")
-        self.verse_pane.setPlainText(log)
         self.status.setText(f"Rebuilt atlas.db {self.atlas.settings.get('built', '')}")
+        return True
+
+    # -- the Workbench tab ---------------------------------------------------------------
+
+    def workbench_started(self, command):
+        """
+        A Workbench command is about to run.  A build of the atlas
+        replaces atlas.db, so the pages let go of the file first (as
+        the Rebuild button does) and the Atlas tab is closed until the
+        build is over: a page opened meanwhile would read a file that
+        is being rewritten.
+        """
+        if not any(os.path.basename(str(part)) == "build_atlas.py" for part in command):
+            return
+        self.workbench_build = True
+        if self.atlas is not None:
+            self.atlas.db.close()
+            self.status.setText("Rebuilding atlas.db from the Workbench ...")
+        self.tabs.setTabEnabled(0, False)
+
+    def workbench_finished(self, command, exit_code):
+        """A Workbench command has ended: after a build the pages reopen on the new atlas."""
+        if self.workbench_build:
+            self.workbench_build = False
+            self.tabs.setTabEnabled(0, True)
+            had_atlas = self.atlas is not None
+            ok = self.reload_atlas(exit_code)
+            if ok and not had_atlas:
+                self.workbench.log_line("atlas.db is built: the Atlas tab now shows the pages.")
+        elif self.atlas is None and exit_code == 0 and os.path.exists(atlas_text.ATLAS_PATH):
+            # An atlas arrived some other way (a bundle unpacked, a kept build copied in)
+            self.reload_atlas(0)
+        # A command may have changed metadata.db: the backup button says whether a backup is due
+        if self.atlas is not None and MetadataBackup is not None and hasattr(self, "backup_btn"):
+            self.update_backup_button()
 
     def step_history(self, direction):
         """Turn back or forward through the pages visited."""
@@ -1481,15 +1626,23 @@ class WordAtlasWindow(QMainWindow):
             self.open_page("Book", link["book"], None, "")
 
 
-def main():
-    app = QApplication(sys.argv)
+def main(argv=None):
+    """Open the window.  --workbench opens it on the Workbench tab."""
+    argv = sys.argv if argv is None else argv
+    app = QApplication(argv)
     app.setStyleSheet(STYLE)
+    problem = ""
     try:
         atlas = atlas_pages.Atlas()
     except SystemExit as e:
-        QMessageBox.critical(None, "Word Atlas", str(e))
-        return 1
-    window = WordAtlasWindow(atlas)
+        # No atlas.db yet (a new install), or one from an older version.
+        # The Workbench can build one, so the window opens on it rather
+        # than stopping here; without the Workbench there is nothing to show.
+        atlas, problem = None, str(e)
+        if WorkbenchPanel is None:
+            QMessageBox.critical(None, "Word Atlas", problem)
+            return 1
+    window = WordAtlasWindow(atlas, workbench="--workbench" in argv, problem=problem)
     window.show()
     return app.exec()
 

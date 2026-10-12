@@ -38,15 +38,28 @@ python word_atlas.py
 
 Or pick "Word Atlas" in Project Launcher, which does the same thing.
 
-The program needs `atlas.db` beside it. If that file is missing, run
-`python build_atlas.py` once first (about a minute) or press the
-Rebuild atlas button described below.
+The pages need `atlas.db` beside the program. If that file is missing
+the window opens on its Workbench tab: Builds > Build atlas.db makes
+it (about a minute), or run `python build_atlas.py` in the terminal.
 
 ## 3. The window, top to bottom
 
 If in doubt at any point, press F1 (or the ? button at the far left of
 the top bar) and point at the thing you are wondering about.
 
+**Two tabs.** *Atlas* is the pages, described below, and is what the
+window opens on. *Workbench* is every tool of the program under menus
+(pages and dossiers as text, the results questions, the builds,
+backups, tests, git, installs), each run with its command line shown
+and its output in a log. Nothing on the Workbench is needed to read
+the atlas; it is there for the days you maintain it.
+
+**A USB drive.** Workbench tab > Install > Build or update a USB
+drive: pick the drive, tick what goes on it, press the button. On the
+other computer open the drive's `WordAtlas` folder and double-click
+`Install-Windows.bat` (Windows) or run `bash install-linux.sh`
+(Linux). Press the same button another day to bring the drive up to
+date. The manual's section 8a says the rest.
 
 **Top bar** (choosing a page)
 
@@ -264,6 +277,8 @@ time and need no rebuild; just restart the program.
 | `atlas_ask.py` | Reads the Ask notation |
 | `atlas_help.py` | The help mode texts and the pointer that shows them |
 | `atlas_query.py` | Command-line version: `python atlas_query.py book Joel` |
+| `atlas_workbench.py` | The Workbench tab: every tool under menus |
+| `atlas_usb.py`, `atlas_usb_dialog.py`, `usb_install.py` | The USB drive: making it, its window, and the installer it carries |
 | `atlas.db` | The working atlas (made by build_atlas.py) |
 | `builds/` | Kept builds and their rules |
 | `reports/` | Pages saved as text |

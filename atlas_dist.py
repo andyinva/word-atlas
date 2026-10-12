@@ -12,7 +12,7 @@ Hebrew data are.  This module makes and opens the zip files that
 carry each, and says what a fresh install still has to build.
 
     python3 atlas_dist.py reader [--wadb FILE] [--out ZIP] [--guest-key] [--reader DIR]
-        a zip of the Reader's files with a dataset in its sample folder
+        a zip of the Reader's files with a dataset in its datasets folder
         (the newest .wadb under reports/ unless --wadb says which) and,
         with --guest-key, the guest_key.dat beside the Reader; the
         Reader's folder is word_atlas_reader beside this one unless
@@ -53,8 +53,9 @@ REPORTS_DIR = os.path.join(PROGRAM_DIR, "reports")
 
 # The Reader's files, as its README lists them
 READER_FILES = ["word_atlas_reader.py", "reader_data.py", "reader_claude.py", "reader_guest.py",
-                "reader_questions.py", "reader_help.py", "atlas_report.py", "atlas_results.py",
-                "atlas_listed.py", "test_reader.py", "word_atlas_reader.spec", "README.md", "requirements.txt"]
+                "reader_questions.py", "reader_help.py", "reader_tools.py", "atlas_report.py", "atlas_results.py",
+                "atlas_listed.py", "atlas_usb.py", "atlas_usb_dialog.py", "usb_install.py",
+                "test_reader.py", "word_atlas_reader.spec", "README.md", "requirements.txt"]
 
 # Word Atlas's data files that are not source and not built: carried in the bundle
 ATLAS_DATA = ["metadata_backup.sql", "cross_references.db", "LICENSE", "requirements.txt"]
@@ -87,7 +88,7 @@ def newest_wadb():
 
 
 def reader_bundle(wadb=None, out=None, guest_key=False, reader_dir=READER_DIR, log=print):
-    """Zip the Reader's files with a dataset in sample/; returns the zip's path."""
+    """Zip the Reader's files with a dataset in datasets/ (where the Reader looks when it starts); returns the zip's path."""
     if not os.path.exists(os.path.join(reader_dir, "word_atlas_reader.py")):
         raise SystemExit(f"the Reader was not found at {reader_dir}")
     wadb = wadb or newest_wadb()
@@ -108,7 +109,7 @@ def reader_bundle(wadb=None, out=None, guest_key=False, reader_dir=READER_DIR, l
             path = os.path.join(reader_dir, name)
             if os.path.exists(path):
                 z.write(path, "word_atlas_reader/" + name)
-        z.write(wadb, "word_atlas_reader/sample/" + os.path.basename(wadb))
+        z.write(wadb, "word_atlas_reader/datasets/" + os.path.basename(wadb))
         key = os.path.join(reader_dir, "guest_key.dat")
         if guest_key:
             if os.path.exists(key):
@@ -118,7 +119,7 @@ def reader_bundle(wadb=None, out=None, guest_key=False, reader_dir=READER_DIR, l
                 log("  --guest-key asked for but no guest_key.dat beside the Reader (python3 reader_guest.py make KEY DAYS)")
         z.writestr("word_atlas_reader/START.txt",
                    "Word Atlas Reader\n\nInstall Python 3.9 or later and PyQt6 (pip install PyQt6), then run\n\n"
-                   "    python3 word_atlas_reader.py\n\nand open the dataset in the sample folder "
+                   "    python3 word_atlas_reader.py\n\nIt opens the dataset in its datasets folder by itself "
                    f"({os.path.basename(wadb)}).  README.md says the rest.\n")
     log(f"wrote {out} ({os.path.getsize(out) / 1e6:.1f} MB) with {os.path.basename(wadb)}")
     return out
@@ -152,8 +153,8 @@ def atlas_bundle(out=None, program_dir=PROGRAM_DIR, log=print):
         z.writestr("word_atlas/START.txt",
                    "Word Atlas\n\nUnpack beside a copy of Bible Search Lite (or put bibles.db in this folder), then\n\n"
                    "    pip install PyQt6\n    python3 atlas_backup.py restore\n    python3 build_atlas.py\n"
-                   "    python3 word_atlas.py\n\nor open python3 atlas_workbench.py and use its Install menu, which "
-                   "says what is still to build.  README.md and WORD_ATLAS_MANUAL.md say the rest.\n")
+                   "    python3 word_atlas.py\n\nWith no atlas.db yet the window opens on its Workbench tab, whose "
+                   "Install menu says what is still to build.  README.md and WORD_ATLAS_MANUAL.md say the rest.\n")
     log(f"wrote {out} ({os.path.getsize(out) / 1e6:.1f} MB) with {len(files)} files")
     for name in ("metadata_backup.sql", "cross_references.db"):
         if name not in files:
