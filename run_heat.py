@@ -19,10 +19,17 @@ For each book it writes four reports to reports/:
                                   (--norm group): names in the stories,
                                   numbers in the visions
 
+Two options of its own, which can stand anywhere after the book names:
+    --one       also write heat_<book>_all.txt, the four text reports one
+                after another with a divider line between them
+    --no-svg    write the text reports only, no charts
+Any other option goes to every atlas_heat.py run unchanged.
+
 Usage:
     python run_heat.py                      (Ezekiel and Revelation)
     python run_heat.py Joel Malachi
     python run_heat.py Isaiah --window 15   (extra options go to every run)
+    python run_heat.py Daniel --one --no-svg
 """
 
 import subprocess
@@ -55,35 +62,45 @@ def run(args: list[str]) -> None:
 
 def main() -> None:
     # Book names are the arguments before the first option; anything from
-    # the first "--" option on is passed to every run unchanged.
+    # the first "--" option on is passed to every run unchanged, except
+    # this script's own two options.
     argv = sys.argv[1:]
     first_option = next((i for i, a in enumerate(argv) if a.startswith("--")), len(argv))
     books = argv[:first_option] or DEFAULT_BOOKS
-    extra = argv[first_option:]
+    one = "--one" in argv
+    charts = "--no-svg" not in argv
+    extra = [a for a in argv[first_option:] if a not in ("--one", "--no-svg")]
     REPORTS.mkdir(exist_ok=True)
 
     for book in books:
         stem = "heat_" + book.lower().replace(" ", "_")
         testament = "nt" if book.lower() in NEW_TESTAMENT else "ot"
-        print(f"{book}:")
-        run([book, "--norm", "book", "--families", "--scale", "percentile",
-             "--out", str(REPORTS / f"{stem}_self.txt"),
-             "--svg", str(REPORTS / f"{stem}_self.svg")] + extra)
-        print(f"    reports/{stem}_self.txt and .svg")
-        run([book, "--families",
-             "--out", str(REPORTS / f"{stem}_{testament}.txt"),
-             "--svg", str(REPORTS / f"{stem}_{testament}.svg")] + extra)
-        print(f"    reports/{stem}_{testament}.txt and .svg")
-        run([book, "--families", "--scale", "g2",
-             "--out", str(REPORTS / f"{stem}_g2.txt")] + extra)
-        print(f"    reports/{stem}_g2.txt")
         # The own-kind yardstick is for the Old Testament; a New Testament
         # book is measured against its whole testament whatever is asked.
         yardstick = ["--norm", "group"] if testament == "ot" else []
-        run([book, "--names", "--families", "--scale", "g2"] + yardstick +
-            ["--out", str(REPORTS / f"{stem}_names.txt"),
-             "--svg", str(REPORTS / f"{stem}_names.svg")] + extra)
-        print(f"    reports/{stem}_names.txt and .svg")
+        # The four reports: a name, the options that make it, and whether
+        # a chart goes with it.
+        reports = [
+            ("self", ["--norm", "book", "--families", "--scale", "percentile"], True),
+            (testament, ["--families"], True),
+            ("g2", ["--families", "--scale", "g2"], False),
+            ("names", ["--names", "--families", "--scale", "g2"] + yardstick, True),
+        ]
+        print(f"{book}:")
+        written = []
+        for name, options, chart in reports:
+            out = REPORTS / f"{stem}_{name}.txt"
+            svg = ["--svg", str(REPORTS / f"{stem}_{name}.svg")] if chart and charts else []
+            run([book] + options + ["--out", str(out)] + svg + extra)
+            written.append(out)
+            print(f"    reports/{out.name}" + (" and .svg" if svg else ""))
+        if one:
+            # The four text reports in one file, a divider between them.
+            whole = REPORTS / f"{stem}_all.txt"
+            divider = "\n\n" + "=" * 78 + "\n\n"
+            whole.write_text(divider.join(p.read_text(encoding="utf-8").rstrip("\n")
+                                          for p in written) + "\n", encoding="utf-8")
+            print(f"    reports/{whole.name}  (all four in one)")
 
 
 if __name__ == "__main__":

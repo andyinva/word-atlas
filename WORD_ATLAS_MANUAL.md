@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.98. Andrew Hopkins, with Claude.
+For version 0.10.99. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -5101,6 +5101,12 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.99.** Two options for `run_heat.py`: `--one` also writes
+`heat_<book>_all.txt`, the four text reports one after another with a
+divider line between them, and `--no-svg` leaves the charts out, so
+`python3 run_heat.py Daniel --one --no-svg` gives one text file for
+reading. Nothing else changes.
 
 **0.10.98.** Three small things from the first reading of the names
 strips. `run_heat.py` writes a fourth report for each book,

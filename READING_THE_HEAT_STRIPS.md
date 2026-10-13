@@ -241,6 +241,7 @@ The text report (`--out`) holds the same information as lists:
 
     python run_heat.py                                (the standard set for Ezekiel and Revelation)
     python run_heat.py Joel Malachi                   (the standard set for other books)
+    python run_heat.py Daniel --one --no-svg          (the four text reports in one file, no charts)
     python atlas_heat.py Ezekiel --svg reports/heat_ezekiel.svg
     python atlas_heat.py Ezekiel --families --svg reports/heat_ezekiel_feelings.svg
     python atlas_heat.py Ezekiel --norm book          (compare the book with itself)
