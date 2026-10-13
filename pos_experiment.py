@@ -77,7 +77,18 @@ THE SCALE
             is warm, and it is never small.
     cool    a run of windows at G2 10.83 or beyond, below ordinary
 
-    Spots of one kind whose verses overlap are joined into one line.
+    Two spots of one kind are joined into one line when they share at
+    least half a window of verses (JOIN_SHARE).  Less than that and
+    they stay apart, so a run of separate passages (the elders, the
+    seals and the trumpets of Revelation 4 to 9) is not printed as one.
+
+    Under each measure's heading a line sets the book's own share of
+    hot and of warm windows beside the ordinary share.  Warm windows are
+    common everywhere, so a book whose share only matches ordinary has
+    warm spots by the ordinary run of things, and its list of them
+    should be read lightly; a share well above ordinary is the sign that
+    the list means something.
+
     The percentile (the share of ordinary windows scoring lower) is
     printed beside each hot or warm peak; a window with none of the
     words is set to 50%, because "none here" is ordinary, not a finding.
@@ -151,6 +162,10 @@ NATIONS_AS_PERSONS = {"H5983", "H123"}      # Ammon, Edom
 # names them.  A hot or cool spot reaches the first, a warm spot the second.
 G2_STRONG = 10.83
 G2_GOOD = 3.84
+
+# Two spots of one kind are joined when the verses they share come to
+# at least this part of a window (half: 5 verses of a 10-verse window).
+JOIN_SHARE = 0.5
 
 # The measures whose words are place names, shown by the source's name.
 PLACE_MEASURES = ("home", "other places")
@@ -447,7 +462,7 @@ class Ordinary:
 # ===========================================================================
 @dataclass
 class Spot:
-    """Windows past a threshold on one measure, joined where their verses overlap."""
+    """Windows past a threshold on one measure: one run, or several joined (see SpotFinder)."""
     measure: str
     windows: list
     kind: str                                   # "hot", "warm" or "cool"
@@ -503,15 +518,26 @@ class SpotFinder:
                 first = None
         return out
 
+    def shared(self, a, b):
+        """
+        How many verses two runs have in common.  A run of windows
+        numbered first to last covers verses first to last + size - 1.
+        """
+        return min(a[1], b[1]) + self.size - max(a[0], b[0])
+
     def overlap(self, a, b):
         """True when two runs share at least one verse."""
-        return a[0] <= b[1] + self.size - 1 and b[0] <= a[1] + self.size - 1
+        return self.shared(a, b) >= 1
 
     def joined(self, runs):
-        """Runs whose verses overlap, joined: each result is a list of runs."""
+        """
+        Runs that share at least JOIN_SHARE of a window with the run
+        before them, joined: each result is a list of runs.
+        """
+        needed = math.ceil(self.size * JOIN_SHARE)
         groups = []
         for run in runs:
-            if groups and self.overlap(groups[-1][-1], run):
+            if groups and self.shared(groups[-1][-1], run) >= needed:
                 groups[-1].append(run)
             else:
                 groups.append([run])
@@ -558,6 +584,19 @@ class PosReport:
             self.ordinary.score(w)
         self.finder = SpotFinder(self.windows, size, threshold, math.sqrt(G2_GOOD))
         self.headwords = self.load_headwords()
+
+    def own_shares(self, name):
+        """
+        (share of the book's windows that are hot, share that are warm),
+        counted window by window exactly as Ordinary counts its own, so
+        the two pairs of figures can be set side by side.
+        """
+        warm_at = math.sqrt(G2_GOOD)
+        scores = [w.z[name] for w in self.windows]
+        if not scores:
+            return 0.0, 0.0
+        return (sum(1 for z in scores if z >= self.threshold) / len(scores),
+                sum(1 for z in scores if warm_at <= z < self.threshold) / len(scores))
 
     def load_headwords(self):
         """
@@ -704,9 +743,10 @@ class PosReport:
         for m in MEASURES:
             name = m.name
             what = "different adjectives per window" if m.different else "words"
-            out.append(f"({name})  ordinary rate {o.rate(name):.4f} of content words ({what}); "
-                       f"of ordinary windows {o.hot_share[name]:.1%} are hot, "
-                       f"{o.warm_share[name]:.1%} warm")
+            out.append(f"({name})  ordinary rate {o.rate(name):.4f} of content words ({what})")
+            own_hot, own_warm = self.own_shares(name)
+            out.append(f"  windows hot and warm: ordinary {o.hot_share[name]:.1%} and "
+                       f"{o.warm_share[name]:.1%}; {self.book} {own_hot:.1%} and {own_warm:.1%}")
             hot, warm, cool = self.finder.find(name)
             for s in hot:
                 out.append(self.spot_line("hot", s, name))
@@ -746,13 +786,19 @@ class PosReport:
             "  G2 is Dunning's G squared (log-likelihood), the atlas's keyness measure:",
             "  3.84 good evidence, 10.83 strong. A hot spot reaches 10.83; a warm spot",
             "  reaches 3.84 but not 10.83 and stands clear of every hot spot. A warm spot",
-            "  is a lead to read, not a finding: each heading says how common warm windows",
-            "  are in ordinary text. 'nearest' is the window that came closest when none",
+            "  is a lead to read, not a finding: the line under each heading sets the",
+            "  book's share of hot and of warm windows beside the ordinary share, and where",
+            "  the two are alike the book's warm spots are no more than the ordinary run of",
+            "  things. Those shares count every warm window, the slopes of a hot spot",
+            "  included, so a book can have warm windows and no warm spot of its own.",
+            "  'nearest' is the window that came closest when none",
             "  reached 3.84. 'n of m' at a peak is the count in that window out of its",
             "  content words. The percentile after a peak is the share of ordinary windows",
             "  scoring lower.",
-            "  Spots of one kind whose verses overlap are joined into one line. A spot's",
-            "  verses run from its first window's start to its last window's end. The words",
+            "  Two spots of one kind are joined into one line when they share at least half",
+            "  a window of verses; with less they stay apart, so neighbours can still",
+            "  overlap by a few verses. A spot's verses run from its first window's start",
+            "  to its last window's end. The words",
             "  after a spot are the commonest ones behind it, each by the King James's",
             "  usual word for it in this book; 'x3' says how often the word comes in the",
             "  spot, though for description a word scores once however often it comes.",

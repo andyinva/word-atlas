@@ -332,7 +332,7 @@ TAHOT's cardinal-number tag also sits on after, yet, between and
 exceedingly, so numbers are known by a checked list of number words;
 the Greek numbers that decline are on a like list.
 
-**Six trial measures (trial, third round, waiting on a read against
+**Six trial measures (trial, fourth round, waiting on a read against
 the text).** pos_experiment.py scores description, persons, home,
 other places, peoples and numbers as shares of content words in a
 10-verse window, on the heat script's g2 scale, reading an Old
@@ -378,6 +378,24 @@ Revelation the numbers of the seals and trumpets run together from
 the first two rounds is mended: a Hebrew name written as two words
 (Beth-el, Hazar-enan) is tagged on both and was counted twice; 491 of
 the Old Testament's place words were such second halves.
+
+A fourth round, the same day. Joining was too free, so two spots are
+now joined only when they share at least half a window of verses:
+Revelation's numbers from 3:19 to 10:1 are four spots where they were
+one (the elders and the first seals, the 144,000, the trumpets, the
+sixth trumpet), and Ezekiel's Egypt is two (29:5 to 19 and 29:17 to
+31:4). And under each measure's heading a line sets the book's own
+share of hot and of warm windows beside the ordinary share, because
+warm windows are common everywhere. It settles what a list of warm
+spots is worth. Ezekiel's fourteen warm home spots are under the
+ordinary share (4.9 percent of its windows warm against 6.8), so they
+are the ordinary run of "house of Israel" and no finding. Joel's home
+is well over it (6.2 percent hot and 17.2 warm against 2.6 and 6.8).
+Revelation's numbers are hot in 39 percent of its windows against 3 in
+ordinary text. And Ezekiel's other places, though every hot spot is a
+passage one would name, are hot in 6.6 percent of its windows against
+an ordinary 6.3: the book has no more of them than the Old Testament
+at large, and it is where they fall that is of use.
 
 Known limits: "other places" holds towns of the land (Bethel, Hebron,
 the Jordan) as well as foreign cities, so a strip of foreign places
