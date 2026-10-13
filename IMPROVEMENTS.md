@@ -332,7 +332,7 @@ TAHOT's cardinal-number tag also sits on after, yet, between and
 exceedingly, so numbers are known by a checked list of number words;
 the Greek numbers that decline are on a like list.
 
-**Six trial measures (trial, second round, waiting on a read against
+**Six trial measures (trial, third round, waiting on a read against
 the text).** pos_experiment.py scores description, persons, home,
 other places, peoples and numbers as shares of content words in a
 10-verse window, on the heat script's g2 scale, reading an Old
@@ -353,13 +353,31 @@ What the second round shows. Ezekiel: other places at the lovers of
 Aholah and Aholibah (23), the oracles against the nations (25, 27, 29
 to 30), Gog (38) and the borders (47 to 48); numbers at the living
 creatures (1) and the temple (40 to 48); persons far below ordinary
-throughout (0.6 percent against 6.6). Joel: home is hot from 2:31 to
+throughout (0.6 percent against 6.5). Joel: home is hot from 2:31 to
 the end (Zion, Jerusalem, Judah), other places and persons are low,
-and there is one number in the book. Revelation: numbers from chapter
-1 to 13, other places only at the seven churches. Description is the
+and there is one number in the book. Revelation: numbers through most
+of the book, other places only at the seven churches. Description is the
 weak one: once a refrain cannot carry it, Ezekiel has a single hot spot
 (17:20 to 18:8, the high and the low tree) and sits exactly at the
 ordinary rate, and Revelation has none. It may not earn a strip.
+
+A third round, the same day, on the reviewer's suggestions. A warm
+tier: a run of windows at G2 3.84 or beyond that never reaches 10.83
+and stands clear of every hot spot, listed under the hot spots, so
+that a short passage is not lost. Ezekiel 4, the 390 days and the 40,
+comes back at G2 10.7, and Joel 2:11 to 22 shows for description. Each
+measure's heading now says what share of ordinary windows is hot and
+what share warm (for persons 10 and 8 percent, for home 3 and 7), which
+is the weight to give a warm spot: a lead to read, not a finding.
+Places are named as the source names them, with the King James's word
+in square brackets where it differs (Thebes [No], Migdol [Tower], Tyre
+[Tyrus]). Spots of one kind whose verses overlap are joined into one
+line: the three Egypt spots of Ezekiel 29 to 31 are one, and in
+Revelation the numbers of the seals and trumpets run together from
+3:19 to 10:1, which may be more joining than is wanted. And a fault of
+the first two rounds is mended: a Hebrew name written as two words
+(Beth-el, Hazar-enan) is tagged on both and was counted twice; 491 of
+the Old Testament's place words were such second halves.
 
 Known limits: "other places" holds towns of the land (Bethel, Hebron,
 the Jordan) as well as foreign cities, so a strip of foreign places
