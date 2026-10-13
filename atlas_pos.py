@@ -32,7 +32,11 @@ THE NAMES AND NUMBERS COUNTS (NameReader)
     place outside the homeland, and every people), names of persons,
     the four home names (Israel, Judah, Jerusalem, Zion) and number
     words, as shares of the verse's content words (nouns, verbs,
-    adjectives, numbers).  It also marks the verses that hold a date
+    adjectives, numbers); and, given word lists (the character, divine,
+    fruit and flesh lists of atlas_feelings.py), the words of each list,
+    with GLOSS_RULES applied, so that the majesty of God is not counted
+    as pride nor an unblemished lamb as a blameless man.  It also marks
+    the verses that hold a date
     (a number within two words of "year" or "month") and the verses
     that hold a feast word (FEAST_WORDS).  The rules are this module's
     (HOME_PLACES, NATIONS_AS_PERSONS, ONE_WORDS, YEAR_AND_MONTH_WORDS,
@@ -180,7 +184,7 @@ GLOSS_RULES = {
     "H8549": ((), ("unblemished",)),        # blameless, not an unblemished offering
     "G299": ((), ("unblemished",)),
     "H1346": ((), ("majesty",)),            # pride, not the majesty of God
-    "H1347": ((), ("majesty",)),
+    "H1347": ((), ("majesty", "thicket")),  # nor the thickets of Jordan
     "H6035": ((), ("poor",)),               # humble, not the poor
     "H7356": ((), ("womb",)),               # compassion, not the womb
     "H3887": ((), ("interpret",)),          # scorner, not interpreter
@@ -363,7 +367,8 @@ class TagReader:
 class VerseCounts:
     """What one King James verse holds, as the names strips count it."""
 
-    __slots__ = ("content", "nations", "persons", "home", "numbers", "dates", "feasts", "words")
+    __slots__ = ("content", "nations", "persons", "home", "numbers", "dates", "feasts", "words",
+                 "lists")
 
     def __init__(self):
         self.content = 0            # content words of the original text
@@ -373,7 +378,8 @@ class VerseCounts:
         self.numbers = 0            # number words, less "one" and the dates
         self.dates = []             # the number words that stand in a date, as glossed
         self.feasts = []            # the feast words, by their plain word
-        self.words = {}             # measure -> the words counted, as the source glosses them
+        self.words = {}             # measure or list -> the words counted, as the source glosses them
+        self.lists = {}             # list name -> how many of its words the verse holds
 
 
 class NameReader:
@@ -392,8 +398,9 @@ class NameReader:
     # corpus -> which token rows are the whole words of the text
     ROW_FILTER = {"TAHOT": "t.element = 'root'", "GNT": "t.in_tr = 1"}
 
-    def __init__(self, db_path, corpus):
+    def __init__(self, db_path, corpus, lists=None):
         self.corpus = corpus
+        self.lists = lists or {}    # list name -> {Strong's number: plain word} or a set of numbers
         self.by_ref = {}            # (book number, chapter, verse) -> VerseCounts
         db = sqlite3.connect(Path(db_path).resolve().as_uri() + "?mode=ro", uri=True)
         try:
@@ -465,6 +472,12 @@ class NameReader:
                     (word if kind else word.lower()) if word else root)
             if root in FEAST_WORDS and gloss_allows(root, gloss):
                 counts.feasts.append(FEAST_WORDS[root])
+            for name, roots in self.lists.items():
+                if root in roots and gloss_allows(root, gloss):
+                    counts.lists[name] = counts.lists.get(name, 0) + 1
+                    plain = roots[root] if isinstance(roots, dict) else None
+                    counts.words.setdefault(name, []).append(
+                        plain or (self.name_piece(gloss) or root).lower())
 
     @staticmethod
     def name_piece(gloss):

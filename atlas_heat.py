@@ -51,6 +51,10 @@ THE FIVE MEASURES
                 one per word list of metadata.db (atlas_feelings.py
                 lists): character, divine (the attributes of God), and
                 for a New Testament book fruit and flesh (Galatians 5).
+                The word lists are counted from the original text in
+                lxx.db, like the names strips, so that the source's
+                gloss can tell a word's two meanings apart (the majesty
+                of God is not pride; see atlas_pos.GLOSS_RULES).
 
     The variety, rare, hammer, action and feeling measures count the Hebrew and
     Greek words behind the KJV (Strong's numbers); a Hebrew word rendered
@@ -158,8 +162,14 @@ VOICE_ROOTS = {"H559", "H3068", "H136", "H3069", "H6635", "G3004", "G2036"}
 FAMILY_NAMES = ["emotion", "senses", "body", "violence", "sacred", "wealth", "harlotry"]
 
 # The word lists of metadata.db (atlas_feelings.py), drawn with --families
-# after the families; the ones with no word in a book's language are left out.
+# after the families; the ones with no word in a book's language are left
+# out.  They are counted from the original text (atlas_pos.NameReader).
 LIST_NAMES = ["character", "divine", "fruit", "flesh"]
+
+# Two spots of one kind are joined into one when the verses they share
+# come to at least this part of a window (half: 5 verses of 10); with
+# less they stay apart, so a run of separate passages is not one spot.
+JOIN_SHARE = 0.5
 
 # The names and numbers strips (see atlas_pos.py's NameReader), for --names.
 NAME_MEASURES = ["nations", "persons", "home", "numbers"]
@@ -391,10 +401,14 @@ class Scorer:
                 c[m] = (k, n_orig)
                 s[m] = k / n_orig if n_orig else 0.0
 
-        for name, roots in self.lists.items():
-            k = sum(1 for u in units if u in roots)
-            c[name] = (k, n)
-            s[name] = k / n if n else 0.0
+        if self.lists:
+            # The word-list strips, from the original text like the names.
+            counted = [v.names for v in window.verses if v.names is not None]
+            n_orig = sum(x.content for x in counted)
+            for name in self.lists:
+                k = sum(x.lists.get(name, 0) for x in counted)
+                c[name] = (k, n_orig)
+                s[name] = k / n_orig if n_orig else 0.0
 
         if self.feelings:
             hits = [self.feelings[u] for u in units if u in self.feelings]
@@ -673,20 +687,40 @@ class Spot:
 
 
 def find_spots(windows: list[Window], measure: str, threshold: float) -> list[Spot]:
-    """Group neighboring windows past the threshold into spots."""
+    """
+    Group neighboring windows past the threshold into spots.  Two runs
+    of one kind are joined into one spot when the verses they share come
+    to at least half a window (JOIN_SHARE): a window of ten verses that
+    starts one verse further on shares nine, so two runs a verse or two
+    apart are one passage with a dip in it, while runs that share only
+    a verse or two stay apart.
+    """
+    size = len(windows[0].verses) if windows else 0
+    needed = math.ceil(size * JOIN_SHARE)
     spots = []
     for hot in (True, False):
-        run = []
-        for w in windows + [None]:          # None closes the last run
+        runs, run = [], []
+        for i, w in enumerate(windows + [None]):     # None closes the last run
             past = w is not None and (w.z[measure] >= threshold if hot
                                       else w.z[measure] <= -threshold)
             if past:
-                run.append(w)
+                run.append(i)
             elif run:
-                peak = max(run, key=lambda x: x.z[measure]) if hot else \
-                    min(run, key=lambda x: x.z[measure])
-                spots.append(Spot(measure, run[0], run[-1], peak, hot))
+                runs.append(run)
                 run = []
+        # Join runs that share at least half a window of verses: run a
+        # covers verses a[0] to a[-1] + size - 1.
+        joined = []
+        for run in runs:
+            if joined and joined[-1][-1] + size - run[0] >= needed:
+                joined[-1].extend(run)
+            else:
+                joined.append(run)
+        for run in joined:
+            members = [windows[i] for i in run]
+            peak = max(members, key=lambda x: x.z[measure]) if hot else \
+                min(members, key=lambda x: x.z[measure])
+            spots.append(Spot(measure, members[0], members[-1], peak, hot))
     return spots
 
 
@@ -743,22 +777,6 @@ class HeatReport:
         top_words = ", ".join(f"'{g}'" for g in glosses[:4])
         return f"{top_cats}; {top_words}"
 
-    def list_detail(self, spot: "Spot", name: str) -> str:
-        """The commonest words of a word list behind its hot spot, by their King James words."""
-        words = Counter()
-        w_list = self.windows[self.windows.index(spot.first):self.windows.index(spot.last) + 1]
-        seen = set()
-        for w in w_list:
-            for v in w.verses:
-                if v.verse_id in seen:
-                    continue
-                seen.add(v.verse_id)
-                words.update(u for u in v.units if u in self.lists[name])
-        glosses = Counter()
-        for u, n in words.items():
-            glosses[self.heads.get(u) or self.loader.glosses.get(u, u)] += n
-        return ", ".join(f"'{g}' {n}" if n > 1 else f"'{g}'" for g, n in glosses.most_common(4))
-
     def names_detail(self, spot: "Spot", measure: str) -> str:
         """The commonest words behind a names hot spot, as the source glosses them."""
         words = Counter()
@@ -807,7 +825,7 @@ class HeatReport:
                     if s.hot and m in NAME_MEASURES:
                         extra = "  " + self.names_detail(s, m)
                     if s.hot and m in self.lists:
-                        extra = "  " + self.list_detail(s, m)
+                        extra = "  " + self.names_detail(s, m)
                     out.append(f"  {label:<5}{s.span(self.book):<28}"
                                f"peak {s.peak.shown[m]:>10} at {s.peak.middle.ref}{extra}")
             out.append("")
@@ -822,7 +840,8 @@ class HeatReport:
                     "  use the same z-like units on all three, so +2 always means about the",
                     "  top 2.3% and +3.29 means G2 10.83.",
                     "  Spots overlap because windows overlap: a spot's verses run from its",
-                    "  first window's start to its last window's end.",
+                    "  first window's start to its last window's end. Two spots of one kind",
+                    "  are joined when they share at least half a window of verses.",
                     "  On the z scale, families that are rare everywhere (harlotry, wealth)",
                     "  have a tiny ordinary spread, so their z can run far past 3; the",
                     "  percentile and g2 scales are built for such counts."])
@@ -1082,16 +1101,18 @@ def main() -> None:
                   "so no character, divine, fruit or flesh strips.\n")
         MEASURES.extend(lists)
 
-    # The names strips: the original text's counts, hung on each verse.
-    if args.names:
+    # The names strips and the word-list strips: the original text's
+    # counts, hung on each verse.
+    if args.names or lists:
         from atlas_pos import NameReader
         corpus = "TAHOT" if loader.testament[book] == "Old" else "GNT"
         if not args.lxx.exists():
-            sys.exit(f"--names needs lxx.db (not found at {args.lxx}).")
-        reader = NameReader(args.lxx, corpus)
+            sys.exit(f"--names and the word-list strips need lxx.db (not found at {args.lxx}).")
+        reader = NameReader(args.lxx, corpus, lists)
         for v in loader.verses.values():
             if loader.testament[v.book] == loader.testament[book]:
                 v.names = reader.by_ref.get((loader.books.index(v.book) + 1, v.chapter, v.verse))
+    if args.names:
         MEASURES.extend(NAME_MEASURES)
 
     skip, args.skip_summary = most_common_roots(loader, loader.language_of(book), args.hammer_skip) \

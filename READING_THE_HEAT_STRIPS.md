@@ -171,8 +171,12 @@ category both: love is an emotion and a fruit of the Spirit.
 | **fruit** | the fruit of the Spirit, Galatians 5:22-23 (New Testament only) | Galatians 5, Romans 14-15 |
 | **flesh** | the works of the flesh, Galatians 5:19-21 (New Testament only) | Galatians 5, Romans 1 and 13 |
 
-Faith (pistis) is not in the fruit list: the King James says "faith"
-whether it means belief or the fruit, and belief would flood the strip.
+Like the names strips, these four are counted from the Hebrew and
+Greek words in `lxx.db`, where the source's gloss tells a word's two
+meanings apart: the majesty of God is not pride, an unblemished lamb is
+not a blameless man, and faith (pistis) counts as the fruit only where
+the gloss says "faithfulness", not where it is belief. The rules are
+`GLOSS_RULES` in `atlas_pos.py`.
 
 ## The names and numbers strips (`--names`)
 
@@ -188,6 +192,10 @@ verses are the King James's, which is how `lxx.db` files the texts.
 | **persons** | names of men and women | Jeremiah 36-44 (Jeremiah, Baruch, Gedaliah, Ishmael), Daniel 1-6 |
 | **home** | Israel, Judah, Jerusalem, Zion | Joel 3, Zechariah |
 | **numbers** | number words, less "one" and less the dates | Ezekiel 40-48, Revelation's sevens and twelves, Daniel 7-8 |
+
+**Two spots of one kind are joined** into one when they share at least
+half a window of verses (five of ten); with less they stay apart, so a
+run of separate passages is not printed as one.
 
 **Blue on these strips** means the names or numbers are absent, which
 can be a finding of its own: persons is blue through Daniel's visions,

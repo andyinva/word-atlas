@@ -281,12 +281,10 @@ LANDSCAPE_WORDS = {
 # Qualities of character as people have them, the attributes of God, and
 # the fruit of the Spirit and works of the flesh of Galatians 5: the four
 # lists atlas_feelings.py keeps (WORD_LISTS), which metadata.db stores and
-# atlas_heat.py draws.  The trial's fruit list keeps faith (pistis) with a
-# gloss rule, counting it only where the source glosses it "faithfulness";
-# the stored list leaves it out, since the King James cannot tell the two.
+# atlas_heat.py draws, both with the gloss rules of atlas_pos.py.
 CHARACTER_WORDS = WORD_LISTS["character"]
 DIVINE_WORDS = WORD_LISTS["divine"]
-FRUIT_WORDS = dict(WORD_LISTS["fruit"], G4102="faith")
+FRUIT_WORDS = WORD_LISTS["fruit"]
 FLESH_WORDS = WORD_LISTS["flesh"]
 
 # The word-list measures, each with its list: their words are printed by

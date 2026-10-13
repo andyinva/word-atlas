@@ -64,9 +64,13 @@ THE WORD LISTS (lists)
     The lists are WORD_LISTS below, reviewed in the parts-of-speech trial
     (pos_experiment.py, which reads the same ones); `lists` stores them in
     metadata.db's word_lists table, where they can be read and edited
-    like the feeling words, and refreshes the backup. Faith (pistis) is
-    not in the fruit list: the King James renders it "faith" whether it
-    is belief or the fruit, and belief would flood the strip.
+    like the feeling words, and refreshes the backup. atlas_heat.py counts
+    them from the Hebrew and Greek words of lxx.db (atlas_pos.NameReader),
+    where the source's gloss tells a word's two meanings apart
+    (atlas_pos.GLOSS_RULES): the majesty of God is not pride, an
+    unblemished lamb is not a blameless man, and faith (pistis) counts as
+    the fruit only where the gloss says "faithfulness", not where it is
+    belief.
 
 Usage:
     python atlas_feelings.py draft
@@ -184,7 +188,7 @@ WORD_LISTS = {
     },
     "fruit": {
         "G26": "love", "G5479": "joy", "G1515": "peace", "G3115": "longsuffering",
-        "G5544": "gentleness", "G19": "goodness",
+        "G5544": "gentleness", "G19": "goodness", "G4102": "faith",
         "G4236": "meekness", "G4240": "meekness", "G1466": "temperance",
     },
     "flesh": {
@@ -452,15 +456,18 @@ def load_feeling_words(metadata_path: Path) -> dict[str, tuple[str, str]]:
         conn.close()
 
 
-def load_word_lists(metadata_path: Path) -> dict[str, set[str]]:
-    """list name -> the Strong's numbers in it, from metadata.db; empty when not stored yet."""
+def load_word_lists(metadata_path: Path) -> dict[str, dict[str, str]]:
+    """
+    list name -> {Strong's number: its plain word} from metadata.db;
+    empty when the lists have not been stored yet.
+    """
     if not metadata_path.exists():
         return {}
     conn = sqlite3.connect(metadata_path)
     try:
-        lists: dict[str, set[str]] = {}
-        for name, root in conn.execute("SELECT list, root FROM word_lists ORDER BY rowid"):
-            lists.setdefault(name, set()).add(root)
+        lists: dict[str, dict[str, str]] = {}
+        for name, root, note in conn.execute("SELECT list, root, note FROM word_lists ORDER BY rowid"):
+            lists.setdefault(name, {})[root] = note or root
         return lists
     except sqlite3.OperationalError:
         return {}          # the table does not exist yet

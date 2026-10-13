@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.96. Andrew Hopkins, with Claude.
+For version 0.10.97. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -5101,6 +5101,21 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.97.** Two corrections to 0.10.96 from its first reading. The
+four word-list strips (character, divine, fruit, flesh) had been
+counted by Strong's number on the King James words, which cannot tell
+a word's two meanings apart, so on the Isaiah page the majesty of God
+counted as pride and the unblemished lambs of Leviticus would have
+counted as blameless men. They are now counted from the Hebrew and
+Greek words of `lxx.db`, as the names strips are, with the gloss rules
+of `atlas_pos.py` applied, and the page agrees with the trial script
+spot for spot; faith (pistis) is back in the fruit list, counted only
+where the source glosses it "faithfulness". And two spots of one kind
+are joined into one when they share at least half a window of verses,
+the trial's rule, so Isaiah 29:12 to 21 and 29:14 to 23 are one spot
+and Joel 2:12 to 30 one emotion spot where there were three. Charts
+and reports without `--families` are unchanged.
 
 **0.10.96.** The names and numbers strips, the first of the
 parts-of-speech trial to reach the pages. `atlas_heat.py --names` adds

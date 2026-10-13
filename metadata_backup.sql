@@ -1,5 +1,5 @@
 -- Word Atlas metadata.db backup (plain SQL; restore with atlas_backup.py)
--- written: 2026-10-13 15:51
+-- written: 2026-10-13 16:12
 BEGIN TRANSACTION;
 CREATE TABLE books (
     book_num       INTEGER PRIMARY KEY,     -- 1 = Genesis ... 66 = Revelation
@@ -15881,6 +15881,7 @@ INSERT INTO "word_lists" VALUES('fruit','G1515','peace');
 INSERT INTO "word_lists" VALUES('fruit','G3115','longsuffering');
 INSERT INTO "word_lists" VALUES('fruit','G5544','gentleness');
 INSERT INTO "word_lists" VALUES('fruit','G19','goodness');
+INSERT INTO "word_lists" VALUES('fruit','G4102','faith');
 INSERT INTO "word_lists" VALUES('fruit','G4236','meekness');
 INSERT INTO "word_lists" VALUES('fruit','G4240','meekness');
 INSERT INTO "word_lists" VALUES('fruit','G1466','temperance');
