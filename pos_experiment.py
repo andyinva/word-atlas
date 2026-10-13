@@ -49,6 +49,9 @@ THE MEASURES
     Titles and divine names (Yahweh, God, Lord, Christ, Pharaoh) are
     tagged as titles by the sources and are in none of the measures.
 
+    A Hebrew name written as two words (Beth-el, Hazar-enan,
+    Beth-jeshimoth) is tagged on both words; it is counted once.
+
 THE TEXT
     An Old Testament book is read in the Hebrew (TAHOT), counting whole
     words: the prefixes and suffixes the TAHOT splits off are left out.
@@ -62,16 +65,35 @@ THE SCALE
     the window's count against the ordinary rate.  Ordinary is every
     book of the same testament, taken as windows of the same size, so a
     count of different words is set against counts made the same way.
-    G2 3.84 is good evidence, 10.83 strong evidence.  A hot or cool spot
-    is a run of windows at G2 10.83 or beyond.  The percentile (the
-    share of ordinary windows scoring lower) is printed beside each hot
-    peak; a window with none of the words is set to 50%, because "none
-    here" is ordinary, not a finding.
+    G2 3.84 is good evidence, 10.83 strong evidence.
+
+    hot     a run of windows at G2 10.83 or beyond
+    warm    a run of windows at G2 3.84 or beyond that never reaches
+            10.83 and does not touch a hot spot.  A short passage (the
+            390 days and the 40 days of Ezekiel 4) can be plain to a
+            reader and still too small to reach 10.83 in a window of
+            ten verses.  A warm spot is a lead to read, not a finding:
+            each measure's heading says what share of ordinary windows
+            is warm, and it is never small.
+    cool    a run of windows at G2 10.83 or beyond, below ordinary
+
+    Spots of one kind whose verses overlap are joined into one line.
+    The percentile (the share of ordinary windows scoring lower) is
+    printed beside each hot or warm peak; a window with none of the
+    words is set to 50%, because "none here" is ordinary, not a finding.
+
+THE WORDS AFTER A SPOT
+    The commonest words behind it, each by the King James's usual word
+    for it in this book.  A place is named as the Hebrew or Greek source
+    names it, with the King James's word after it in square brackets
+    where the two differ: 'Thebes [No]', 'Migdol [Tower]', 'Tyre
+    [Tyrus]'.
 """
 
 import argparse
 import bisect
 import math
+import re
 import sqlite3
 import sys
 from collections import Counter
@@ -125,16 +147,23 @@ HOME_PLACES = {
 # contrast, is tagged as a place.)
 NATIONS_AS_PERSONS = {"H5983", "H123"}      # Ammon, Edom
 
-# Strong evidence on the log-likelihood scale, as atlas_heat.py uses it.
+# Strong and good evidence on the log-likelihood scale, as atlas_heat.py
+# names them.  A hot or cool spot reaches the first, a warm spot the second.
 G2_STRONG = 10.83
+G2_GOOD = 3.84
+
+# The measures whose words are place names, shown by the source's name.
+PLACE_MEASURES = ("home", "other places")
 
 # English words of one root join into one rendering up to this many
 # positions apart, the same gap atlas_heat.py uses.
 MERGE_GAP = 2
 
-# At most this many cool spots are listed for a measure; a book that is
-# cool throughout would otherwise fill the page.
+# At most this many cool spots, and this many warm ones, are listed for
+# a measure, the strongest first chosen and then put in text order; a
+# book that is cool or warm throughout would otherwise fill the page.
 COOL_SPOTS_SHOWN = 6
+WARM_SPOTS_SHOWN = 8
 
 
 # ===========================================================================
@@ -238,10 +267,18 @@ class TestamentText:
             self.check_columns(db, corpus)
             self.settings = dict(db.execute("SELECT key, value FROM settings"))
             self.by_book = {}               # book number -> [Verse, ...] in reading order
+            said = {}                       # place root -> Counter of the source's names for it
             current = None
-            for book, chapter, verse, root, pos, kind in db.execute(
-                    "SELECT v.eng_book, v.eng_chapter, v.eng_verse, t.root, t.pos, t.name_kind "
-                    "FROM tokens t JOIN verses v USING (verse_id) "
+            last = None                     # the word before: [verse_id, root, kind, name parts]
+
+            def close_name():
+                """Put the finished place name into the tally under its root."""
+                if last and last[2] == "place":
+                    said.setdefault(last[1], Counter())[self.join_name(last[3])] += 1
+
+            for verse_id, book, chapter, verse, root, pos, kind, gloss in db.execute(
+                    "SELECT t.verse_id, v.eng_book, v.eng_chapter, v.eng_verse, t.root, t.pos, "
+                    "t.name_kind, t.gloss FROM tokens t JOIN verses v USING (verse_id) "
                     f"WHERE v.corpus = ? AND {row_filter} AND v.eng_book IS NOT NULL "
                     "ORDER BY t.verse_id, t.position", (corpus,)):
                 # A new Verse whenever the King James reference changes.
@@ -251,14 +288,54 @@ class TestamentText:
                         (book, chapter, verse):
                     current = Verse(book, chapter, verse)
                     self.by_book.setdefault(book, []).append(current)
+                part = self.clean_name(gloss) if kind else ""
+                # The second word of a two-word Hebrew name: the same
+                # verse, the same root and kind as the word before, and a
+                # different piece of the name ("Beth-" then "-el").  It
+                # joins the name already counted and is not counted again.
+                # The same piece twice ("Ariel, Ariel") is the name said
+                # twice, and both are counted.
+                if (corpus == "TAHOT" and kind and last and last[0] == verse_id
+                        and last[1] == root and last[2] == kind
+                        and part.lower() != last[3][-1].lower()):
+                    last[3].append(part)
+                    continue
+                close_name()
+                last = [verse_id, root, kind, [part]]
                 if pos not in CONTENT:
                     continue
                 current.content += 1
                 for m in MEASURES:
                     if m.counts(pos, kind, root):
                         current.roots.setdefault(m.name, []).append(root)
+            close_name()
+            # root -> the source's commonest name for the place
+            self.place_names = {root: names.most_common(1)[0][0] for root, names in said.items()
+                                if names.most_common(1)[0][0]}
         finally:
             db.close()
+
+    @staticmethod
+    def clean_name(gloss):
+        """
+        A name as the source's English gloss gives it, without the helps
+        the gloss adds: '<of> Zion' -> 'Zion', 'O Tyre' -> 'Tyre',
+        'to Babylon' -> 'Babylon', 'Beth-' stays 'Beth-'.
+        """
+        text = re.sub(r"\[[^\]]*\]|<[^>]*>", " ", gloss or "")
+        words = text.replace("\u00bf", " ").split()
+        # Drop the leading words that are not the name: 'O', 'of', 'to', 'in'.
+        while len(words) > 1 and (words[0] == "O" or words[0][:1].islower()):
+            words.pop(0)
+        return " ".join(words).strip(" ,.;:!?\u2019\u2018'\"")
+
+    @staticmethod
+    def join_name(parts):
+        """['Beth-', '-el'] -> 'Beth-el'; ['Hazar', 'Enan'] -> 'Hazar-enan'."""
+        name = parts[0].rstrip("-")
+        for part in parts[1:]:
+            name += "-" + part.lstrip("-").lower()
+        return name
 
     @staticmethod
     def check_columns(db, corpus):
@@ -332,6 +409,17 @@ class Ordinary:
         self.windows = len(reference)
         self.content, self.counts = window_totals(reference)
         self.sorted = {m.name: sorted(w.share(m.name) for w in reference) for m in MEASURES}
+        # How common a hot or a warm window is in ordinary text, so a
+        # reader can weigh a spot: the ordinary windows are scored against
+        # the ordinary rate like any other.
+        hot_at, warm_at = math.sqrt(G2_STRONG), math.sqrt(G2_GOOD)
+        self.hot_share, self.warm_share = {}, {}
+        for w in reference:
+            self.score(w)
+        for m in MEASURES:
+            scores = [w.z[m.name] for w in reference]
+            self.hot_share[m.name] = sum(1 for z in scores if z >= hot_at) / len(scores)
+            self.warm_share[m.name] = sum(1 for z in scores if warm_at <= z < hot_at) / len(scores)
 
     def rate(self, name):
         return self.counts[name] / self.content if self.content else 0.0
@@ -359,14 +447,19 @@ class Ordinary:
 # ===========================================================================
 @dataclass
 class Spot:
-    """A run of neighbouring windows past the threshold on one measure."""
+    """Windows past a threshold on one measure, joined where their verses overlap."""
     measure: str
     windows: list
-    hot: bool
+    kind: str                                   # "hot", "warm" or "cool"
+
+    @property
+    def hot(self):
+        """True for the two kinds that lie above ordinary."""
+        return self.kind != "cool"
 
     @property
     def peak(self):
-        pick = max if self.hot else min
+        pick = min if self.kind == "cool" else max
         return pick(self.windows, key=lambda w: w.g2[self.measure])
 
     def verses(self):
@@ -386,20 +479,64 @@ class Spot:
         return f"{book} {a.ref}-{b.ref}"
 
 
-def find_spots(windows, measure, threshold):
-    """Group neighbouring windows past the threshold into spots, hot then cool."""
-    spots = []
-    for hot in (True, False):
-        run = []
-        for w in windows + [None]:              # None closes the last run
-            past = w is not None and (w.z[measure] >= threshold if hot
-                                      else w.z[measure] <= -threshold)
-            if past:
-                run.append(w)
-            elif run:
-                spots.append(Spot(measure, run, hot))
-                run = []
-    return spots
+class SpotFinder:
+    """
+    Finds the hot, warm and cool spots of one measure along a book.
+    The windows must be the book's own, one starting at every verse, so
+    that window number i covers verses i to i + size - 1.
+    """
+
+    def __init__(self, windows, size, hot_at, warm_at):
+        self.windows = windows
+        self.size = size
+        self.hot_at = hot_at
+        self.warm_at = warm_at
+
+    def runs(self, wanted):
+        """Runs of neighbouring windows that pass a test, as (first, last) window numbers."""
+        out, first = [], None
+        for i, w in enumerate(self.windows + [None]):       # None closes the last run
+            if w is not None and wanted(w):
+                first = i if first is None else first
+            elif first is not None:
+                out.append((first, i - 1))
+                first = None
+        return out
+
+    def overlap(self, a, b):
+        """True when two runs share at least one verse."""
+        return a[0] <= b[1] + self.size - 1 and b[0] <= a[1] + self.size - 1
+
+    def joined(self, runs):
+        """Runs whose verses overlap, joined: each result is a list of runs."""
+        groups = []
+        for run in runs:
+            if groups and self.overlap(groups[-1][-1], run):
+                groups[-1].append(run)
+            else:
+                groups.append([run])
+        return groups
+
+    def spot(self, measure, group, kind):
+        """A Spot made of the windows of every run in a group."""
+        picked = [w for first, last in group for w in self.windows[first:last + 1]]
+        return Spot(measure, picked, kind)
+
+    def find(self, measure):
+        """(hot spots, warm spots, cool spots) for one measure, each in text order."""
+        z = lambda w: w.z[measure]
+        hot_groups = self.joined(self.runs(lambda w: z(w) >= self.hot_at))
+        cool_groups = self.joined(self.runs(lambda w: z(w) <= -self.hot_at))
+        # Warm: at the good-evidence line or beyond, never reaching the
+        # strong one, and clear of every hot spot (the slopes on either
+        # side of a hot spot are part of it, not spots of their own).
+        hot_runs = [run for group in hot_groups for run in group]
+        warm_runs = [run for run in self.runs(lambda w: z(w) >= self.warm_at)
+                     if all(z(w) < self.hot_at for w in self.windows[run[0]:run[1] + 1])
+                     and not any(self.overlap(run, hot) for hot in hot_runs)]
+        return ([self.spot(measure, g, "hot") for g in hot_groups],
+                [self.spot(measure, g, "warm") for g in self.joined(warm_runs)],
+                [self.spot(measure, g, "cool") for g in cool_groups])
 
 
 # ===========================================================================
@@ -419,6 +556,7 @@ class PosReport:
         self.windows = windows_of(self.verses, size, 1)
         for w in self.windows:
             self.ordinary.score(w)
+        self.finder = SpotFinder(self.windows, size, threshold, math.sqrt(G2_GOOD))
         self.headwords = self.load_headwords()
 
     def load_headwords(self):
@@ -486,10 +624,24 @@ class PosReport:
             return "Word Atlas (build line not available from here)."
 
     def word(self, root, measure):
-        """A root as the report prints it: its King James word, a name with a capital."""
+        """
+        A root as the report prints it: its King James word, a name with
+        a capital.  A place takes the name the source gives it, and the
+        King James's word follows in square brackets where it differs:
+        'Thebes [No]', 'Migdol [Tower]', 'Tyre [Tyrus]'.
+        """
         form = self.headwords.get(root, root)
         if measure != "description" and measure != "numbers" and form != root:
             form = form.title()
+        if measure in PLACE_MEASURES:
+            name = self.text.place_names.get(root)
+            letters = lambda text: re.sub(r"[^a-z]", "", text.lower())
+            if name and form == root:
+                return f"'{name}'"
+            if name and letters(name) != letters(form):
+                return f"'{name} [{form}]'"
+            if name:
+                return f"'{name}'"
         return f"'{form}'"
 
     def top_words(self, verses, measure, how_many=6):
@@ -522,8 +674,8 @@ class PosReport:
                f"{self.text.settings.get('pos_filled', '?')}.",
                f"{self.book}: {len(self.verses):,} verses, {content:,} content words "
                "(nouns, verbs, adjectives, numbers).",
-               f"Window: {self.size} verses, moving 1 verse at a time; spots at G2 "
-               f"{self.threshold ** 2:.2f} and beyond.",
+               f"Window: {self.size} verses, moving 1 verse at a time; hot and cool spots at "
+               f"G2 {self.threshold ** 2:.2f} and beyond, warm spots from G2 {G2_GOOD}.",
                f"Ordinary = every {testament} Testament book in the same text, as windows of "
                f"{self.size} verses ({o.windows:,} windows, one starting every {o.step} verses)."]
         out.extend(self.left_out())
@@ -552,20 +704,30 @@ class PosReport:
         for m in MEASURES:
             name = m.name
             what = "different adjectives per window" if m.different else "words"
-            out.append(f"({name})  ordinary rate {o.rate(name):.4f} of content words ({what})")
-            spots = find_spots(self.windows, name, self.threshold)
-            hot = [s for s in spots if s.hot]
-            cool = [s for s in spots if not s.hot]
+            out.append(f"({name})  ordinary rate {o.rate(name):.4f} of content words ({what}); "
+                       f"of ordinary windows {o.hot_share[name]:.1%} are hot, "
+                       f"{o.warm_share[name]:.1%} warm")
+            hot, warm, cool = self.finder.find(name)
             for s in hot:
                 out.append(self.spot_line("hot", s, name))
             if not hot:
                 out.append("  hot: none")
-                # Nothing past the threshold: still name the window that
+            # The strongest warm spots only, kept in text order.
+            shown = sorted(warm, key=lambda s: -s.peak.g2[name])[:WARM_SPOTS_SHOWN]
+            for s in warm:
+                if s in shown:
+                    out.append(self.spot_line("warm", s, name))
+            if len(warm) > len(shown):
+                out.append(f"  warm     and {len(warm) - len(shown)} weaker warm spots")
+            if not warm:
+                out.append("  warm: none")
+            if not hot and not warm:
+                # Nothing past either line: still name the window that
                 # came nearest, if any is above ordinary, so a short book
                 # has something to read against the text.
                 best = max(self.windows, key=lambda w: w.g2[name], default=None)
                 if best is not None and best.g2[name] > 0:
-                    out.append(self.spot_line("nearest", Spot(name, [best], True), name))
+                    out.append(self.spot_line("nearest", Spot(name, [best], "warm"), name))
             if not cool:
                 out.append("  cool: none")
             # The strongest cool spots only, kept in text order.
@@ -582,15 +744,21 @@ class PosReport:
         out.extend([
             "NOTES",
             "  G2 is Dunning's G squared (log-likelihood), the atlas's keyness measure:",
-            "  3.84 good evidence, 10.83 strong. 'nearest' is the window that came closest",
-            "  when no window reached 10.83. 'n of m' at a peak is the count in that",
-            "  window out of its content words. The percentile after a hot peak is the",
-            "  share of ordinary windows scoring lower.",
-            "  Spots overlap because windows overlap: a spot's verses run from its first",
-            "  window's start to its last window's end. The words after a hot spot are the",
-            "  commonest ones behind it, each by the King James's usual word for it in",
-            "  this book; 'x3' says how often the word comes in the spot, though for",
-            "  description a word scores once however often it comes.",
+            "  3.84 good evidence, 10.83 strong. A hot spot reaches 10.83; a warm spot",
+            "  reaches 3.84 but not 10.83 and stands clear of every hot spot. A warm spot",
+            "  is a lead to read, not a finding: each heading says how common warm windows",
+            "  are in ordinary text. 'nearest' is the window that came closest when none",
+            "  reached 3.84. 'n of m' at a peak is the count in that window out of its",
+            "  content words. The percentile after a peak is the share of ordinary windows",
+            "  scoring lower.",
+            "  Spots of one kind whose verses overlap are joined into one line. A spot's",
+            "  verses run from its first window's start to its last window's end. The words",
+            "  after a spot are the commonest ones behind it, each by the King James's",
+            "  usual word for it in this book; 'x3' says how often the word comes in the",
+            "  spot, though for description a word scores once however often it comes.",
+            "  A place is named as the source names it, with the King James's word in",
+            "  square brackets where the two differ. A Hebrew name of two words (Beth-el)",
+            "  is counted once.",
             "  'Other places' is every place name but the four home names, so it holds",
             "  towns of the land as well as foreign cities and nations. The sources tag",
             "  the tribes as persons, and Yahweh, God and Lord as titles; titles are in no",
@@ -605,8 +773,8 @@ class PosReport:
         line = (f"  {label:<8} {spot.span(self.book):<24}peak G2 {p.g2[name]:>+7.1f} at "
                 f"{p.middle.ref:<6} {p.counts[name]:>3} of {p.content:<4}")
         if spot.hot:
-            # The percentile and the words belong to a hot spot only: a
-            # cool spot is mostly "none here", which has neither.
+            # The percentile and the words belong to a hot or warm spot
+            # only: a cool spot is mostly "none here", which has neither.
             line += f" {p.pct[name]:5.1f}%  {self.top_words(spot.verses(), name)}"
         return line.rstrip()
 
