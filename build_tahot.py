@@ -97,6 +97,21 @@ PUNCT_RANGE = range(9014, 9020)
 # word: pronoun, preposition, conjunction, particle (article, object
 # marker, relative, interrogative, negative)
 STOP_MORPH_START = ("P", "R", "C", "T")
+
+
+def is_stop_morph(morph):
+    """
+    True when a root element's morphology code marks a stop word.  An
+    Aramaic word carries an A before its code (AC "that", ATn "not",
+    AR "from"), which is stepped over first; before 0.10.94 it was not,
+    and the Aramaic function words that stand alone were stored as
+    content words.  An adjective's code also begins with A but goes on
+    with a small letter (Aamsa), so a capital second letter is what
+    marks Aramaic.
+    """
+    if len(morph) >= 2 and morph[0] == "A" and morph[1].isupper():
+        morph = morph[1:]
+    return morph.startswith(STOP_MORPH_START)
 CANTILLATION = re.compile("[\u0591-\u05AF]")
 
 NEW_TOKEN_COLUMNS = [("word_type", "TEXT"), ("editions", "TEXT"), ("morph", "TEXT"), ("gloss", "TEXT"),
@@ -225,7 +240,7 @@ def build(data_dir, out_path, metadata_path):
             n_words += 1
             for kind, surface, code_, morph, gloss, lemma in w[5]:
                 root = simple(code_)
-                stop = int(kind != "root" or morph.startswith(STOP_MORPH_START))
+                stop = int(kind != "root" or is_stop_morph(morph))
                 token_rows.append((next_id, position, surface, lemma, root or f"L:{lemma}", stop, code_,
                                    w[4], None, morph, gloss, None, None, kind, w[3]))
                 position += 1

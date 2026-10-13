@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.93. Andrew Hopkins, with Claude.
+For version 0.10.94. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -5101,6 +5101,27 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.94.** The Aramaic stop words of the Hebrew text.
+`build_tahot.py` decided whether a word standing alone is a stop word
+from the first letter of its tag, and an Aramaic word's tag has an A in
+front of it (`AC` "that", `ATn` "not", `AR` "from"), so 825 Aramaic
+function words in Daniel 2 to 7, Ezra 4 to 7 and Jeremiah 10:11 were
+stored in `lxx.db` as content words: Daniel's Aramaic chapters read as
+97 percent content words where its Hebrew chapters are 83. The A is now
+stepped over before the test, and the same chapters come to 81 percent.
+No page reads that flag for the Hebrew text yet (the function-word
+tables go by each word's number, and the book pages of Daniel, Ezra,
+Jeremiah, Joel and Revelation came out the same, line for line, before
+and after), so nothing printed changes; the fix is for whatever reads
+the Hebrew stop words next. It takes a rebuild: `python3
+build_tahot.py`, then `python3 atlas_pos.py` if the part-of-speech
+columns are in use. Three trial tools came in beside it and are no part
+of the pages: `atlas_pos.py` (plain part-of-speech and name columns for
+the Hebrew and Greek tokens of `lxx.db`), `pos_experiment.py` (six
+trial measures read from them) and `word_code_experiment.py` (the
+packed word code, tried and shelved). Their notes are in
+IMPROVEMENTS.md.
 
 **0.10.93.** The USB drive's window, seen on a real screen: the
 dataset's line (its name, size, runs, pages and date in one tick box)
