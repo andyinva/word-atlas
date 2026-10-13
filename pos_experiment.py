@@ -210,14 +210,13 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from atlas_feelings import WORD_LISTS
 from atlas_metadata import MetadataStore, PassageStore, ReferenceParser
-from atlas_pos import PosColumns
+from atlas_pos import (PosColumns, CONTENT, ONE_WORDS, HOME_PLACES, NATIONS_AS_PERSONS,
+                       YEAR_AND_MONTH_WORDS, DATE_REACH, FEAST_WORDS, GLOSS_RULES, gloss_allows)
 
 # Folder this script lives in, so default paths work on Ubuntu and Windows.
 SCRIPT_DIR = Path(__file__).resolve().parent
-
-# The parts of speech that count as content words.
-CONTENT = {"noun", "verb", "adjective", "number"}
 
 # Adjectives of quantity, left out of (description): they say how many
 # or which, not what a thing is like.  Each was checked by its lemma.
@@ -244,72 +243,18 @@ QUANTITY_WORDS = {
     "G3173": "great",           # megas
 }
 
-# "One", left out of (numbers): Hebrew echad, Aramaic chad, Greek heis.
-ONE_WORDS = {"H259": "one", "H2298": "one", "G1520": "one"}
-
-# The names of the homeland, counted under (home) and not (other places):
-# Israel, Judah, Jerusalem, Zion, with their Aramaic and Greek forms.
-HOME_PLACES = {
-    "H3478": "Israel", "H3479": "Israel",       # Hebrew, Aramaic
-    "H3063": "Judah",
-    "H3389": "Jerusalem", "H3390": "Jerusalem", # Hebrew, Aramaic
-    "H6726": "Zion",
-    "G2474": "Israel", "G2448": "Judah", "G2449": "Judea",
-    "G2414": "Jerusalem", "G2419": "Jerusalem", "G4622": "Zion",
-}
-
-# "Year" and "month" in Hebrew, Aramaic and Greek.  A number standing
-# within DATE_REACH whole words of one of them, in the same verse, is
-# counted under (dates) and not under (numbers).  "Day" is left out on
-# purpose: the 1,290 days and the 1,335 days are counts to be kept.
-YEAR_AND_MONTH_WORDS = {
-    "H8141": "year", "H8140": "year",                       # shanah; Aramaic shenah
-    "H2320": "month", "H3391": "month", "H3393": "month",   # chodesh, yerach; Aramaic yerach
-    "G2094": "year", "G1763": "year",                       # etos, eniautos
-    "G3376": "month",                                       # men
-}
-DATE_REACH = 2
-
 # The wealth words of the feeling list (gold, silver, pearls, silk,
 # merchandise), filled from metadata.db when a Trial is set up.  They
 # make the (wealth) measure of the passage reports.
 WEALTH_WORDS = set()
 
-# Nations the Hebrew source tags as persons, after their ancestors, in
-# every one of their uses.  They are counted as places here.  (Moab, by
-# contrast, is tagged as a place.)
-NATIONS_AS_PERSONS = {"H5983", "H123"}      # Ammon, Edom
-
-# Three word lists, each a Strong's number and the plain English word
-# the notes print for it.  They make the (feasts), (landscape) and
-# (character) measures, which count a word of the list whatever its part
-# of speech, in book reports and passage reports alike.  Each number was
-# checked against the glosses the tagged texts give it; where one number
-# carries two meanings, GLOSS_RULES below says which uses count.
-
-# The feasts and seasons of the calendar, and the names of the months.
-FEAST_WORDS = {
-    "H6453": "passover", "G3957": "passover",
-    "H2282": "feast", "H2287": "keep a feast", "G1859": "feast",
-    "H4682": "unleavened bread", "G106": "unleavened bread",
-    "H7676": "sabbath", "H7677": "sabbath rest", "G4521": "sabbath",
-    "G4005": "Pentecost",
-    "H1061": "firstfruits", "G536": "firstfruits",
-    "H3725": "atonement",
-    "H5521": "booth", "G4634": "feast of tabernacles",
-    "H3104": "jubilee",
-    "H6332": "Purim",
-    "H2598": "dedication", "G1456": "dedication",
-    "H4150": "appointed feast", "H6116": "solemn assembly", "H4744": "convocation",
-    "H2320": "new moon", "G3561": "new moon",
-    # the month names
-    "H24": "Abib", "H5212": "Nisan", "H2099": "Ziv", "H388": "Ethanim", "H945": "Bul",
-    "H2887": "Tebeth", "H7627": "Shebat", "H143": "Adar", "H5510": "Sivan",
-    "H435": "Elul", "H3691": "Chislev",
-}
-# Not in the list: shabua "week" (H7620), which is the seventy weeks of
-# Daniel far more often than the Feast of Weeks, whose "feast" word is
-# counted anyway; and Tammuz (H8542), which in Ezekiel 8 is the god.
+# The word lists below, each a Strong's number and the plain English
+# word the notes print for it, make the (landscape), (character),
+# (divine), (fruit) and (flesh) measures, which count a word of the list
+# whatever its part of speech.  The feast list, the home names, the
+# "one" words, the date words and the gloss rules (GLOSS_RULES, which
+# say which uses count where one number carries two meanings) are
+# atlas_pos.py's, shared with atlas_heat.py's names strips.
 
 # The features of the land, as common nouns.  Named rivers and mountains
 # (Jordan, Euphrates, Carmel) are place names and stay in (other places).
@@ -333,99 +278,16 @@ LANDSCAPE_WORDS = {
 # of the field" far more than a feature of the land; it had 49 of
 # Genesis's 121 landscape words and 6 of Joel's 27.
 
-# Qualities of character, good and bad: the words that say what a person
-# is like.  Holy, love, fear and violence are left to the feeling lists,
-# and the words the Old Testament says almost only of God (gracious,
-# merciful, mercy, truth) are a list of their own below.
-CHARACTER_WORDS = {
-    # righteous and wicked
-    "H6662": "righteous", "H6664": "righteousness", "H6666": "righteousness",
-    "G1342": "righteous", "G1343": "righteousness", "G93": "unrighteousness", "G94": "unjust",
-    "H7563": "wicked", "H7562": "wickedness", "G4190": "wicked", "G4189": "wickedness",
-    # upright, perfect, innocent
-    "H3477": "upright", "H3476": "uprightness", "H8549": "perfect", "H8537": "integrity",
-    "G5046": "perfect", "G273": "blameless", "G299": "blameless",
-    "H5355": "innocent", "G121": "innocent", "G172": "harmless",
-    # faithful and true
-    "H530": "faithfulness", "H571": "truth", "G4103": "faithful",
-    "G225": "truth", "G227": "true", "G228": "true",
-    # deceit and lies
-    "H4820": "deceit", "H8267": "falsehood", "G1388": "deceit", "G5579": "lie", "G5571": "false",
-    # wise and foolish
-    "H2450": "wise", "H2451": "wisdom", "H6175": "prudent", "H6195": "prudence",
-    "H8394": "understanding", "G4680": "wise", "G4678": "wisdom", "G5429": "prudent",
-    "H3684": "fool", "H191": "fool", "H5036": "fool", "H200": "folly", "H3887": "scorner",
-    "G3474": "foolish", "G3472": "foolishness", "G453": "foolish", "G878": "foolish",
-    # proud and humble
-    "H1341": "proud", "H1343": "proud", "H1346": "pride", "H1347": "pride",
-    "H2086": "proud", "H2087": "presumption", "G5244": "proud", "G5243": "pride",
-    "H6035": "humble", "H6038": "humility",
-    "G5011": "humble", "G5012": "humility",
-    "G4235": "meek", "G4236": "meekness", "G4240": "meekness",
-    # merciful and kind, as people are told to be
-    "H2623": "godly", "G1655": "merciful", "G3629": "merciful",
-    "G5543": "kind", "G5544": "kindness",
-    # self-control and patience
-    "G1466": "temperance", "G4997": "sobriety", "G4998": "sober",
-    "G5281": "patience", "G3115": "longsuffering", "G4587": "grave", "G4586": "gravity",
-}
-
-# The attributes of God: the words the Old Testament uses of him almost
-# alone.  Gracious (chanun) is said of no one else, merciful (rachum) of
-# hardly anyone, and mercy (chesed) and truth (emeth) are mostly his.
-# Joel 2:13 ("gracious and merciful, slow to anger") describes God, not
-# people, and a study of prophecy wants the two kept apart.
-DIVINE_WORDS = {
-    "H2587": "gracious", "H7349": "merciful", "H7356": "compassion",
-    "H2617": "mercy", "H571": "truth", "H530": "faithfulness",
-    "G1656": "mercy", "G3628": "compassion",
-}
-
-# The fruit of the Spirit, the nine of Galatians 5:22 to 23 as the
-# Textus Receptus has them (meekness is praotes there, G4236, and
-# prautes, G4240, in Galatians itself).  Greek only.  Faith (pistis)
-# counts only where the source glosses it "faithfulness", the fruit, and
-# not where it is belief: see GLOSS_RULES.
-FRUIT_WORDS = {
-    "G26": "love", "G5479": "joy", "G1515": "peace", "G3115": "longsuffering",
-    "G5544": "gentleness", "G19": "goodness", "G4102": "faith",
-    "G4236": "meekness", "G4240": "meekness", "G1466": "temperance",
-}
-
-# The works of the flesh, the seventeen of Galatians 5:19 to 21, the
-# natural opposite.  Greek only.
-FLESH_WORDS = {
-    "G3430": "adultery", "G4202": "fornication", "G167": "uncleanness",
-    "G766": "lasciviousness", "G1495": "idolatry", "G5331": "witchcraft",
-    "G2189": "hatred", "G2054": "variance", "G2205": "emulations", "G2372": "wrath",
-    "G2052": "strife", "G1370": "seditions", "G139": "heresies", "G5355": "envyings",
-    "G5408": "murders", "G3178": "drunkenness", "G2970": "revellings",
-}
-
-# Where one Strong's number carries two meanings, the source's gloss
-# tells them apart.  root -> (words the gloss must have, words it must
-# not have); either tuple may be empty.  So H4150 counts as a feast only
-# when it is not the tent of "meeting", H2320 only as "new moon" and not
-# as "month", H3220 as the sea and not as "west", and H8549 as a
-# blameless person and not an "unblemished" lamb.
-GLOSS_RULES = {
-    "H4150": (("feast",), ()),              # appointed feast, not tent of meeting
-                                            # nor the appointed time of the end
-    "H2320": (("new moon",), ()),           # new moon, not month
-    "G4521": ((), ("week",)),               # sabbath, not the first day of the week
-    "H3104": ((), ("horn",)),               # jubilee, not the ram's horn
-    "H24": ((), ("barley",)),               # the month Abib, not ears of barley
-    "H3220": ((), ("west",)),               # sea, not west
-    "H4334": ((), ("upright",)),            # plain, not uprightness
-    "H8549": ((), ("unblemished",)),        # blameless, not an unblemished offering
-    "G299": ((), ("unblemished",)),
-    "H1346": ((), ("majesty",)),            # pride, not the majesty of God
-    "H1347": ((), ("majesty",)),
-    "H6035": ((), ("poor",)),               # humble, not the poor
-    "H7356": ((), ("womb",)),               # compassion, not the womb
-    "H3887": ((), ("interpret",)),          # scorner, not interpreter
-    "G4102": (("faithful",), ()),           # faithfulness the fruit, not belief
-}
+# Qualities of character as people have them, the attributes of God, and
+# the fruit of the Spirit and works of the flesh of Galatians 5: the four
+# lists atlas_feelings.py keeps (WORD_LISTS), which metadata.db stores and
+# atlas_heat.py draws.  The trial's fruit list keeps faith (pistis) with a
+# gloss rule, counting it only where the source glosses it "faithfulness";
+# the stored list leaves it out, since the King James cannot tell the two.
+CHARACTER_WORDS = WORD_LISTS["character"]
+DIVINE_WORDS = WORD_LISTS["divine"]
+FRUIT_WORDS = dict(WORD_LISTS["fruit"], G4102="faith")
+FLESH_WORDS = WORD_LISTS["flesh"]
 
 # The word-list measures, each with its list: their words are printed by
 # the list's own plain word, not by the King James's usual word in the
@@ -443,11 +305,7 @@ SIGHTINGS_LIMIT = 40
 def listed(words):
     """The counting test for a word-list measure: in the list, and the gloss allows it."""
     def counts(pos, kind, root, dated, gloss):
-        if root not in words:
-            return False
-        must, must_not = GLOSS_RULES.get(root, ((), ()))
-        text = (gloss or "").lower()
-        return all(w in text for w in must) and not any(w in text for w in must_not)
+        return root in words and gloss_allows(root, gloss)
     return counts
 
 # Strong and good evidence on the log-likelihood scale, as atlas_heat.py
@@ -1313,7 +1171,7 @@ class Trial:
             sample = ", ".join(dict.fromkeys(list(listed.values())[:7]))
             counts = (f"{size(listed, 'H')} Hebrew and {size(listed, 'G')} Greek"
                       if size(listed, 'H') else f"{size(listed, 'G')} Greek")
-            out.append(f"{name.title()} = {counts} words of the list in the script "
+            out.append(f"{name.title()} = {counts} words of the list "
                        f"({sample}, ...), whatever their part of speech.")
         return out
 

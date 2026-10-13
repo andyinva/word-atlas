@@ -47,11 +47,37 @@ THE FIVE MEASURES
                 present once that list has been imported. The report names
                 the categories behind each feeling hot spot.
                 --families adds one strip per family as well: emotion,
-                senses, body, violence, sacred, wealth, harlotry.
+                senses, body, violence, sacred, wealth, harlotry; and
+                one per word list of metadata.db (atlas_feelings.py
+                lists): character, divine (the attributes of God), and
+                for a New Testament book fruit and flesh (Galatians 5).
 
     The variety, rare, hammer, action and feeling measures count the Hebrew and
     Greek words behind the KJV (Strong's numbers); a Hebrew word rendered
     by several English words counts once. Density counts English words.
+
+THE NAMES AND NUMBERS STRIPS (--names)
+    Four more strips, off by default so the usual picture stays as it
+    was, read from the original text's own grammar tags (the pos and
+    name_kind columns atlas_pos.py keeps in lxx.db) rather than the KJV:
+    (nations)   names of places outside the homeland, and of peoples:
+                the oracles against the nations, Gog, itineraries and
+                boundary lists. Chaldeans, Babylon and Ammon all count
+                here whatever kind of name the source calls them.
+    (persons)   names of men and women: genealogies, lists, narrative
+                about named people. Cool through a prophet's visions.
+    (home)      Israel, Judah, Jerusalem and Zion.
+    (numbers)   number words less "one" and less the dates: censuses,
+                measurements, the sevens and twelves of Revelation.
+    Each is a share of the original text's content words (nouns, verbs,
+    adjectives and numbers), so the counts are the Hebrew's and the
+    Greek's, and the verses are the King James's, which is how lxx.db
+    files them. With --names the chart and the report also mark two
+    kinds of verse that are points rather than stretches: a date (a
+    number within two words of "year" or "month": the oracle headings
+    of Ezekiel, Haggai and Zechariah) and a feast word (passover,
+    sabbath, the feast of booths, a month name). The rules are in
+    atlas_pos.py.
 
 SCALES (--scale)
     z           (default) distance from the ordinary average, in spreads.
@@ -76,7 +102,14 @@ ORDINARY
     Ordinary is the whole Bible in the same language: Old Testament
     windows for an Old Testament book, New Testament windows for a New
     Testament book. --norm book compares a book with itself instead, which
-    shows its own peaks even when the whole book runs hot.
+    shows its own peaks even when the whole book runs hot. --norm group
+    compares an Old Testament book with the other books of its own kind,
+    its baseline group in metadata.db (Law, History, Prophecy, Poetry,
+    Persian period), and --norm group:Prophecy with a group you name:
+    against the whole Old Testament a prophet is cool for persons from
+    end to end and Ezekiel's numbers look ordinary; against the other
+    prophets, persons is Jeremiah's mark and numbers Ezekiel's. A New
+    Testament book is always measured against the whole New Testament.
 
 OUTPUT
     A text report (build line first): the hot and cool spots for each
@@ -95,6 +128,8 @@ Usage:
     python atlas_heat.py Revelation --norm book --families --scale percentile
     python atlas_heat.py Revelation --families --scale g2
     python atlas_heat.py Ezekiel --out reports/heat_ezekiel.txt --svg reports/heat_ezekiel.svg
+    python atlas_heat.py Ezekiel --names --norm group --scale g2 --svg reports/heat_ezekiel_names.svg
+    python atlas_heat.py Daniel --names --norm group:Prophecy --scale g2
 """
 
 import argparse
@@ -121,6 +156,16 @@ VOICE_ROOTS = {"H559", "H3068", "H136", "H3069", "H6635", "G3004", "G2036"}
 
 # The families of feeling words (see atlas_feelings.py), for --families.
 FAMILY_NAMES = ["emotion", "senses", "body", "violence", "sacred", "wealth", "harlotry"]
+
+# The word lists of metadata.db (atlas_feelings.py), drawn with --families
+# after the families; the ones with no word in a book's language are left out.
+LIST_NAMES = ["character", "divine", "fruit", "flesh"]
+
+# The names and numbers strips (see atlas_pos.py's NameReader), for --names.
+NAME_MEASURES = ["nations", "persons", "home", "numbers"]
+
+# The verses marked under the names strips: a date, a feast word.
+MARKS = ["dates", "feasts"]
 
 # Headwords for words the KJV renders with the same English as another
 # word: zoon (the four living creatures) is "beast" in the KJV, like
@@ -152,6 +197,7 @@ class Verse:
     units: list = field(default_factory=list)   # content Strong's roots, in order
     english: list = field(default_factory=list) # the KJV words behind each unit, same order
     verbs: int = 0                   # content units that are verbs
+    names: object = None             # the original text's counts (atlas_pos.VerseCounts), with --names
 
     @property
     def ref(self) -> str:
@@ -296,8 +342,11 @@ class Scorer:
     """Computes the five measures for a window."""
 
     def __init__(self, weight: dict, rare_limit: int, feelings: dict | None = None,
-                 families: list | None = None, hammer_skip: set | None = None):
+                 families: list | None = None, hammer_skip: set | None = None,
+                 names: bool = False, lists: dict | None = None):
         self.weight = weight
+        self.names = names              # score the names strips too (--names)
+        self.lists = lists or {}        # list name -> roots, the word-list strips (--families)
         self.rare_limit = rare_limit
         # Words hammer ignores: the voice formulas and the most common words.
         self.hammer_skip = VOICE_ROOTS | (hammer_skip or set())
@@ -332,6 +381,20 @@ class Scorer:
             s["hammer"] = 0.0
         c["action"] = (verbs, n)
         s["action"] = verbs / n if n else 0.0
+
+        if self.names:
+            # The names strips: shares of the original text's content words.
+            counted = [v.names for v in window.verses if v.names is not None]
+            n_orig = sum(x.content for x in counted)
+            for m in NAME_MEASURES:
+                k = sum(getattr(x, m) for x in counted)
+                c[m] = (k, n_orig)
+                s[m] = k / n_orig if n_orig else 0.0
+
+        for name, roots in self.lists.items():
+            k = sum(1 for u in units if u in roots)
+            c[name] = (k, n)
+            s[name] = k / n if n else 0.0
 
         if self.feelings:
             hits = [self.feelings[u] for u in units if u in self.feelings]
@@ -490,7 +553,7 @@ class PercentileScale(Scale):
 
     # Strips where "none here" is shown as exactly ordinary (50%, gray):
     # most text has none of these words, so a zero is not a finding.
-    ZERO_IS_ORDINARY = {"feeling", *FAMILY_NAMES}
+    ZERO_IS_ORDINARY = {"feeling", *FAMILY_NAMES, *LIST_NAMES, *NAME_MEASURES}
 
     def set(self, w: Window, m: str) -> None:
         pct = self.percentile(w.scores[m], m)
@@ -533,7 +596,7 @@ class LogLikelihoodScale(Scale):
     """
 
     name = "g2"
-    COUNTED = {"density", "rare", "action", "feeling", *FAMILY_NAMES}
+    COUNTED = {"density", "rare", "action", "feeling", *FAMILY_NAMES, *LIST_NAMES, *NAME_MEASURES}
 
     def __init__(self, reference: list[Window], label: str):
         super().__init__(reference, label)
@@ -633,8 +696,9 @@ def find_spots(windows: list[Window], measure: str, threshold: float) -> list[Sp
 class HeatReport:
 
     def __init__(self, book: str, windows: list[Window], norms: Scale, loader: VerseLoader, args,
-                 feelings: dict | None = None):
+                 feelings: dict | None = None, lists: dict | None = None):
         self.feelings = feelings or {}
+        self.lists = lists or {}
         # One English headword per Strong's number (see VerseLoader.headwords).
         self.heads = loader.headwords(book)
         self.book = book
@@ -679,6 +743,35 @@ class HeatReport:
         top_words = ", ".join(f"'{g}'" for g in glosses[:4])
         return f"{top_cats}; {top_words}"
 
+    def list_detail(self, spot: "Spot", name: str) -> str:
+        """The commonest words of a word list behind its hot spot, by their King James words."""
+        words = Counter()
+        w_list = self.windows[self.windows.index(spot.first):self.windows.index(spot.last) + 1]
+        seen = set()
+        for w in w_list:
+            for v in w.verses:
+                if v.verse_id in seen:
+                    continue
+                seen.add(v.verse_id)
+                words.update(u for u in v.units if u in self.lists[name])
+        glosses = Counter()
+        for u, n in words.items():
+            glosses[self.heads.get(u) or self.loader.glosses.get(u, u)] += n
+        return ", ".join(f"'{g}' {n}" if n > 1 else f"'{g}'" for g, n in glosses.most_common(4))
+
+    def names_detail(self, spot: "Spot", measure: str) -> str:
+        """The commonest words behind a names hot spot, as the source glosses them."""
+        words = Counter()
+        w_list = self.windows[self.windows.index(spot.first):self.windows.index(spot.last) + 1]
+        seen = set()
+        for w in w_list:
+            for v in w.verses:
+                if v.verse_id in seen or v.names is None:
+                    continue
+                seen.add(v.verse_id)
+                words.update(v.names.words.get(measure, []))
+        return ", ".join(f"'{word}' {n}" if n > 1 else f"'{word}'" for word, n in words.most_common(4))
+
     def gloss(self, root: str) -> str:
         return f"'{self.loader.glosses.get(root, root)}' {root}" if root else ""
 
@@ -711,10 +804,16 @@ class HeatReport:
                         extra = f"  hammered: '{s.peak.hammer_english}' {s.peak.hammer_word}"
                     if s.hot and (m == "feeling" or m in FAMILY_NAMES):
                         extra = "  " + self.feeling_detail(s, m)
+                    if s.hot and m in NAME_MEASURES:
+                        extra = "  " + self.names_detail(s, m)
+                    if s.hot and m in self.lists:
+                        extra = "  " + self.list_detail(s, m)
                     out.append(f"  {label:<5}{s.span(self.book):<28}"
                                f"peak {s.peak.shown[m]:>10} at {s.peak.middle.ref}{extra}")
             out.append("")
 
+        if self.args.names:
+            out.extend(self._marks())
         out.extend(self._chapter_table())
         out.extend(["NOTES",
                     "  Scales (--scale): z = distance from ordinary in spreads; percentile =",
@@ -728,6 +827,30 @@ class HeatReport:
                     "  have a tiny ordinary spread, so their z can run far past 3; the",
                     "  percentile and g2 scales are built for such counts."])
         return "\n".join(out)
+
+    def _marks(self) -> list[str]:
+        """The dated verses and the verses with a feast word, each with its words."""
+        out = []
+        verses = list({v.verse_id: v for w in self.windows for v in w.verses}.values())
+        for kind, what in (("dates", "a number by 'year' or 'month'"),
+                           ("feasts", "a feast or season word")):
+            found = [(v, getattr(v.names, kind)) for v in verses
+                     if v.names is not None and getattr(v.names, kind)]
+            out.append(f"{kind.upper()}  ({len(found)} verses with {what}; marked under the "
+                       "strips on the chart)")
+            line = "  "
+            for v, words in found:
+                piece = f"{v.ref} {', '.join(words)}; "
+                if len(line) + len(piece) > 96 and line.strip():
+                    out.append(line.rstrip())
+                    line = "  "
+                line += piece
+            if line.strip():
+                out.append(line.rstrip().rstrip(";"))
+            if not found:
+                out.append("  none")
+            out.append("")
+        return out
 
     def _chapter_table(self) -> list[str]:
         """Each chapter's average score on the chosen scale."""
@@ -786,7 +909,9 @@ class StripChart:
         left, plot_w = 90, 1100
         cell = plot_w / n
         strip_h, gap, top = 34, 8, 56
-        height = top + len(MEASURES) * (strip_h + gap) + 90
+        mark_rows = MARKS if self.args.names else []
+        mark_h = 14
+        height = top + len(MEASURES) * (strip_h + gap) + len(mark_rows) * (mark_h + gap) + 90
         width = left + plot_w + 30
         parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
                  f'viewBox="0 0 {width} {height}" font-family="sans-serif">',
@@ -811,8 +936,27 @@ class StripChart:
                              f'height="{strip_h}" fill="{self.color(w.z[m])}">'
                              f'<title>{escape(tip)}</title></rect>')
 
+        # The dated verses and the feast verses, as ticks under the strips:
+        # a verse sits at the window it is the middle of.
+        size = len(self.windows[0].verses) if self.windows else 1
+        verses = list({v.verse_id: v for w in self.windows for v in w.verses}.values())
+        for row, kind in enumerate(mark_rows):
+            y = top + len(MEASURES) * (strip_h + gap) + row * (mark_h + gap)
+            parts.append(f'<text x="{left - 8}" y="{y + mark_h / 2 + 4}" font-size="12" '
+                         f'text-anchor="end" fill="{self.INK}">{kind}</text>')
+            parts.append(f'<rect x="{left}" y="{y}" width="{plot_w}" height="{mark_h}" '
+                         f'fill="{self.color(0.0)}"/>')
+            for j, v in enumerate(verses):
+                words = getattr(v.names, kind) if v.names is not None else []
+                if not words:
+                    continue
+                x = left + min(max(j - size // 2, 0), n - 1) * cell + cell / 2
+                tip = f"{self.book} {v.ref}  ({kind}) {', '.join(words)}"
+                parts.append(f'<rect x="{x - 1.5:.2f}" y="{y}" width="3" height="{mark_h}" '
+                             f'fill="{self.INK}"><title>{escape(tip)}</title></rect>')
+
         # Chapter marks under the strips.
-        axis_y = top + len(MEASURES) * (strip_h + gap)
+        axis_y = top + len(MEASURES) * (strip_h + gap) + len(mark_rows) * (mark_h + gap)
         starts = {}
         for i, w in enumerate(self.windows):
             starts.setdefault(w.middle.chapter, i)
@@ -843,6 +987,35 @@ class StripChart:
 # ===========================================================================
 # Command line
 # ===========================================================================
+def group_books(args, loader: VerseLoader, book: str, books: list, label: str) -> tuple[list, str]:
+    """
+    The books that make ordinary under --norm group or group:NAME: the
+    Old Testament books of the group, the book itself left out. A New
+    Testament book, or a group with no other book in it, keeps the whole
+    testament, with a note.
+    """
+    from atlas_metadata import MetadataStore
+    metadata = MetadataStore(args.metadata)
+    number = loader.books.index(book) + 1
+    wanted = args.norm.partition(":")[2] or metadata.group_of(number)
+    if loader.testament[book] != "Old":
+        print(f"Note: --norm {args.norm} applies to Old Testament books; {book} is measured "
+              "against the whole New Testament.\n")
+        return books, label
+    known = sorted(set(metadata.groups.values()), key=str.lower)
+    group = next((g for g in known if g.lower() == wanted.lower()), None)
+    if group is None:
+        sys.exit(f"No group named '{wanted}' in metadata.db. Groups: {', '.join(known)}.")
+    chosen = [loader.books[n - 1] for n in metadata.books_in_group(group)
+              if n != number and loader.testament[loader.books[n - 1]] == "Old"]
+    if not chosen:
+        print(f"Note: no other book in the {group} group, so {book} is measured against the "
+              "whole Old Testament.\n")
+        return books, label
+    own = "its own kind" if group == metadata.group_of(number) else "the group named"
+    return chosen, f"the other {group} books ({own}; {len(chosen)} books, {book} left out)"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Word Atlas hot and cool spots")
     parser.add_argument("book", help="a book name as atlas.db spells it, e.g. Ezekiel")
@@ -853,14 +1026,21 @@ def main() -> None:
                         help="spot threshold in z-like units (default 2; 3.29 = G2 10.83 for g2)")
     parser.add_argument("--rare", type=int, default=10,
                         help="a word is rare at this many uses in the Bible or fewer (default 10)")
-    parser.add_argument("--norm", choices=["bible", "book"], default="bible",
-                        help="ordinary = the Bible in the same language (default) or the book itself")
+    parser.add_argument("--norm", default="bible",
+                        help="ordinary = bible (the Bible in the same language, the default), book "
+                             "(the book itself), group (the other Old Testament books of the "
+                             "book's own kind) or group:NAME (a named group, e.g. group:Prophecy)")
     parser.add_argument("--hammer-skip", type=int, default=100,
                         help="hammer ignores this many of the most used words (default 100, 0 = none)")
     parser.add_argument("--hammer-window", type=int, default=0,
                         help="measure hammer over this many verses around each window (e.g. 30)")
     parser.add_argument("--families", action="store_true",
                         help="add one strip per feeling-word family (needs the feeling list)")
+    parser.add_argument("--names", action="store_true",
+                        help="add the nations, persons, home and numbers strips, read from the "
+                             "original text's tags in lxx.db, with the date and feast marks")
+    parser.add_argument("--lxx", type=Path, default=SCRIPT_DIR / "lxx.db",
+                        help="the tagged texts the --names strips are read from")
     parser.add_argument("--atlas", type=Path, default=SCRIPT_DIR / "atlas.db")
     parser.add_argument("--metadata", type=Path, default=SCRIPT_DIR / "metadata.db")
     parser.add_argument("--out", type=Path, help="also write the report to this file")
@@ -868,6 +1048,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.threshold is None:
         args.threshold = DEFAULT_THRESHOLD[args.scale]
+    if not (args.norm in ("bible", "book", "group") or args.norm.startswith("group:")):
+        sys.exit(f"--norm must be bible, book, group or group:NAME, not '{args.norm}'.")
 
     loader = VerseLoader(args.atlas)
     # Accept any capitalization of the book name.
@@ -877,7 +1059,7 @@ def main() -> None:
         sys.exit(f"Unknown book '{args.book}'. Use the name as atlas.db spells it.")
 
     # The feeling-word list, when it has been reviewed and imported.
-    from atlas_feelings import load_feeling_words
+    from atlas_feelings import load_feeling_words, load_word_lists
     feelings = load_feeling_words(args.metadata)
     families = []
     if feelings:
@@ -887,10 +1069,34 @@ def main() -> None:
             MEASURES.extend(families)
     elif args.families:
         print("Note: no feeling words in metadata.db yet (atlas_feelings.py), so no families.\n")
+    # The word lists, drawn with the families: those with a word in the
+    # book's language (fruit and flesh are Greek only).
+    lists = {}
+    if args.families:
+        letter = "H" if loader.language_of(book) == "Hebrew" else "G"
+        stored = load_word_lists(args.metadata)
+        lists = {name: roots for name, roots in stored.items()
+                 if name in LIST_NAMES and any(r.startswith(letter) for r in roots)}
+        if not stored:
+            print("Note: no word lists in metadata.db yet (python3 atlas_feelings.py lists), "
+                  "so no character, divine, fruit or flesh strips.\n")
+        MEASURES.extend(lists)
+
+    # The names strips: the original text's counts, hung on each verse.
+    if args.names:
+        from atlas_pos import NameReader
+        corpus = "TAHOT" if loader.testament[book] == "Old" else "GNT"
+        if not args.lxx.exists():
+            sys.exit(f"--names needs lxx.db (not found at {args.lxx}).")
+        reader = NameReader(args.lxx, corpus)
+        for v in loader.verses.values():
+            if loader.testament[v.book] == loader.testament[book]:
+                v.names = reader.by_ref.get((loader.books.index(v.book) + 1, v.chapter, v.verse))
+        MEASURES.extend(NAME_MEASURES)
 
     skip, args.skip_summary = most_common_roots(loader, loader.language_of(book), args.hammer_skip) \
         if args.hammer_skip else (set(), "only the voice-formula words skipped")
-    scorer = Scorer(loader.weight, args.rare, feelings, families, skip)
+    scorer = Scorer(loader.weight, args.rare, feelings, families, skip, args.names, lists)
     windows = windows_of(loader.verses_of(book), args.window, 1, args.hammer_window)
     for w in windows:
         scorer.score(w)
@@ -904,25 +1110,29 @@ def main() -> None:
         norms.sampling = ", one starting at every verse"
     else:
         # Ordinary windows: every book of the same language, side by side
-        # (step = half a window, so they overlap less and count faster).
+        # (step = half a window, so they overlap less and count faster);
+        # or, with --norm group, the other books of the book's kind.
         language = loader.language_of(book)
+        testament = "Old" if language == "Hebrew" else "New"
+        books = [b for b in loader.books if loader.language_of(b) == language]
+        label = f"every {testament} Testament book ({language})"
+        if args.norm != "bible":
+            books, label = group_books(args, loader, book, books, label)
         reference = []
-        for b in loader.books:
-            if loader.language_of(b) == language:
-                reference.extend(windows_of(loader.verses_of(b), args.window,
-                                            max(1, args.window // 2), args.hammer_window))
+        for b in books:
+            reference.extend(windows_of(loader.verses_of(b), args.window,
+                                        max(1, args.window // 2), args.hammer_window))
         for w in reference:
             scorer.score(w)
-        testament = "Old" if language == "Hebrew" else "New"
         step = max(1, args.window // 2)
-        norms = SCALES[args.scale](reference, f"every {testament} Testament book ({language})")
+        norms = SCALES[args.scale](reference, label)
         # Ordinary windows start every half window, not every verse:
         # neighbors then share half their verses instead of nine tenths,
         # and the average and spread come out the same.
         norms.sampling = f", one starting every {step} verses"
     norms.apply(windows)
 
-    text = HeatReport(book, windows, norms, loader, args, feelings).render()
+    text = HeatReport(book, windows, norms, loader, args, feelings, lists).render()
     print(text)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)

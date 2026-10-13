@@ -48,10 +48,31 @@ FAMILIES
         wealth    wealth (trade goods, riches, merchandise)
         harlotry  harlotry
 
+THE WORD LISTS (lists)
+    Four more lists, drawn as strips beside the families with --families,
+    but kept apart from the feeling words because a word may be in a
+    list and in a category both (love is an emotion and a fruit of the
+    Spirit), and the feeling_words table holds one category per word:
+        character  qualities of character as people have them: righteous
+                   and wicked, upright, true and false, wise and foolish,
+                   proud and humble, kind, patient
+        divine     the attributes of God, the words the Old Testament says
+                   of him almost alone: gracious, merciful, compassion,
+                   mercy, truth, faithfulness
+        fruit      the fruit of the Spirit, Galatians 5:22 to 23 (Greek)
+        flesh      the works of the flesh, Galatians 5:19 to 21 (Greek)
+    The lists are WORD_LISTS below, reviewed in the parts-of-speech trial
+    (pos_experiment.py, which reads the same ones); `lists` stores them in
+    metadata.db's word_lists table, where they can be read and edited
+    like the feeling words, and refreshes the backup. Faith (pistis) is
+    not in the fruit list: the King James renders it "faith" whether it
+    is belief or the fruit, and belief would flood the strip.
+
 Usage:
     python atlas_feelings.py draft
     python atlas_feelings.py draft --out my_draft.tsv
     python atlas_feelings.py import feeling_words_draft.tsv
+    python atlas_feelings.py lists
     python atlas_feelings.py list
 """
 
@@ -122,6 +143,67 @@ FAMILIES = {
     "harlotry": "harlotry",
 }
 
+# The four word lists (see THE WORD LISTS above): list -> {Strong's
+# number: the plain word the reports print for it}.
+WORD_LISTS = {
+    "character": {
+        # righteous and wicked
+        "H6662": "righteous", "H6664": "righteousness", "H6666": "righteousness",
+        "G1342": "righteous", "G1343": "righteousness", "G93": "unrighteousness", "G94": "unjust",
+        "H7563": "wicked", "H7562": "wickedness", "G4190": "wicked", "G4189": "wickedness",
+        # upright, perfect, innocent
+        "H3477": "upright", "H3476": "uprightness", "H8549": "perfect", "H8537": "integrity",
+        "G5046": "perfect", "G273": "blameless", "G299": "blameless",
+        "H5355": "innocent", "G121": "innocent", "G172": "harmless",
+        # faithful and true (emeth and emunah, mostly God's, are under divine)
+        "G4103": "faithful", "G225": "truth", "G227": "true", "G228": "true",
+        # deceit and lies
+        "H4820": "deceit", "H8267": "falsehood", "G1388": "deceit", "G5579": "lie", "G5571": "false",
+        # wise and foolish
+        "H2450": "wise", "H2451": "wisdom", "H6175": "prudent", "H6195": "prudence",
+        "H8394": "understanding", "G4680": "wise", "G4678": "wisdom", "G5429": "prudent",
+        "H3684": "fool", "H191": "fool", "H5036": "fool", "H200": "folly", "H3887": "scorner",
+        "G3474": "foolish", "G3472": "foolishness", "G453": "foolish", "G878": "foolish",
+        # proud and humble
+        "H1341": "proud", "H1343": "proud", "H1346": "pride", "H1347": "pride",
+        "H2086": "proud", "H2087": "presumption", "G5244": "proud", "G5243": "pride",
+        "H6035": "humble", "H6038": "humility",
+        "G5011": "humble", "G5012": "humility",
+        "G4235": "meek", "G4236": "meekness", "G4240": "meekness",
+        # merciful and kind, as people are told to be
+        "H2623": "godly", "G1655": "merciful", "G3629": "merciful",
+        "G5543": "kind", "G5544": "kindness",
+        # self-control and patience
+        "G1466": "temperance", "G4997": "sobriety", "G4998": "sober",
+        "G5281": "patience", "G3115": "longsuffering", "G4587": "grave", "G4586": "gravity",
+    },
+    "divine": {
+        "H2587": "gracious", "H7349": "merciful", "H7356": "compassion",
+        "H2617": "mercy", "H571": "truth", "H530": "faithfulness",
+        "G1656": "mercy", "G3628": "compassion",
+    },
+    "fruit": {
+        "G26": "love", "G5479": "joy", "G1515": "peace", "G3115": "longsuffering",
+        "G5544": "gentleness", "G19": "goodness",
+        "G4236": "meekness", "G4240": "meekness", "G1466": "temperance",
+    },
+    "flesh": {
+        "G3430": "adultery", "G4202": "fornication", "G167": "uncleanness",
+        "G766": "lasciviousness", "G1495": "idolatry", "G5331": "witchcraft",
+        "G2189": "hatred", "G2054": "variance", "G2205": "emulations", "G2372": "wrath",
+        "G2052": "strife", "G1370": "seditions", "G139": "heresies", "G5355": "envyings",
+        "G5408": "murders", "G3178": "drunkenness", "G2970": "revellings",
+    },
+}
+
+# What each list is, for the table's note column and the listing.
+LIST_NOTES = {
+    "character": "qualities of character as people have them",
+    "divine": "the attributes of God",
+    "fruit": "the fruit of the Spirit, Galatians 5:22-23 (Greek)",
+    "flesh": "the works of the flesh, Galatians 5:19-21 (Greek)",
+}
+
 # A word is proposed when this share of its KJV renderings match a
 # category's keywords: "y" at half or more, "?" at a fifth or more.
 STRONG_SHARE = 0.5
@@ -138,6 +220,17 @@ TABLE_SQL = """
         category  TEXT NOT NULL,      -- anger, grief, ... (see atlas_feelings.py)
         family    TEXT NOT NULL,      -- emotion, senses, body, violence, sacred, wealth, harlotry
         note      TEXT                -- the gloss at review time, for reading the table
+    )
+"""
+
+# metadata.db table that holds the four word lists: a word may be in
+# more than one list, so the key is the pair.
+LISTS_SQL = """
+    CREATE TABLE IF NOT EXISTS word_lists (
+        list      TEXT NOT NULL,      -- character, divine, fruit, flesh (see atlas_feelings.py)
+        root      TEXT NOT NULL,      -- Strong's number, e.g. H6662
+        note      TEXT,               -- the plain word, for reading the table
+        PRIMARY KEY (list, root)
     )
 """
 
@@ -312,16 +405,37 @@ class FeelingTool:
         except Exception as err:
             print(f"Note: backup not refreshed ({err}).")
 
+    # --- lists --------------------------------------------------------------
+    def store_lists(self) -> None:
+        """Store WORD_LISTS in metadata.db's word_lists table (replacing what was there)."""
+        rows = [(name, root, word) for name, words in WORD_LISTS.items()
+                for root, word in words.items()]
+        conn = sqlite3.connect(self.metadata_path)
+        with conn:
+            conn.execute(LISTS_SQL)
+            conn.execute("DELETE FROM word_lists")
+            conn.executemany("INSERT INTO word_lists VALUES (?, ?, ?)", rows)
+        conn.close()
+        print(f"Stored {len(rows)} words of {len(WORD_LISTS)} lists in metadata.db: "
+              + ", ".join(f"{name} {len(words)}" for name, words in WORD_LISTS.items()) + ".")
+        self._refresh_backup()
+
     # --- list ---------------------------------------------------------------
     def list(self) -> None:
         rows = load_feeling_words(self.metadata_path)
         if not rows:
             print("No feeling words in metadata.db yet. Run draft, review, then import.")
-            return
-        counts = Counter(cat for cat, _ in rows.values())
-        for cat in CATEGORIES:
-            print(f"  {FAMILIES[cat]:<10}{cat:<10}{counts[cat]:>6}")
-        print(f"  {'':<10}{'total':<10}{len(rows):>6}")
+        else:
+            counts = Counter(cat for cat, _ in rows.values())
+            for cat in CATEGORIES:
+                print(f"  {FAMILIES[cat]:<10}{cat:<10}{counts[cat]:>6}")
+            print(f"  {'':<10}{'total':<10}{len(rows):>6}")
+        lists = load_word_lists(self.metadata_path)
+        if not lists:
+            print("No word lists in metadata.db yet (python atlas_feelings.py lists).")
+        else:
+            for name, words in lists.items():
+                print(f"  {'list':<10}{name:<10}{len(words):>6}   {LIST_NOTES.get(name, '')}")
 
 
 def load_feeling_words(metadata_path: Path) -> dict[str, tuple[str, str]]:
@@ -338,6 +452,22 @@ def load_feeling_words(metadata_path: Path) -> dict[str, tuple[str, str]]:
         conn.close()
 
 
+def load_word_lists(metadata_path: Path) -> dict[str, set[str]]:
+    """list name -> the Strong's numbers in it, from metadata.db; empty when not stored yet."""
+    if not metadata_path.exists():
+        return {}
+    conn = sqlite3.connect(metadata_path)
+    try:
+        lists: dict[str, set[str]] = {}
+        for name, root in conn.execute("SELECT list, root FROM word_lists ORDER BY rowid"):
+            lists.setdefault(name, set()).add(root)
+        return lists
+    except sqlite3.OperationalError:
+        return {}          # the table does not exist yet
+    finally:
+        conn.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Word Atlas feeling-word layer")
     parser.add_argument("--atlas", type=Path, default=SCRIPT_DIR / "atlas.db")
@@ -347,6 +477,8 @@ def main() -> None:
     d.add_argument("--out", type=Path, default=SCRIPT_DIR / "feeling_words_draft.tsv")
     i = commands.add_parser("import", help="store a reviewed draft in metadata.db")
     i.add_argument("file", type=Path)
+    commands.add_parser("lists", help="store the four word lists (character, divine, fruit, "
+                                       "flesh) in metadata.db")
     commands.add_parser("list", help="show what metadata.db holds")
     args = parser.parse_args()
 
@@ -355,6 +487,8 @@ def main() -> None:
         tool.draft(args.out)
     elif args.command == "import":
         tool.import_reviewed(args.file)
+    elif args.command == "lists":
+        tool.store_lists()
     else:
         tool.list()
 

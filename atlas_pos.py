@@ -21,10 +21,23 @@ Nothing else in lxx.db is touched, and running it again is harmless:
 both columns are worked out afresh from morph every time.  The
 Septuagint's rows have no grammar tags, so their two columns stay empty.
 
-RUN IT AGAIN AFTER A REBUILD.  build_tahot.py and build_gnt.py replace
-their own rows and know nothing of these columns, so the rows they
-write come back with pos empty until this script is run again.
-pos_experiment.py checks for that and says so.
+build_tahot.py and build_gnt.py run this fill at the end of their own
+run, so a rebuilt text comes with its columns filled.  Running it by
+hand is still harmless, and the --check count says whether the stored
+columns agree with the tags.
+
+THE NAMES AND NUMBERS COUNTS (NameReader)
+    atlas_heat.py's --names strips count, for every King James verse,
+    the words of the original text that are names of nations (every
+    place outside the homeland, and every people), names of persons,
+    the four home names (Israel, Judah, Jerusalem, Zion) and number
+    words, as shares of the verse's content words (nouns, verbs,
+    adjectives, numbers).  It also marks the verses that hold a date
+    (a number within two words of "year" or "month") and the verses
+    that hold a feast word (FEAST_WORDS).  The rules are this module's
+    (HOME_PLACES, NATIONS_AS_PERSONS, ONE_WORDS, YEAR_AND_MONTH_WORDS,
+    FEAST_WORDS, GLOSS_RULES); pos_experiment.py, the trial script,
+    reads the same ones.
 
 WHY PLAIN COLUMNS
     A query can then say  WHERE pos = 'verb'  or  WHERE name_kind =
@@ -70,6 +83,7 @@ passed on unchanged.
 """
 
 import argparse
+import re
 import sqlite3
 import sys
 import time
@@ -86,6 +100,100 @@ PARTS = ["verb", "noun", "adjective", "number", "adverb", "pronoun", "article",
 
 # The kinds of proper name, in report order.
 NAME_KINDS = ["person", "place", "people", "title"]
+
+# The parts of speech that count as content words in the names counts.
+CONTENT = {"noun", "verb", "adjective", "number"}
+
+# "One", left out of (numbers): Hebrew echad, Aramaic chad, Greek heis.
+# Hebrew uses it for "a", "each" and "one another" as often as for a
+# count, and it would make a theme of unity look like arithmetic.  It
+# does count in a date: "the first of the month" is written with it.
+ONE_WORDS = {"H259": "one", "H2298": "one", "G1520": "one"}
+
+# The names of the homeland, counted under (home) and not (nations):
+# Israel, Judah, Jerusalem, Zion, with their Aramaic and Greek forms.
+HOME_PLACES = {
+    "H3478": "Israel", "H3479": "Israel",       # Hebrew, Aramaic
+    "H3063": "Judah",
+    "H3389": "Jerusalem", "H3390": "Jerusalem", # Hebrew, Aramaic
+    "H6726": "Zion",
+    "G2474": "Israel", "G2448": "Judah", "G2449": "Judea",
+    "G2414": "Jerusalem", "G2419": "Jerusalem", "G4622": "Zion",
+}
+
+# Nations the Hebrew source tags as persons, after their ancestors, in
+# every one of their uses.  They are counted as nations here.  (Moab,
+# by contrast, is tagged as a place.)
+NATIONS_AS_PERSONS = {"H5983", "H123"}      # Ammon, Edom
+
+# "Year" and "month" in Hebrew, Aramaic and Greek.  A number standing
+# within DATE_REACH whole words of one of them, in the same verse, is a
+# date and not a number.  "Day" is left out on purpose: the 1,290 days
+# and the 1,335 days are counts to be kept.
+YEAR_AND_MONTH_WORDS = {
+    "H8141": "year", "H8140": "year",                       # shanah; Aramaic shenah
+    "H2320": "month", "H3391": "month", "H3393": "month",   # chodesh, yerach; Aramaic yerach
+    "G2094": "year", "G1763": "year",                       # etos, eniautos
+    "G3376": "month",                                       # men
+}
+DATE_REACH = 2
+
+# The feasts and seasons of the calendar, and the names of the months:
+# a Strong's number and the plain word the reports print for it.  Not in
+# the list: shabua "week" (H7620), which is the seventy weeks of Daniel
+# far more often than the Feast of Weeks, whose "feast" word is counted
+# anyway; and Tammuz (H8542), which in Ezekiel 8 is the god.
+FEAST_WORDS = {
+    "H6453": "passover", "G3957": "passover",
+    "H2282": "feast", "H2287": "keep a feast", "G1859": "feast",
+    "H4682": "unleavened bread", "G106": "unleavened bread",
+    "H7676": "sabbath", "H7677": "sabbath rest", "G4521": "sabbath",
+    "G4005": "Pentecost",
+    "H1061": "firstfruits", "G536": "firstfruits",
+    "H3725": "atonement",
+    "H5521": "booth", "G4634": "feast of tabernacles",
+    "H3104": "jubilee",
+    "H6332": "Purim",
+    "H2598": "dedication", "G1456": "dedication",
+    "H4150": "appointed feast", "H6116": "solemn assembly", "H4744": "convocation",
+    "H2320": "new moon", "G3561": "new moon",
+    # the month names
+    "H24": "Abib", "H5212": "Nisan", "H2099": "Ziv", "H388": "Ethanim", "H945": "Bul",
+    "H2887": "Tebeth", "H7627": "Shebat", "H143": "Adar", "H5510": "Sivan",
+    "H435": "Elul", "H3691": "Chislev",
+}
+
+# Where one Strong's number carries two meanings, the source's gloss
+# tells them apart.  root -> (words the gloss must have, words it must
+# not have); either tuple may be empty.  So H4150 counts as a feast only
+# when the gloss says "feast" (not the tent of meeting, nor Daniel's
+# appointed time of the end), H2320 only as "new moon" and not as
+# "month", H3220 as the sea and not as "west".
+GLOSS_RULES = {
+    "H4150": (("feast",), ()),              # appointed feast
+    "H2320": (("new moon",), ()),           # new moon, not month
+    "H3104": ((), ("horn",)),               # jubilee, not the ram's horn
+    "H24": ((), ("barley",)),               # the month Abib, not ears of barley
+    "G4521": ((), ("week",)),               # sabbath, not the first day of the week
+    "H3220": ((), ("west",)),               # sea, not west
+    "H4334": ((), ("upright",)),            # plain, not uprightness
+    "H8549": ((), ("unblemished",)),        # blameless, not an unblemished offering
+    "G299": ((), ("unblemished",)),
+    "H1346": ((), ("majesty",)),            # pride, not the majesty of God
+    "H1347": ((), ("majesty",)),
+    "H6035": ((), ("poor",)),               # humble, not the poor
+    "H7356": ((), ("womb",)),               # compassion, not the womb
+    "H3887": ((), ("interpret",)),          # scorner, not interpreter
+    "G4102": (("faithful",), ()),           # faithfulness the fruit, not belief
+}
+
+
+def gloss_allows(root, gloss):
+    """Whether GLOSS_RULES lets this use of a root count under a word list."""
+    must, must_not = GLOSS_RULES.get(root, ((), ()))
+    text = (gloss or "").lower()
+    return all(w in text for w in must) and not any(w in text for w in must_not)
+
 
 # The texts in lxx.db that carry grammar tags.
 TAGGED_CORPORA = ["TAHOT", "GNT"]
@@ -252,6 +360,122 @@ class TagReader:
 # ===========================================================================
 # The two columns in lxx.db
 # ===========================================================================
+class VerseCounts:
+    """What one King James verse holds, as the names strips count it."""
+
+    __slots__ = ("content", "nations", "persons", "home", "numbers", "dates", "feasts", "words")
+
+    def __init__(self):
+        self.content = 0            # content words of the original text
+        self.nations = 0            # place names outside the homeland, and peoples
+        self.persons = 0            # personal names
+        self.home = 0               # Israel, Judah, Jerusalem, Zion
+        self.numbers = 0            # number words, less "one" and the dates
+        self.dates = []             # the number words that stand in a date, as glossed
+        self.feasts = []            # the feast words, by their plain word
+        self.words = {}             # measure -> the words counted, as the source glosses them
+
+
+class NameReader:
+    """
+    Reads one tagged text of lxx.db and counts, for every King James
+    verse, what the names strips need (VerseCounts).  The Hebrew text is
+    read in whole words (the prefixes and suffixes the TAHOT splits off
+    are passed over); the Greek in the words of the Textus Receptus, the
+    Greek behind the King James.  Verses are numbered as the King James
+    numbers them, which is how the texts are stored (a Psalm title and
+    its first verse share one King James verse).
+    """
+
+    MEASURES = ["nations", "persons", "home", "numbers"]
+
+    # corpus -> which token rows are the whole words of the text
+    ROW_FILTER = {"TAHOT": "t.element = 'root'", "GNT": "t.in_tr = 1"}
+
+    def __init__(self, db_path, corpus):
+        self.corpus = corpus
+        self.by_ref = {}            # (book number, chapter, verse) -> VerseCounts
+        db = sqlite3.connect(Path(db_path).resolve().as_uri() + "?mode=ro", uri=True)
+        try:
+            if not PosColumns.has_columns(db) or PosColumns.unfilled(db, corpus):
+                sys.exit("lxx.db has no filled pos column for the " + corpus + " text. "
+                         "Run:  python3 atlas_pos.py")
+            source_verse, words, current = None, [], None
+            for verse_id, book, chapter, verse, root, pos, kind, gloss in db.execute(
+                    "SELECT t.verse_id, v.eng_book, v.eng_chapter, v.eng_verse, t.root, t.pos, "
+                    "t.name_kind, t.gloss FROM tokens t JOIN verses v USING (verse_id) "
+                    f"WHERE v.corpus = ? AND {self.ROW_FILTER[corpus]} AND v.eng_book IS NOT NULL "
+                    "ORDER BY t.verse_id, t.position", (corpus,)):
+                if verse_id != source_verse:
+                    if words:
+                        self.count_verse(current, words)
+                    source_verse, words = verse_id, []
+                    current = self.by_ref.setdefault((book, chapter, verse), VerseCounts())
+                words.append((root, pos, kind, gloss))
+            if words:
+                self.count_verse(current, words)
+        finally:
+            db.close()
+
+    def count_verse(self, counts, words):
+        """
+        Count the whole words of one source verse.  'words' is [(root,
+        pos, name_kind, gloss), ...] in reading order, so a word can be
+        judged by its neighbours: a number by "year" or "month" is a
+        date, and the second word of a two-word Hebrew name (Beth-el,
+        Hazar-enan: the same root and kind as the word before, with a
+        different piece of the name) belongs to the first and is not
+        counted again.
+        """
+        marks = [i for i, word in enumerate(words) if word[0] in YEAR_AND_MONTH_WORDS]
+        last = None                 # [root, kind, name piece, measure] of the word before
+        for i, (root, pos, kind, gloss) in enumerate(words):
+            piece = self.name_piece(gloss) if kind else ""
+            if (self.corpus == "TAHOT" and kind and last and last[0] == root
+                    and last[1] == kind and piece.lower() != last[2].lower()):
+                # The second half joins the name already counted: 'Beth-el'.
+                if last[3] and counts.words.get(last[3]):
+                    counts.words[last[3]][-1] = (counts.words[last[3]][-1].rstrip("-") + "-"
+                                                 + piece.lstrip("-").lower())
+                last[2] = piece
+                continue
+            last = [root, kind, piece, None]
+            if pos not in CONTENT:
+                continue
+            counts.content += 1
+            measure = None
+            if kind == "person" and root not in NATIONS_AS_PERSONS:
+                measure = "persons"
+            elif kind == "place" and root in HOME_PLACES:
+                measure = "home"
+            elif kind in ("place", "people") or (kind == "person" and root in NATIONS_AS_PERSONS):
+                measure = "nations"
+            elif pos == "number":
+                if any(abs(i - j) <= DATE_REACH for j in marks):
+                    counts.dates.append(ONE_WORDS.get(root) or self.name_piece(gloss) or root)
+                elif root not in ONE_WORDS:
+                    measure = "numbers"
+            if measure:
+                last[3] = measure
+                setattr(counts, measure, getattr(counts, measure) + 1)
+                word = ONE_WORDS.get(root) or self.name_piece(gloss)
+                # A name keeps its capital; a number is lowered ('Ten' -> 'ten');
+                # a word with no gloss shows its Strong's number.
+                counts.words.setdefault(measure, []).append(
+                    (word if kind else word.lower()) if word else root)
+            if root in FEAST_WORDS and gloss_allows(root, gloss):
+                counts.feasts.append(FEAST_WORDS[root])
+
+    @staticmethod
+    def name_piece(gloss):
+        """A gloss without its helps: '<of> Zion' -> 'Zion', 'O Tyre' -> 'Tyre'."""
+        text = re.sub(r"\[[^\]]*\]|<[^>]*>", " ", gloss or "")
+        words = text.replace("\u00bf", " ").split()
+        while len(words) > 1 and (words[0] == "O" or words[0][:1].islower()):
+            words.pop(0)
+        return " ".join(words).strip(" ,.;:!?\u2019\u2018'\"")
+
+
 class PosColumns:
     """Adds, fills, checks and counts the pos and name_kind columns."""
 

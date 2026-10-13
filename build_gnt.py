@@ -49,7 +49,9 @@ WHAT IT WRITES (into lxx.db, leaving the Septuagint rows untouched)
                Greek is WHERE in_tr = 1; for the critical text, in_na = 1
     roots      a row for any root the Septuagint did not have, and a
                gnt_weight column with each root's count in the TR text
-    settings   gnt_source, gnt_built, gnt_verses, gnt_tokens, gnt_tr_tokens
+    settings   gnt_source, gnt_built, gnt_verses, gnt_tokens, gnt_tr_tokens;
+               and pos_filled, since the plain part-of-speech and name
+               columns (atlas_pos.py) are filled at the end of the run
     metadata.db  a corpora row 'greek-nt-tagnt' if the table lacks one
                (run atlas_backup.py backup afterwards so the catalogue's
                text backup carries it)
@@ -274,6 +276,13 @@ def build(data_dir, out_path, metadata_path):
             meta.close()
         print("  corpora row 'greek-nt-tagnt' in metadata.db (run 'python atlas_backup.py backup' to carry it "
               "into metadata_backup.sql)")
+
+    # The plain part-of-speech and name columns (atlas_pos.py), filled
+    # here so a rebuilt text comes with them and atlas_heat.py's --names
+    # strips never read a text whose columns are empty.
+    from atlas_pos import PosColumns
+    log("filling the pos and name_kind columns (atlas_pos.py)")
+    PosColumns(out_path).fill()
 
     log(f"done: {out_path}")
     print(f"  {len(verse_rows):,} verses, {len(token_rows):,} words of all editions, "

@@ -54,7 +54,9 @@ WHAT IT WRITES (into lxx.db, leaving the other corpora untouched)
     roots      a row for any root the other corpora lacked, and a
                tahot_weight column with each root's count
     settings   tahot_source, tahot_built, tahot_verses, tahot_words,
-               tahot_tokens
+               tahot_tokens; and pos_filled, since the plain
+               part-of-speech and name columns (atlas_pos.py) are
+               filled at the end of the run
     metadata.db  a corpora row 'hebrew-ot-tahot' if the table lacks one
                (run atlas_backup.py backup afterwards)
 
@@ -299,6 +301,13 @@ def build(data_dir, out_path, metadata_path):
             meta.close()
         print("  corpora row 'hebrew-ot-tahot' in metadata.db (run 'python atlas_backup.py backup' to carry it "
               "into metadata_backup.sql)")
+    # The plain part-of-speech and name columns (atlas_pos.py), filled
+    # here so a rebuilt text comes with them and atlas_heat.py's --names
+    # strips never read a text whose columns are empty.
+    from atlas_pos import PosColumns
+    log("filling the pos and name_kind columns (atlas_pos.py)")
+    PosColumns(out_path).fill()
+
     log(f"done: {out_path}")
     print(f"  {len(verse_rows):,} verses, {n_words:,} words, {len(token_rows):,} elements "
           f"(prefixes, roots and suffixes), {len(weight):,} content roots")

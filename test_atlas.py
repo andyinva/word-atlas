@@ -40,6 +40,7 @@ Author: Andrew Hopkins (with Claude)
 
 import json
 import os
+from pathlib import Path
 import re
 import subprocess
 import sys
@@ -547,6 +548,77 @@ def test_guards(atlas, only):
         stray = [k for k in texts.lxx_total if k in {"G4675", "G3450", "G5213", "G1473", "G4771"}]
         report(name, not stray, f"pronoun numbers counted as content: {stray}" if stray else "")
 
+    # build_tahot.py: one Hebrew verse for every King James verse of the
+    # Old Testament, filed under the King James reference (Joel 2:28 is
+    # Hebrew 3:1, and the psalm titles share verse 1), so the names
+    # strips of atlas_heat.py line up with the King James strips.
+    name = "guard: Hebrew Old Testament verses match the King James (build_tahot.py)"
+    if not only or only in name:
+        kjv = {(b, c, v) for b, c, v in atlas.db.execute(
+            "SELECT book, chapter, verse FROM verses WHERE book IN "
+            "(SELECT book FROM books WHERE testament = 'Old')")}
+        hebrew = {}
+        import sqlite3
+        db = sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
+        try:
+            for eb, ec, ev in db.execute("SELECT eng_book, eng_chapter, eng_verse FROM verses "
+                                         "WHERE corpus = 'TAHOT' AND eng_book IS NOT NULL"):
+                key = (atlas.books[eb - 1], ec, ev)
+                hebrew[key] = hebrew.get(key, 0) + 1
+        finally:
+            db.close()
+        if not hebrew:
+            skip(name, "lxx.db lacks the Hebrew text")
+        else:
+            missing = sorted(kjv - set(hebrew))
+            extra = sorted(set(hebrew) - kjv)
+            problems = []
+            if missing:
+                problems.append(f"{len(missing)} King James verses with no Hebrew verse, first {missing[0]}")
+            if extra:
+                problems.append(f"{len(extra)} Hebrew verses with no King James verse, first {extra[0]}")
+            report(name, not problems, "; ".join(problems) if problems else f"{len(hebrew)} verses")
+
+    # atlas_pos.py: the part-of-speech and name columns are filled for
+    # every tagged text lxx.db holds.  The builders fill them at the end
+    # of their run, so an empty column means a text rebuilt by an older
+    # builder, and atlas_heat.py's --names strips would refuse it.
+    name = "guard: the pos and name_kind columns are filled (atlas_pos.py)"
+    if not only or only in name:
+        try:
+            import sqlite3
+            from atlas_pos import PosColumns
+            db = sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
+            try:
+                if not PosColumns.has_columns(db):
+                    report(name, False, "no pos column in lxx.db: run python3 atlas_pos.py")
+                else:
+                    empty = {c: PosColumns.unfilled(db, c) for c in PosColumns.corpora(db)}
+                    bad = [f"{c} {n:,} tokens empty" for c, n in empty.items() if n]
+                    report(name, not bad, "; ".join(bad) + " (run python3 atlas_pos.py)" if bad
+                           else ", ".join(empty) + " filled")
+            finally:
+                db.close()
+        except Exception as e:                               # noqa: BLE001
+            report(name, False, f"could not check: {e}")
+
+    # atlas_heat.py --names: the four strips and the marks come out, and
+    # the group yardstick names the group.
+    name = "guard: atlas_heat's names strips (--names --norm group)"
+    if not only or only in name:
+        result = subprocess.run([sys.executable, os.path.join(PROGRAM_DIR, "atlas_heat.py"), "Joel",
+                                 "--names", "--norm", "group", "--scale", "g2"],
+                                capture_output=True, text=True, cwd=PROGRAM_DIR)
+        text = result.stdout
+        problems = []
+        if result.returncode != 0:
+            problems.append(result.stderr.strip().splitlines()[-1] if result.stderr.strip() else "failed")
+        for wanted in ("(nations)", "(persons)", "(home)", "(numbers)", "DATES", "FEASTS",
+                       "the other Prophecy books", "1:14 solemn assembly"):
+            if wanted not in text:
+                problems.append(f"no {wanted!r} in the report")
+        report(name, not problems, "; ".join(problems[:3]))
+
     # pos_experiment.py (trial): the split of number words into numbers
     # and dates loses nothing.  For every book, the words the trial counts
     # under numbers and under dates (less the "one" words, which dates
@@ -556,7 +628,6 @@ def test_guards(atlas, only):
     if not only or only in name:
         try:
             import sqlite3
-            from pathlib import Path
             import pos_experiment
             from atlas_pos import PosColumns
             lxx = Path(path)
@@ -689,6 +760,7 @@ install = [a for a in w.menuBar().actions() if a.text().replace("&", "") == "Ins
 print("usb:", "yes" if any("USB drive" in a.text() for a in install.actions()) else "no")
 # A tool run from the panel gets this program's environment, not an empty one
 import os
+from pathlib import Path
 from PyQt6.QtCore import QEventLoop, QTimer
 os.environ["WORD_ATLAS_TEST_MARK"] = "carried"
 del w.run_tool
@@ -1034,6 +1106,7 @@ def main(argv):
         for args in DETERMINISM_COMMANDS:
             print("determinism:", " ".join(args))
         print("guard: names test; Greek New Testament verses; equivalents lemma keys; pronouns; the window's double-click")
+        print("guard: Hebrew Old Testament verses; the pos columns filled; atlas_heat's names strips")
         print("guard: pos_experiment's numbers and dates add up to the number words")
         print("guard: the window's two tabs; the workbench's commands; atlas_dist's bundle; atlas_usb's drive and installer")
         print("guard: atlas_source's own text taken out of a bibles.db")

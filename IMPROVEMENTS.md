@@ -7,7 +7,7 @@ with the version that carried them. Add to it whenever a review or a
 conversation raises something; the manual's version history records
 what shipped, this records what has not.
 
-Last updated 2026-10-13, at version 0.10.95.
+Last updated 2026-10-13, at version 0.10.96.
 
 ## Standing work
 
@@ -332,8 +332,8 @@ TAHOT's cardinal-number tag also sits on after, yet, between and
 exceedingly, so numbers are known by a checked list of number words;
 the Greek numbers that decline are on a like list.
 
-**Thirteen trial measures (trial, eighth round, waiting on a read
-against the text).** pos_experiment.py scores description, persons, home,
+**Thirteen trial measures (trial, eighth round; four of them strips
+since 0.10.96, see the strip decision below).** pos_experiment.py scores description, persons, home,
 other places, peoples and numbers as shares of content words in a
 10-verse window, on the heat script's g2 scale, reading an Old
 Testament book in the Hebrew and a New Testament book in the Textus
@@ -548,22 +548,48 @@ needs a reviewed list; the sources tag the tribes as persons; titles
 (Yahweh, God, Lord, Christ, Pharaoh) are in no measure; one Strong's
 number is one entry.
 
-**If the measures earn their keep (idea).** In this order. The two
-builders call atlas_pos at the end of their run, and the columns get a
-guard in test_atlas.py. Persons, home, other places and numbers become
-strips in atlas_heat.py: this is the nouns layer's "where it shows",
-and the tags are a third signal for its reviewed lists beside the
-Strong's idioms and the capitals rule, and a stronger one (3,164 roots
-tagged as a person, a place or a people, token by token). The King
-James tokens can borrow a part of speech by verse and Strong's number
-where a page needs it: 96.6 percent of Old Testament pairs and 88.9
-percent of New Testament pairs find their word in the original of the
-same verse (the New Testament misses are mostly the separate Strong's
-numbers the King James tagging gives to forms of the pronouns and of
-"to be", which the Greek text files under one headword; few are
-content words). The action measure need not change: the King James
-tense tags and the original-language verb tags already agree on about
-94 percent of Old Testament verbs and 98 percent of New Testament ones.
+**The strip decision (done 0.10.96).** On the reviewer's evaluation of
+the ranking. Two things were settled first. The Hebrew verses already
+carry the King James numbering (build_tahot.py files them so, and a
+guard now checks it: all 23,145 Old Testament verses match one for
+one), so the strips line up without a second map. The own-kind
+yardstick moved into atlas_heat.py as `--norm group` and `--norm
+group:NAME`. Then, strip by strip: nations (other places and peoples
+as one strip, since the source is inconsistent about which a name is,
+and peoples alone was too thin), persons, home and numbers became
+strips behind their own switch, `--names`, off by default so the
+screens stay uncluttered; dates and feasts became marks under the
+strips rather than strips, being points and not stretches; description
+was dropped (variety and rare do its work); action was left as it is
+(the two taggings agree on 94 to 98 percent of verbs); landscape waits;
+and character, divine, fruit and flesh went into metadata.db as word
+lists beside the feeling words (a separate table, word_lists, because
+a word may be in a list and a category both and feeling_words holds
+one category per word), drawn with `--families`. The counting rules
+(home names, "one", the date words, the feast list, the gloss rules)
+moved from the trial script into atlas_pos.py, which the two builders
+now call at the end of their run, and the trial script reads them from
+there; its reports came out byte for byte the same. "Field" was
+checked and taken out of landscape (6 of Joel's 27 landscape words, 26
+of Ezekiel's 223, but 49 of Genesis's 121). Two things the trial has
+that the strips do not: the warm tier and the "where" lines, which the
+trial keeps for reading. The stored fruit list has no faith (pistis):
+the trial counts it by the source's gloss, which the King James count
+cannot do, and belief would flood the strip. Still open: landscape as a
+strip once its list is read against the text; the feast imagery of
+Revelation, which is Scripture Motifs' to hold; the warm tier on the
+pages.
+
+**If the measures earn their keep (idea, the rest).** The tags are a
+third signal for the nouns layer's reviewed lists beside the Strong's
+idioms and the capitals rule, and a stronger one (3,164 roots tagged as
+a person, a place or a people, token by token). The King James tokens
+can borrow a part of speech by verse and Strong's number where a page
+needs it: 96.6 percent of Old Testament pairs and 88.9 percent of New
+Testament pairs find their word in the original of the same verse (the
+New Testament misses are mostly the separate Strong's numbers the King
+James tagging gives to forms of the pronouns and of "to be", which the
+Greek text files under one headword; few are content words).
 
 ## The nouns layer (next after the reviews)
 
@@ -777,7 +803,7 @@ system would be added.
 
 ## DONE
 
-2026-10-03 the repository public with 0.10.37 pushed. 0.10.95 test_atlas.py: a guard that pos_experiment.py's numbers and dates add up to the number words of every book (skipped when lxx.db has no filled pos column); no page changes. 0.10.94 build_tahot.py: the Aramaic function words that stand alone are stop words (825 tokens in Daniel 2 to 7, Ezra 4 to 7 and Jeremiah 10:11 had been stored as content words); no page reads the Hebrew text's stop flag yet, so no table changes (five book pages compared line for line); it takes `python3 build_tahot.py`, then `python3 atlas_pos.py`; the trial tools atlas_pos.py, pos_experiment.py and word_code_experiment.py came in beside it (see the parts of speech section). 0.10.93 the USB window's lines kept within the pane (the Choose button was pushed out of sight); bibles.db no longer offered for the drive. 0.10.92 atlas_source.py: Word Atlas's own Bible text taken out of bibles.db (the King James, its tags, the translations free of copyright), read first by every build and carried by the USB drive. 0.10.91 openbible_import.py, the cross references refreshed from the source (written in another session as 0.10.88 and joined to this line of work here). 0.10.90 a Reader bundle takes every program file in the Reader's folder, not a fixed list. 0.10.89 the drive's installer puts the Reader's dataset in the Reader's own datasets folder; the drive guard offline and without the disk flush. 0.10.88 the Workbench a tab of the window, the Reader's tools on its own Tools tab, and a USB drive that installs either program with its data on Windows or Linux (atlas_usb.py). 0.10.87 the idiom question sets the Greek-held rows apart and counts distinct echoes. 0.10.86 the divine name and shall folded in the translations matcher, the best pair named, the Greek-confirmed pairs out of the idiom tally, content words beside 'whole in Greek'. 0.10.85 atlas_dist.py and the Install menu: bundles for a new install of the Reader or of Word Atlas. 0.10.84 the Workbench, every command under one menu. 0.10.83 the translations numbered another way remapped by trial against TVTMS's Hebrew, Latin and Greek maps; the index built on 33 translations. 0.10.82 the reviewer's read of 0.10.81 (articles counted when shared, common-stock runs, 'cited, N roots' rows); the copyrighted translations excluded. 0.10.81 the rabbinic library's pairs as a second web (sefaria_links.py; the cited column and footers on 4 and 6; `atlas_results.py cited`). 0.10.80 the other English translations as witnesses to the English echoes (atlas_translations.py; translations and families columns on 4 and 4f; `atlas_results.py idiom`). 0.10.79 4f's 'whole in Greek', articles stepped over, root counts. 0.10.78 4f's three-way Greek test. 0.10.77 4f's listed four-word echoes; `atlas_results.py unlisted`, a results query that samples the unlisted echo rows for grading by hand. 0.10.76 listings counted once, 4 and 4e reconciled, three-word Greek runs on listed pairs. 0.10.75 the cross references as a check on the echo tables (listed column, footers, results question). 0.10.74 the packed file named after its run. 0.10.73 atlas_pack.py and the Word Atlas Reader (its own repository). 0.10.72 figure-like text columns right-aligned. 0.10.71 the window's double-click crash. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
+2026-10-03 the repository public with 0.10.37 pushed. 0.10.96 atlas_heat.py --names (nations, persons, home, numbers; date and feast marks), --norm group and group:NAME, the four word-list strips with --families (atlas_feelings.py lists, metadata.db word_lists); the counting rules in atlas_pos.py, filled by the two builders; three guards. 0.10.95 test_atlas.py: a guard that pos_experiment.py's numbers and dates add up to the number words of every book (skipped when lxx.db has no filled pos column); no page changes. 0.10.94 build_tahot.py: the Aramaic function words that stand alone are stop words (825 tokens in Daniel 2 to 7, Ezra 4 to 7 and Jeremiah 10:11 had been stored as content words); no page reads the Hebrew text's stop flag yet, so no table changes (five book pages compared line for line); it takes `python3 build_tahot.py`, then `python3 atlas_pos.py`; the trial tools atlas_pos.py, pos_experiment.py and word_code_experiment.py came in beside it (see the parts of speech section). 0.10.93 the USB window's lines kept within the pane (the Choose button was pushed out of sight); bibles.db no longer offered for the drive. 0.10.92 atlas_source.py: Word Atlas's own Bible text taken out of bibles.db (the King James, its tags, the translations free of copyright), read first by every build and carried by the USB drive. 0.10.91 openbible_import.py, the cross references refreshed from the source (written in another session as 0.10.88 and joined to this line of work here). 0.10.90 a Reader bundle takes every program file in the Reader's folder, not a fixed list. 0.10.89 the drive's installer puts the Reader's dataset in the Reader's own datasets folder; the drive guard offline and without the disk flush. 0.10.88 the Workbench a tab of the window, the Reader's tools on its own Tools tab, and a USB drive that installs either program with its data on Windows or Linux (atlas_usb.py). 0.10.87 the idiom question sets the Greek-held rows apart and counts distinct echoes. 0.10.86 the divine name and shall folded in the translations matcher, the best pair named, the Greek-confirmed pairs out of the idiom tally, content words beside 'whole in Greek'. 0.10.85 atlas_dist.py and the Install menu: bundles for a new install of the Reader or of Word Atlas. 0.10.84 the Workbench, every command under one menu. 0.10.83 the translations numbered another way remapped by trial against TVTMS's Hebrew, Latin and Greek maps; the index built on 33 translations. 0.10.82 the reviewer's read of 0.10.81 (articles counted when shared, common-stock runs, 'cited, N roots' rows); the copyrighted translations excluded. 0.10.81 the rabbinic library's pairs as a second web (sefaria_links.py; the cited column and footers on 4 and 6; `atlas_results.py cited`). 0.10.80 the other English translations as witnesses to the English echoes (atlas_translations.py; translations and families columns on 4 and 4f; `atlas_results.py idiom`). 0.10.79 4f's 'whole in Greek', articles stepped over, root counts. 0.10.78 4f's three-way Greek test. 0.10.77 4f's listed four-word echoes; `atlas_results.py unlisted`, a results query that samples the unlisted echo rows for grading by hand. 0.10.76 listings counted once, 4 and 4e reconciled, three-word Greek runs on listed pairs. 0.10.75 the cross references as a check on the echo tables (listed column, footers, results question). 0.10.74 the packed file named after its run. 0.10.73 atlas_pack.py and the Word Atlas Reader (its own repository). 0.10.72 figure-like text columns right-aligned. 0.10.71 the window's double-click crash. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
 splits. 0.10.50 1d a language at a time for Daniel and Ezra. 0.10.49 a run figure for the once-here share. 0.10.48 1c and 1d refusals and the sibling caution. 0.10.47 nearest beyond the kind under 1c and 1d. 0.10.46 1d's run figures cached. 0.10.45 1d's run columns. 0.10.44 vocabulary richness (1d); Hebrews in parts. 0.10.43 the kind's own size yardsticks. 0.10.42 nine-in-ten yardsticks and a no-pronoun Delta. 0.10.41 cautions and a size yardstick on 1c and 7d; three more
 letters in parts. 0.10.40 the function-word layer, 1c and 7d (New Testament). 0.10.39 section 7's leading words floored and ended early. 0.10.38 2 Corinthians, Galatians and Ephesians in parts. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
 words, 3 to 5). 0.10.34 1b stops at a keyness floor (6.63); three occurrences for a

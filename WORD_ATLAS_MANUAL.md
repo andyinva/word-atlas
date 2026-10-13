@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.95. Andrew Hopkins, with Claude.
+For version 0.10.96. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -5101,6 +5101,30 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.96.** The names and numbers strips, the first of the
+parts-of-speech trial to reach the pages. `atlas_heat.py --names` adds
+four strips to the heat chart and report, off by default so the usual
+picture stays as it was: nations (names of places outside the homeland,
+and of peoples), persons, home (Israel, Judah, Jerusalem, Zion) and
+numbers (number words less "one" and less the dates), each a share of
+the original text's content words read from the grammar tags in
+`lxx.db`, and with them two rows of marks for the verses that hold a
+date or a feast word. `--norm group` measures an Old Testament book
+against the other books of its own kind, `--norm group:Prophecy`
+against a group you name, since against the whole Old Testament a
+prophet is cool for persons from end to end. With `--families` four
+word-list strips come beside the feeling families: character (what
+people are), divine (the attributes of God), and for the New Testament
+fruit and flesh (Galatians 5); `python3 atlas_feelings.py lists` stores
+the lists in metadata.db's new word_lists table, kept apart from the
+feeling words because a word may be in a list and a category both. The
+counting rules moved from the trial script into `atlas_pos.py`, whose
+columns `build_tahot.py` and `build_gnt.py` now fill at the end of
+their own run. Three guards: the Hebrew verses match the King James
+verse for verse (they do, all 23,145, so the strips line up with the
+King James strips), the columns are filled, and the names strips run.
+READING_THE_HEAT_STRIPS.md describes the new strips.
 
 **0.10.95.** A guard test for the trial script. `test_atlas.py` now
 checks that `pos_experiment.py`'s split of the number words into

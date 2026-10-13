@@ -157,6 +157,59 @@ a few such words make a window far above ordinary. Their z-scores can run
 to +10 or +20. Read those as "far above ordinary," not as a precise size.
 The color stops getting deeper at 3.
 
+## The word-list strips
+
+With `--families`, four more strips come from the word lists in
+metadata.db (`python atlas_feelings.py lists` stores them). They are
+kept apart from the feeling words because a word may be in a list and a
+category both: love is an emotion and a fruit of the Spirit.
+
+| Strip | Counts | Red example |
+|---|---|---|
+| **character** | what people are: righteous and wicked, upright, true and false, wise and foolish, proud and humble, kind, patient | Ezekiel 18 and 33 (the righteous and the wicked), Isaiah 59 |
+| **divine** | the attributes of God, said of him almost alone: gracious, merciful, compassion, mercy, truth, faithfulness | Joel 2:13, Isaiah 54 and 63 |
+| **fruit** | the fruit of the Spirit, Galatians 5:22-23 (New Testament only) | Galatians 5, Romans 14-15 |
+| **flesh** | the works of the flesh, Galatians 5:19-21 (New Testament only) | Galatians 5, Romans 1 and 13 |
+
+Faith (pistis) is not in the fruit list: the King James says "faith"
+whether it means belief or the fruit, and belief would flood the strip.
+
+## The names and numbers strips (`--names`)
+
+These are off by default, so the picture above stays as it was. They
+read the original text's own grammar tags (the `pos` and `name_kind`
+columns `atlas_pos.py` keeps in `lxx.db`), not the King James, and each
+is a share of the Hebrew or Greek content words in the window. The
+verses are the King James's, which is how `lxx.db` files the texts.
+
+| Strip | Counts | Red example |
+|---|---|---|
+| **nations** | names of places outside the homeland, and of peoples | the oracles against the nations (Ezekiel 25-32, Jeremiah 46-51), Gog, the borders of Ezekiel 47-48 |
+| **persons** | names of men and women | Jeremiah 36-44 (Jeremiah, Baruch, Gedaliah, Ishmael), Daniel 1-6 |
+| **home** | Israel, Judah, Jerusalem, Zion | Joel 3, Zechariah |
+| **numbers** | number words, less "one" and less the dates | Ezekiel 40-48, Revelation's sevens and twelves, Daniel 7-8 |
+
+**Blue on these strips** means the names or numbers are absent, which
+can be a finding of its own: persons is blue through Daniel's visions,
+which trace kings for a chapter without naming one.
+
+**Use the own-kind yardstick.** Against the whole Old Testament a prophet
+is blue for persons from end to end and Ezekiel's numbers look ordinary,
+because Joshua, Kings and Chronicles set the rate. `--norm group`
+measures an Old Testament book against the other books of its own kind
+(its baseline group in metadata.db), and `--norm group:Prophecy`
+against a group you name, so Daniel, filed under Persian period, can be
+read against the prophets. A New Testament book is always measured
+against the whole New Testament.
+
+**The marks.** Two thin rows under the strips mark verses that are
+points rather than stretches: a **date** (a number within two words of
+"year" or "month": the oracle headings of Ezekiel, Haggai and
+Zechariah; "day" is not part of the test, so the 1,290 days stay with
+numbers) and a **feast** word (passover, sabbath, the feast of booths, a
+month name). Point at a mark for the verse and its words; the text
+report lists them under DATES and FEASTS.
+
 ## Reading strips together
 
 The real value comes from reading the strips against each other. A
@@ -173,6 +226,7 @@ The text report (`--out`) holds the same information as lists:
 - the **hot** and **cool** spots for each strip, with their verses and peak score
 - for **hammer**, the repeated word
 - for **feeling** strips, the categories and words behind each hot spot
+- for the **names** strips, the names or numbers behind each hot spot, and the DATES and FEASTS lists
 - a **chapter table** giving each chapter's average z on every strip
 
 ## Commands
@@ -187,3 +241,6 @@ The text report (`--out`) holds the same information as lists:
     python atlas_heat.py Revelation --hammer-window 30 (hammer over about a chapter)
     python atlas_heat.py Revelation --families --scale percentile
     python atlas_heat.py Revelation --families --scale g2
+    python atlas_heat.py Ezekiel --names --norm group --scale g2 --svg reports/heat_ezekiel_names.svg
+    python atlas_heat.py Daniel --names --norm group:Prophecy --scale g2
+    python atlas_heat.py Galatians --families --names --scale g2

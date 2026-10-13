@@ -1,5 +1,5 @@
 -- Word Atlas metadata.db backup (plain SQL; restore with atlas_backup.py)
--- written: 2026-10-13 11:46
+-- written: 2026-10-13 15:51
 BEGIN TRANSACTION;
 CREATE TABLE books (
     book_num       INTEGER PRIMARY KEY,     -- 1 = Genesis ... 66 = Revelation
@@ -15787,6 +15787,120 @@ CREATE TABLE verse_tags (
     source_note TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (book_num, chapter, verse, tag_type, tag_value)
 );
+CREATE TABLE word_lists (
+        list      TEXT NOT NULL,      -- character, divine, fruit, flesh (see atlas_feelings.py)
+        root      TEXT NOT NULL,      -- Strong's number, e.g. H6662
+        note      TEXT,               -- the plain word, for reading the table
+        PRIMARY KEY (list, root)
+    );
+INSERT INTO "word_lists" VALUES('character','H6662','righteous');
+INSERT INTO "word_lists" VALUES('character','H6664','righteousness');
+INSERT INTO "word_lists" VALUES('character','H6666','righteousness');
+INSERT INTO "word_lists" VALUES('character','G1342','righteous');
+INSERT INTO "word_lists" VALUES('character','G1343','righteousness');
+INSERT INTO "word_lists" VALUES('character','G93','unrighteousness');
+INSERT INTO "word_lists" VALUES('character','G94','unjust');
+INSERT INTO "word_lists" VALUES('character','H7563','wicked');
+INSERT INTO "word_lists" VALUES('character','H7562','wickedness');
+INSERT INTO "word_lists" VALUES('character','G4190','wicked');
+INSERT INTO "word_lists" VALUES('character','G4189','wickedness');
+INSERT INTO "word_lists" VALUES('character','H3477','upright');
+INSERT INTO "word_lists" VALUES('character','H3476','uprightness');
+INSERT INTO "word_lists" VALUES('character','H8549','perfect');
+INSERT INTO "word_lists" VALUES('character','H8537','integrity');
+INSERT INTO "word_lists" VALUES('character','G5046','perfect');
+INSERT INTO "word_lists" VALUES('character','G273','blameless');
+INSERT INTO "word_lists" VALUES('character','G299','blameless');
+INSERT INTO "word_lists" VALUES('character','H5355','innocent');
+INSERT INTO "word_lists" VALUES('character','G121','innocent');
+INSERT INTO "word_lists" VALUES('character','G172','harmless');
+INSERT INTO "word_lists" VALUES('character','G4103','faithful');
+INSERT INTO "word_lists" VALUES('character','G225','truth');
+INSERT INTO "word_lists" VALUES('character','G227','true');
+INSERT INTO "word_lists" VALUES('character','G228','true');
+INSERT INTO "word_lists" VALUES('character','H4820','deceit');
+INSERT INTO "word_lists" VALUES('character','H8267','falsehood');
+INSERT INTO "word_lists" VALUES('character','G1388','deceit');
+INSERT INTO "word_lists" VALUES('character','G5579','lie');
+INSERT INTO "word_lists" VALUES('character','G5571','false');
+INSERT INTO "word_lists" VALUES('character','H2450','wise');
+INSERT INTO "word_lists" VALUES('character','H2451','wisdom');
+INSERT INTO "word_lists" VALUES('character','H6175','prudent');
+INSERT INTO "word_lists" VALUES('character','H6195','prudence');
+INSERT INTO "word_lists" VALUES('character','H8394','understanding');
+INSERT INTO "word_lists" VALUES('character','G4680','wise');
+INSERT INTO "word_lists" VALUES('character','G4678','wisdom');
+INSERT INTO "word_lists" VALUES('character','G5429','prudent');
+INSERT INTO "word_lists" VALUES('character','H3684','fool');
+INSERT INTO "word_lists" VALUES('character','H191','fool');
+INSERT INTO "word_lists" VALUES('character','H5036','fool');
+INSERT INTO "word_lists" VALUES('character','H200','folly');
+INSERT INTO "word_lists" VALUES('character','H3887','scorner');
+INSERT INTO "word_lists" VALUES('character','G3474','foolish');
+INSERT INTO "word_lists" VALUES('character','G3472','foolishness');
+INSERT INTO "word_lists" VALUES('character','G453','foolish');
+INSERT INTO "word_lists" VALUES('character','G878','foolish');
+INSERT INTO "word_lists" VALUES('character','H1341','proud');
+INSERT INTO "word_lists" VALUES('character','H1343','proud');
+INSERT INTO "word_lists" VALUES('character','H1346','pride');
+INSERT INTO "word_lists" VALUES('character','H1347','pride');
+INSERT INTO "word_lists" VALUES('character','H2086','proud');
+INSERT INTO "word_lists" VALUES('character','H2087','presumption');
+INSERT INTO "word_lists" VALUES('character','G5244','proud');
+INSERT INTO "word_lists" VALUES('character','G5243','pride');
+INSERT INTO "word_lists" VALUES('character','H6035','humble');
+INSERT INTO "word_lists" VALUES('character','H6038','humility');
+INSERT INTO "word_lists" VALUES('character','G5011','humble');
+INSERT INTO "word_lists" VALUES('character','G5012','humility');
+INSERT INTO "word_lists" VALUES('character','G4235','meek');
+INSERT INTO "word_lists" VALUES('character','G4236','meekness');
+INSERT INTO "word_lists" VALUES('character','G4240','meekness');
+INSERT INTO "word_lists" VALUES('character','H2623','godly');
+INSERT INTO "word_lists" VALUES('character','G1655','merciful');
+INSERT INTO "word_lists" VALUES('character','G3629','merciful');
+INSERT INTO "word_lists" VALUES('character','G5543','kind');
+INSERT INTO "word_lists" VALUES('character','G5544','kindness');
+INSERT INTO "word_lists" VALUES('character','G1466','temperance');
+INSERT INTO "word_lists" VALUES('character','G4997','sobriety');
+INSERT INTO "word_lists" VALUES('character','G4998','sober');
+INSERT INTO "word_lists" VALUES('character','G5281','patience');
+INSERT INTO "word_lists" VALUES('character','G3115','longsuffering');
+INSERT INTO "word_lists" VALUES('character','G4587','grave');
+INSERT INTO "word_lists" VALUES('character','G4586','gravity');
+INSERT INTO "word_lists" VALUES('divine','H2587','gracious');
+INSERT INTO "word_lists" VALUES('divine','H7349','merciful');
+INSERT INTO "word_lists" VALUES('divine','H7356','compassion');
+INSERT INTO "word_lists" VALUES('divine','H2617','mercy');
+INSERT INTO "word_lists" VALUES('divine','H571','truth');
+INSERT INTO "word_lists" VALUES('divine','H530','faithfulness');
+INSERT INTO "word_lists" VALUES('divine','G1656','mercy');
+INSERT INTO "word_lists" VALUES('divine','G3628','compassion');
+INSERT INTO "word_lists" VALUES('fruit','G26','love');
+INSERT INTO "word_lists" VALUES('fruit','G5479','joy');
+INSERT INTO "word_lists" VALUES('fruit','G1515','peace');
+INSERT INTO "word_lists" VALUES('fruit','G3115','longsuffering');
+INSERT INTO "word_lists" VALUES('fruit','G5544','gentleness');
+INSERT INTO "word_lists" VALUES('fruit','G19','goodness');
+INSERT INTO "word_lists" VALUES('fruit','G4236','meekness');
+INSERT INTO "word_lists" VALUES('fruit','G4240','meekness');
+INSERT INTO "word_lists" VALUES('fruit','G1466','temperance');
+INSERT INTO "word_lists" VALUES('flesh','G3430','adultery');
+INSERT INTO "word_lists" VALUES('flesh','G4202','fornication');
+INSERT INTO "word_lists" VALUES('flesh','G167','uncleanness');
+INSERT INTO "word_lists" VALUES('flesh','G766','lasciviousness');
+INSERT INTO "word_lists" VALUES('flesh','G1495','idolatry');
+INSERT INTO "word_lists" VALUES('flesh','G5331','witchcraft');
+INSERT INTO "word_lists" VALUES('flesh','G2189','hatred');
+INSERT INTO "word_lists" VALUES('flesh','G2054','variance');
+INSERT INTO "word_lists" VALUES('flesh','G2205','emulations');
+INSERT INTO "word_lists" VALUES('flesh','G2372','wrath');
+INSERT INTO "word_lists" VALUES('flesh','G2052','strife');
+INSERT INTO "word_lists" VALUES('flesh','G1370','seditions');
+INSERT INTO "word_lists" VALUES('flesh','G139','heresies');
+INSERT INTO "word_lists" VALUES('flesh','G5355','envyings');
+INSERT INTO "word_lists" VALUES('flesh','G5408','murders');
+INSERT INTO "word_lists" VALUES('flesh','G3178','drunkenness');
+INSERT INTO "word_lists" VALUES('flesh','G2970','revellings');
 CREATE INDEX idx_verse_tags_type_value
     ON verse_tags (tag_type, tag_value);
 DELETE FROM "sqlite_sequence";
