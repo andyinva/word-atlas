@@ -2,7 +2,7 @@
 """
 pos_experiment.py
 
-A trial of six heat-style measures that read the part of speech and the
+A trial of seven heat-style measures that read the part of speech and the
 kind of name of each Hebrew or Greek word (the pos and name_kind columns
 atlas_pos.py adds to lxx.db).  Like joel_experiment.py it stores nothing:
 every run reads the texts and writes one plain-text report, to be read
@@ -11,6 +11,7 @@ against the book before anything is built into atlas_heat.py.
     python3 atlas_pos.py                    (once, to add the columns)
     python3 pos_experiment.py Joel
     python3 pos_experiment.py Ezekiel --ordinary group
+    python3 pos_experiment.py Daniel --ordinary group:Prophecy
     python3 pos_experiment.py Revelation --window 15
     python3 pos_experiment.py Joel --out reports/pos_joel.txt
     python3 pos_experiment.py --passage "Harlot city"
@@ -47,6 +48,27 @@ THE MEASURES
                     "a", "each" and "one another" as often as for a
                     count, and it would make a theme of unity (the two
                     sticks of Ezekiel 37) look like arithmetic.
+
+    (dates)         numbers that stand within two words of "year" or
+                    "month" in the same verse: "in the twelfth year, in
+                    the twelfth month".  They head the dated oracles of
+                    Ezekiel, Haggai and Zechariah, and they are not
+                    measurement, so they are kept out of (numbers).  A
+                    span of years or months ("forty years", "forty and
+                    two months") is counted here too.  "Day" is not part
+                    of the test, so that the 1,290 days and the 1,335
+                    days stay with the numbers.  "One" counts here though
+                    it does not under numbers: "the first of the month"
+                    is written with it.
+    (wealth)        in passage reports only: the wealth words of the
+                    feeling list in metadata.db (gold, silver, pearls,
+                    silk, ivory, merchandise), whatever their part of
+                    speech.  It is there to set a cargo list beside a
+                    cargo list (Ezekiel 27 and Revelation 18), which
+                    (description) cannot do because the goods are nouns.
+                    The list was made for feeling, not for trade: it has
+                    the precious goods and not the spices, grain, cattle
+                    and slaves.
 
     Titles and divine names (Yahweh, God, Lord, Christ, Pharaoh) are
     tagged as titles by the sources and are in none of the measures.
@@ -110,6 +132,10 @@ THE YARDSTICK (--ordinary)
                 Revelation has no other book of its kind there, and it
                 cannot be set against the Hebrew prophets, whose text is
                 in another language.
+    group:NAME  a group you name, whatever the book's own is: Daniel is
+                filed under Persian period in the catalogue, and
+                --ordinary group:Prophecy sets it against the prophets
+                without changing the catalogue.  Old Testament only.
 
 A PASSAGE IN PLACE OF A BOOK (--passage)
     A named passage from metadata.db (python3 atlas_passages.py list),
@@ -186,6 +212,23 @@ HOME_PLACES = {
     "G2414": "Jerusalem", "G2419": "Jerusalem", "G4622": "Zion",
 }
 
+# "Year" and "month" in Hebrew, Aramaic and Greek.  A number standing
+# within DATE_REACH whole words of one of them, in the same verse, is
+# counted under (dates) and not under (numbers).  "Day" is left out on
+# purpose: the 1,290 days and the 1,335 days are counts to be kept.
+YEAR_AND_MONTH_WORDS = {
+    "H8141": "year", "H8140": "year",                       # shanah; Aramaic shenah
+    "H2320": "month", "H3391": "month", "H3393": "month",   # chodesh, yerach; Aramaic yerach
+    "G2094": "year", "G1763": "year",                       # etos, eniautos
+    "G3376": "month",                                       # men
+}
+DATE_REACH = 2
+
+# The wealth words of the feeling list (gold, silver, pearls, silk,
+# merchandise), filled from metadata.db when a Trial is set up.  They
+# make the (wealth) measure of the passage reports.
+WEALTH_WORDS = set()
+
 # Nations the Hebrew source tags as persons, after their ancestors, in
 # every one of their uses.  They are counted as places here.  (Moab, by
 # contrast, is tagged as a place.)
@@ -200,7 +243,9 @@ G2_GOOD = 3.84
 # at least this part of a window (half: 5 verses of a 10-verse window).
 JOIN_SHARE = 0.5
 
-# The measures whose words are place names, shown by the source's name.
+# The measures whose words are names, printed with a capital; and those
+# whose words are place names, shown by the source's name.
+NAME_MEASURES = ("persons", "home", "other places", "peoples")
 PLACE_MEASURES = ("home", "other places")
 
 # English words of one root join into one rendering up to this many
@@ -220,13 +265,16 @@ WARM_SPOTS_SHOWN = 8
 @dataclass(frozen=True)
 class Measure:
     """
-    One measure: its name, the test a word must pass to count, and
-    whether a window counts every such word or only the different ones.
-    The test is given the word's pos, name_kind and root.
+    One measure: its name, the test a word must pass to count, whether
+    a window counts every such word or only the different ones, and
+    whether the measure belongs to passage reports alone.  The test is
+    given the word's pos, name_kind and root, and 'dated': True for a
+    number that stands by "year" or "month".
     """
     name: str
     counts: object
     different: bool = False
+    passage_only: bool = False
 
     def window_count(self, verses):
         """How much a run of verses scores on this measure."""
@@ -235,7 +283,7 @@ class Measure:
         return sum(len(v.roots.get(self.name, ())) for v in verses)
 
 
-def is_other_place(pos, kind, root):
+def is_other_place(pos, kind, root, dated):
     """A place name outside the homeland, or a nation the source calls a person."""
     return (kind == "place" and root not in HOME_PLACES) or \
         (kind == "person" and root in NATIONS_AS_PERSONS)
@@ -244,15 +292,23 @@ def is_other_place(pos, kind, root):
 # The measures in report order.
 MEASURES = [
     Measure("description",
-            lambda pos, kind, root: pos == "adjective" and kind is None
+            lambda pos, kind, root, dated: pos == "adjective" and kind is None
             and root not in QUANTITY_WORDS, different=True),
-    Measure("persons", lambda pos, kind, root: kind == "person"
+    Measure("persons", lambda pos, kind, root, dated: kind == "person"
             and root not in NATIONS_AS_PERSONS),
-    Measure("home", lambda pos, kind, root: kind == "place" and root in HOME_PLACES),
+    Measure("home", lambda pos, kind, root, dated: kind == "place" and root in HOME_PLACES),
     Measure("other places", is_other_place),
-    Measure("peoples", lambda pos, kind, root: kind == "people"),
-    Measure("numbers", lambda pos, kind, root: pos == "number" and root not in ONE_WORDS),
+    Measure("peoples", lambda pos, kind, root, dated: kind == "people"),
+    Measure("numbers", lambda pos, kind, root, dated: pos == "number" and not dated
+            and root not in ONE_WORDS),
+    # "One" does count here: "the first day of the month" is written
+    # with it in Hebrew, and "in year one" is a date.
+    Measure("dates", lambda pos, kind, root, dated: pos == "number" and dated),
+    Measure("wealth", lambda pos, kind, root, dated: root in WEALTH_WORDS, passage_only=True),
 ]
+
+# The measures a book report prints; a passage report prints them all.
+BOOK_MEASURES = [m for m in MEASURES if not m.passage_only]
 
 
 def g2(k, n, big_k, big_n):
@@ -315,53 +371,74 @@ class TestamentText:
             self.check_columns(db, corpus)
             self.settings = dict(db.execute("SELECT key, value FROM settings"))
             self.by_book = {}               # book number -> [Verse, ...] in reading order
-            said = {}                       # place root -> Counter of the source's names for it
+            self.said = {}                  # place root -> Counter of the source's names for it
             current = None
-            last = None                     # the word before: [verse_id, root, kind, name parts]
-
-            def close_name():
-                """Put the finished place name into the tally under its root."""
-                if last and last[2] == "place":
-                    said.setdefault(last[1], Counter())[self.join_name(last[3])] += 1
-
+            source_verse, words = None, []  # the source verse being gathered, and its words
             for verse_id, book, chapter, verse, root, pos, kind, gloss in db.execute(
                     "SELECT t.verse_id, v.eng_book, v.eng_chapter, v.eng_verse, t.root, t.pos, "
                     "t.name_kind, t.gloss FROM tokens t JOIN verses v USING (verse_id) "
                     f"WHERE v.corpus = ? AND {row_filter} AND v.eng_book IS NOT NULL "
                     "ORDER BY t.verse_id, t.position", (corpus,)):
-                # A new Verse whenever the King James reference changes.
-                # (A Psalm title and the verse after it share one King
-                # James verse, so they fall into the same Verse.)
-                if current is None or (current.book, current.chapter, current.verse) != \
-                        (book, chapter, verse):
-                    current = Verse(book, chapter, verse)
-                    self.by_book.setdefault(book, []).append(current)
-                part = self.clean_name(gloss) if kind else ""
-                # The second word of a two-word Hebrew name: the same
-                # verse, the same root and kind as the word before, and a
-                # different piece of the name ("Beth-" then "-el").  It
-                # joins the name already counted and is not counted again.
-                # The same piece twice ("Ariel, Ariel") is the name said
-                # twice, and both are counted.
-                if (corpus == "TAHOT" and kind and last and last[0] == verse_id
-                        and last[1] == root and last[2] == kind
-                        and part.lower() != last[3][-1].lower()):
-                    last[3].append(part)
-                    continue
-                close_name()
-                last = [verse_id, root, kind, [part]]
-                if pos not in CONTENT:
-                    continue
-                current.content += 1
-                for m in MEASURES:
-                    if m.counts(pos, kind, root):
-                        current.roots.setdefault(m.name, []).append(root)
-            close_name()
+                if verse_id != source_verse:
+                    # The verse before is complete: count its words.
+                    if words:
+                        self.count_verse(current, words)
+                    source_verse, words = verse_id, []
+                    # A new Verse whenever the King James reference changes.
+                    # (A Psalm title and the verse after it share one King
+                    # James verse, so they fall into the same Verse.)
+                    if current is None or (current.book, current.chapter, current.verse) != \
+                            (book, chapter, verse):
+                        current = Verse(book, chapter, verse)
+                        self.by_book.setdefault(book, []).append(current)
+                words.append((root, pos, kind, gloss))
+            if words:
+                self.count_verse(current, words)
             # root -> the source's commonest name for the place
-            self.place_names = {root: names.most_common(1)[0][0] for root, names in said.items()
+            self.place_names = {root: names.most_common(1)[0][0]
+                                for root, names in self.said.items()
                                 if names.most_common(1)[0][0]}
         finally:
             db.close()
+
+    def count_verse(self, current, words):
+        """
+        Count the whole words of one source verse into a Verse.  'words'
+        is [(root, pos, name_kind, gloss), ...] in reading order.  The
+        whole verse is in hand, so a word can be judged by its
+        neighbours: a number by "year" or "month" is a date, and the
+        second word of a two-word name belongs to the first.
+        """
+        # Where "year" and "month" stand in the verse.
+        marks = [i for i, word in enumerate(words) if word[0] in YEAR_AND_MONTH_WORDS]
+        last = None                     # the word before: [root, kind, name parts]
+
+        def close_name():
+            """Put the finished place name into the tally under its root."""
+            if last and last[1] == "place":
+                self.said.setdefault(last[0], Counter())[self.join_name(last[2])] += 1
+
+        for i, (root, pos, kind, gloss) in enumerate(words):
+            part = self.clean_name(gloss) if kind else ""
+            # The second word of a two-word Hebrew name: the same root
+            # and kind as the word before, and a different piece of the
+            # name ("Beth-" then "-el").  It joins the name already
+            # counted and is not counted again.  The same piece twice
+            # ("Ariel, Ariel") is the name said twice, and both count.
+            if (self.corpus == "TAHOT" and kind and last and last[0] == root
+                    and last[1] == kind and part.lower() != last[2][-1].lower()):
+                last[2].append(part)
+                continue
+            close_name()
+            last = [root, kind, [part]]
+            if pos not in CONTENT:
+                continue
+            current.content += 1
+            dated = pos == "number" and any(abs(i - j) <= DATE_REACH for j in marks)
+            for m in MEASURES:
+                if m.counts(pos, kind, root, dated):
+                    current.roots.setdefault(m.name, []).append(root)
+        close_name()
 
     @staticmethod
     def clean_name(gloss):
@@ -744,7 +821,9 @@ class Stretch:
         'Thebes [No]', 'Migdol [Tower]', 'Tyre [Tyrus]'.
         """
         form = self.headwords.get(root, root)
-        if measure != "description" and measure != "numbers" and form != root:
+        if measure == "dates" and root in ONE_WORDS:
+            form = ONE_WORDS[root]      # "the first of the month" is "one" in Hebrew
+        if measure in NAME_MEASURES and form != root:
             form = form.title()
         if measure in PLACE_MEASURES:
             name = self.text.place_names.get(root)
@@ -831,11 +910,38 @@ class Trial:
         self.lxx_path = lxx_path
         self.size = size
         self.threshold = threshold
-        self.yardstick = yardstick              # "testament" or "group"
         self.metadata = MetadataStore(metadata_path)
+        # The yardstick: "testament", "group" (each book's own group) or
+        # "group:Prophecy" (one group named for every book).
+        self.yardstick, _, named = yardstick.partition(":")
+        self.named_group = self.find_group(named) if named else None
+        if self.yardstick not in ("testament", "group") or (named and self.yardstick != "group"):
+            sys.exit(f"--ordinary takes testament, group, or group:<name>, not '{yardstick}'.")
+        self.load_wealth_words(metadata_path)
         self.headwords = Headwords(atlas_path)
         self.texts = {}                         # corpus -> TestamentText
         self.ordinaries = {}                    # (corpus, books or None) -> Ordinary
+
+    def find_group(self, wanted):
+        """The catalogue's spelling of a group name, whatever case it was typed in."""
+        groups = sorted(set(self.metadata.groups.values()))
+        for group in groups:
+            if group.lower() == wanted.strip().lower():
+                return group
+        sys.exit(f"No group named '{wanted}' in metadata.db. The groups are: {', '.join(groups)}.")
+
+    @staticmethod
+    def load_wealth_words(metadata_path):
+        """Fill WEALTH_WORDS from the feeling list; it stays empty if there is no list yet."""
+        try:
+            db = sqlite3.connect(metadata_path.resolve().as_uri() + "?mode=ro", uri=True)
+            try:
+                WEALTH_WORDS.update(root for (root,) in db.execute(
+                    "SELECT root FROM feeling_words WHERE category = 'wealth'"))
+            finally:
+                db.close()
+        except sqlite3.Error:
+            pass                # no feeling_words table: atlas_feelings.py has not been run
 
     def text_of(self, book_number):
         """The original-language text a book is read in."""
@@ -857,15 +963,17 @@ class Trial:
 
     def group_ordinary(self, book_number):
         """
-        Ordinary = the other Old Testament books of the book's kind (its
-        baseline group in metadata.db), or None when there is no such
-        comparison to make: a New Testament book, or a book alone in its
-        group.  The book itself is left out, so a long book is not
-        measured against itself.
+        Ordinary = the other Old Testament books of a group: the one
+        named in the command, or else the book's own kind (its baseline
+        group in metadata.db).  None when there is no such comparison to
+        make: a New Testament book, or a group with no other book in it.
+        The book itself is left out, so a long book is not measured
+        against itself.
         """
         if self.metadata.testament_of(book_number) != "OT":
             return None
-        group = self.metadata.group_of(book_number)
+        own = self.metadata.group_of(book_number)
+        group = self.named_group or own
         others = [b for b in self.metadata.books_in_group(group)
                   if b != book_number and self.metadata.testament_of(b) == "OT"]
         if not others:
@@ -874,13 +982,19 @@ class Trial:
         key = (text.corpus, tuple(others))
         if key not in self.ordinaries:
             names = ", ".join(self.metadata.name_of(b) for b in others)
-            self.ordinaries[key] = Ordinary(
-                text, self.size, set(others),
-                f"the other books of its kind, {group} ({names})")
+            book = self.metadata.name_of(book_number)
+            if group == own:
+                label = f"the other books of its kind, {group} ({names})"
+                short = f"{group} without {book}"
+            else:
+                # A group the book does not belong to: all of it is used.
+                label = f"the books of the group {group} ({names})"
+                short = group
+            self.ordinaries[key] = Ordinary(text, self.size, set(others), label)
             self.ordinaries[key].group = group
             # The book left out is part of the name: each prophet is
             # measured against the others, so each has its own ordinary.
-            self.ordinaries[key].short = f"{group} without {self.metadata.name_of(book_number)}"
+            self.ordinaries[key].short = short
         return self.ordinaries[key]
 
     def ordinary_of(self, book_number):
@@ -956,9 +1070,9 @@ class PosReport:
                f"{self.trial.size} verses ({o.windows:,} windows, one starting every {o.step} "
                "verses)."]
         if self.trial.yardstick == "group" and self.wide is None:
-            out.append("Asked for the book's own kind: there is none to compare it with (a New "
-                       "Testament book, or a book alone in its group), so the whole testament "
-                       "is used.")
+            out.append("Asked for a group as the yardstick: there is none to compare this book "
+                       "with (a New Testament book, or a group with no other book in it), so "
+                       "the whole testament is used.")
         out.extend(self.trial.left_out(self.text.corpus))
         out.append("")
 
@@ -972,7 +1086,7 @@ class PosReport:
             wide_scores = part.against(self.wide)
             head += f"{'all ' + testament + ' T.':>13}{'G2':>9}"
         out.append(head)
-        for m in MEASURES:
+        for m in BOOK_MEASURES:
             said = part.said(m.name)
             share, value = scores[m.name]
             line = (f"  {m.name:<14}{len(said):>7,}{len(set(said)):>11,}{share:>8.1%}"
@@ -985,12 +1099,14 @@ class PosReport:
         out.append("  window of content words; for description it is the different adjectives "
                    "in a window.")
         if self.wide:
-            out.append(f"  'ordinary' is the book's own kind ({o.group}); the last two columns "
+            whose = "the book's own kind" if o.group == self.trial.metadata.group_of(
+                self.book_number) else "the group named in the command"
+            out.append(f"  'ordinary' is {whose} ({o.group}); the last two columns "
                        "set the book against the whole testament.")
         out.append("")
 
         # Each measure's spots, hot first, in text order.
-        for m in MEASURES:
+        for m in BOOK_MEASURES:
             name = m.name
             what = "different adjectives per window" if m.different else "words"
             out.append(f"({name})  ordinary rate {o.rate(name):.4f} of content words ({what})")
@@ -1017,11 +1133,11 @@ class PosReport:
                "           of the windows centered in it; +3.29 is G2 10.83. For description "
                "the count is the",
                "           different adjectives in the chapter.)",
-               f"  {'ch':>3}{'content':>9}" + "".join(f"{m.name:>15}" for m in MEASURES)]
+               f"  {'ch':>3}{'content':>9}" + "".join(f"{m.name:>15}" for m in BOOK_MEASURES)]
         for chapter in sorted(by_chapter):
             verses = by_chapter[chapter]
             cells = ""
-            for m in MEASURES:
+            for m in BOOK_MEASURES:
                 ws = centered.get(chapter, [])
                 z = sum(w.z[m.name] for w in ws) / len(ws) if ws else 0.0
                 cells += f"{m.window_count(verses):>8}{z:>+7.1f}"
@@ -1055,6 +1171,11 @@ NOTES = [
     "  A place is named as the source names it, with the King James's word in",
     "  square brackets where the two differ. A Hebrew name of two words (Beth-el)",
     "  is counted once.",
+    "  A number standing within two words of 'year' or 'month' is counted under",
+    "  dates and not under numbers, so the dates that head an oracle ('in the",
+    "  twelfth year, in the twelfth month') do not pass for measurement. A span of",
+    "  years or months ('forty years', 'forty and two months') is counted there too.",
+    "  'Day' is not part of the test: the 1,290 days stay with numbers.",
     "  'Other places' is every place name but the four home names, so it holds",
     "  towns of the land as well as foreign cities and nations. The sources tag",
     "  the tribes as persons, and Yahweh, God and Lord as titles; titles are in no",
@@ -1098,6 +1219,8 @@ class PassageReport:
 
     def render(self):
         trial, parts = self.trial, self.parts
+        # Wealth is shown only when the feeling list is there to supply it.
+        measures = [m for m in MEASURES if m.name != "wealth" or WEALTH_WORDS]
         out = [f"PARTS OF SPEECH TRIAL: passage \"{self.name}\""
                + (f"  ({self.description})" if self.description else ""),
                trial.build_line(),
@@ -1111,31 +1234,39 @@ class PassageReport:
         for o in ordinaries:
             mine = ", ".join(p.label for p in parts if p.ordinary is o)
             out.append(f"Ordinary for {mine} = {o.label} ({o.windows:,} windows).")
-        # Wide enough for the longest label in the first column of the table.
-        width = max([len(p.label) for p in parts]
-                    + [len("ordinary: " + o.short) for o in ordinaries]) + 2
         for corpus in dict.fromkeys(p.text.corpus for p in parts):
             out.append(f"{Trial.LANGUAGE[corpus]} parts:  " + "  ".join(trial.left_out(corpus)))
+        if WEALTH_WORDS:
+            out.append(f"Wealth = the {len(WEALTH_WORDS)} wealth words of the feeling list in "
+                       "metadata.db (gold, silver, pearls, silk, merchandise), whatever their "
+                       "part of speech.")
+        else:
+            out.append("No wealth measure: metadata.db has no feeling list yet "
+                       "(atlas_feelings.py).")
         out.append("")
 
-        # The parts side by side.
+        # The parts side by side: one column to a part, one row to a measure.
+        wide = max(18, max(len(p.label) for p in parts) + 2)
+        heads = f"  {'':<14}" + "".join(f"{p.label:>{wide}}" for p in parts)
         out.append("THE PARTS SIDE BY SIDE  (for each measure: share of content words, then G2 "
                    "against that part's own ordinary)")
-        out.append(f"  {'part':<{width}}{'text':<8}{'verses':>7}{'content':>9}"
-                   + "".join(f"{m.name:>17}" for m in MEASURES))
-        for p in parts:
-            scores = p.against()
-            cells = "".join(f"{scores[m.name][0]:>9.1%}{scores[m.name][1]:>+8.1f}"
-                            for m in MEASURES)
-            out.append(f"  {p.label:<{width}}{Trial.LANGUAGE[p.text.corpus]:<8}"
-                       f"{len(p.verses):>7,}{p.content:>9,}{cells}")
-        for o in ordinaries:
-            language = Trial.LANGUAGE[next(p for p in parts if p.ordinary is o).text.corpus]
-            label = "ordinary: " + o.short
-            out.append(f"  {label:<{width}}{language:<8}{'':>16}"
-                       + "".join(f"{o.rate(m.name):>9.1%}{'':>8}" for m in MEASURES))
+        out.append(heads)
+        out.append(f"  {'text':<14}"
+                   + "".join(f"{Trial.LANGUAGE[p.text.corpus]:>{wide}}" for p in parts))
+        out.append(f"  {'verses':<14}" + "".join(f"{len(p.verses):>{wide},}" for p in parts))
+        out.append(f"  {'content words':<14}" + "".join(f"{p.content:>{wide},}" for p in parts))
+        scores = [p.against() for p in parts]
+        for m in measures:
+            out.append(f"  {m.name:<14}" + "".join(
+                f"{score[m.name][0]:>{wide - 8}.1%}{score[m.name][1]:>+8.1f}" for score in scores))
         out.append("  G2 3.84 is good evidence that a part differs from its ordinary, 10.83 "
                    "strong; the sign says above or below.")
+        out.append("")
+        out.append("WHAT IS ORDINARY FOR EACH PART  (the share each part is measured against)")
+        out.append(heads)
+        for m in measures:
+            out.append(f"  {m.name:<14}"
+                       + "".join(f"{p.ordinary.rate(m.name):>{wide - 8}.1%}{'':>8}" for p in parts))
         out.append("")
 
         # The words of each kind in each part.
@@ -1143,7 +1274,7 @@ class PassageReport:
                    "ones; then the commonest)")
         for p in parts:
             out.append(f"  {p.label}")
-            for m in MEASURES:
+            for m in measures:
                 said = p.said(m.name)
                 words = p.top_words(p.verses, m.name, how_many=10) if said else "-"
                 out.append(f"    {m.name:<14}{len(said):>4}{len(set(said)):>5}   {words}")
@@ -1154,7 +1285,7 @@ class PassageReport:
         for p in parts:
             out.append(f"  {p.label}")
             lines = []
-            for m in MEASURES:
+            for m in measures:
                 hot, warm, _ = p.finder.find(m.name)
                 for kind, spots in (("hot", hot), ("warm", warm)):
                     for s in spots:
@@ -1163,11 +1294,14 @@ class PassageReport:
         out.append("")
         out.extend([
             "NOTES",
+            "  These profiles show how each part is built: what it names, counts and",
+            "  describes. They do not show which text drew on which. That is a question of",
+            "  shared wording, for the echo tables and the Septuagint layer.",
             "  Each part is read in its own language and measured against its own ordinary,",
             "  so the table compares how far each part stands from what is ordinary for it,",
             "  not Hebrew counts with Greek ones. The shares themselves differ by language",
-            "  (Greek uses far more adjectives than Hebrew), which is why the ordinary rows",
-            "  are printed under the parts.",
+            "  (Greek uses far more adjectives than Hebrew), which is why the second table",
+            "  gives the ordinary share for each part.",
             "  G2 is Dunning's G squared: 3.84 good evidence, 10.83 strong. A hot spot",
             "  reaches 10.83 in a window; a warm spot reaches 3.84, is a lead to read and not",
             "  a finding, and stands clear of every hot spot. A part shorter than the window",
@@ -1177,6 +1311,10 @@ class PassageReport:
             "  King James's word in square brackets where the two differ. Titles (Yahweh, God,",
             "  Lord, Christ) are in no measure, and a city spoken of without its name (\"the",
             "  great city\") cannot be seen by the place measures.",
+            "  A number within two words of 'year' or 'month' is a date, not a number; a span",
+            "  of years or months is counted there too. Wealth is the feeling list's wealth",
+            "  words only: it sees gold, silver, pearls, silk and ivory, and not the spices,",
+            "  grain, cattle and slaves that fill out a cargo list.",
             "  This is a trial script. Nothing here is stored or shown in the pages."])
         return "\n".join(out) + "\n"
 
@@ -1195,9 +1333,10 @@ def main(argv=None):
     parser.add_argument("--passage",
                         help="a named passage (atlas_passages.py list) or references such as "
                              "\"Ezek 16; Jer 50-51; Rev 17-18\", in place of a book")
-    parser.add_argument("--ordinary", choices=["testament", "group"], default="testament",
-                        help="what a book is measured against: its whole testament (default), "
-                             "or the other Old Testament books of its own kind")
+    parser.add_argument("--ordinary", default="testament", metavar="YARDSTICK",
+                        help="what a book is measured against: testament (its whole testament, "
+                             "the default), group (the other Old Testament books of its own "
+                             "kind), or group:<name> (a group you name, e.g. group:Prophecy)")
     parser.add_argument("--window", type=int, default=10, help="verses per window (default 10)")
     parser.add_argument("--threshold", type=float, default=math.sqrt(G2_STRONG),
                         help="spot threshold in z-like units (default 3.29 = G2 10.83)")
@@ -1221,7 +1360,9 @@ def main(argv=None):
     if args.passage:
         passage = PassageReport(trial, args.passage)
         report = passage.render()
-        name = "pos_passage_" + slug(passage.name) + ("_group" if args.ordinary == "group" else "")
+        name = "pos_passage_" + slug(passage.name)
+        if trial.yardstick == "group":
+            name += "_" + (slug(trial.named_group) if trial.named_group else "group")
     else:
         number = trial.metadata.number_for_name(args.book)
         if number is None:

@@ -332,7 +332,7 @@ TAHOT's cardinal-number tag also sits on after, yet, between and
 exceedingly, so numbers are known by a checked list of number words;
 the Greek numbers that decline are on a like list.
 
-**Six trial measures (trial, fifth round, waiting on a read against
+**Seven trial measures (trial, sixth round, waiting on a read against
 the text).** pos_experiment.py scores description, persons, home,
 other places, peoples and numbers as shares of content words in a
 10-verse window, on the heat script's g2 scale, reading an Old
@@ -439,6 +439,37 @@ Nahum 3, do not. Reports: pos_<book>_<group>.txt for Daniel, Jeremiah,
 Isaiah, Zechariah, Ezekiel and Joel, and pos_passage_<name>_group.txt
 for Harlot city, Gentile cities, Israel harlot and "Ezek 16; Ezek 23;
 Jer 50-51; Rev 17-18".
+
+A sixth round, the same day, on the reviewer's recommendations. Three
+additions. `--ordinary group:Prophecy` names the yardstick group, so
+Daniel can be set against the prophets without a change to the
+catalogue, where it stays under Persian period. A dates measure, split
+out of numbers: a number within two words of "year" or "month" in its
+verse, with "day" kept out of the test so the 1,290 days stay with
+numbers. It takes the dating formulas of Ezekiel's and Jeremiah's
+oracles out of numbers, and with them the spans of years and months,
+which the rule cannot tell from dates: in Revelation, which has no
+dates, it holds the forty-two months, the five months and the thousand
+years. And a wealth measure, in passage reports only: the wealth words
+of the feeling list, whatever their part of speech.
+
+What it showed. Daniel against the prophets: numbers hot at the four
+beasts and the ten horns (6:26 to 8:1, two spots), the ram and the goat
+(8:13 to 23), the seventy weeks (9:21 to 10:6) and the days of chapter
+12; persons hot through the court tales and gone from the visions (one
+personal name in the 510 content words of chapter 11). Wealth sets
+cargo list beside cargo list: Ezekiel 27 at 9.6 percent of its content
+words (G2 +161) and Revelation 18 at 5.8 (G2 +86), where description,
+which sees adjectives only, had Revelation 18 as a warm lead; and
+Ezekiel 16's adorned bride (verses 10 to 13: ornaments, silk, gold,
+silver, bracelets, earrings) comes out at 2.0 percent (G2 +21) where
+Ezekiel 23 has next to none. The feeling list's wealth words are the
+precious goods (gold, silver, pearls, silk, ivory, merchandise) and not
+the spices, grain, cattle and slaves of a cargo list, so the measure
+sees part of each list; a trade list of its own would see it all.
+Reports: pos_daniel_prophecy.txt and pos_passage_ezek_27_rev_18_group.txt
+beside the earlier ones, and every earlier report rerun, since numbers
+changed.
 
 Known limits: "other places" holds towns of the land (Bethel, Hebron,
 the Jordan) as well as foreign cities, so a strip of foreign places
