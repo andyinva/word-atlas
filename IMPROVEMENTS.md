@@ -332,7 +332,7 @@ TAHOT's cardinal-number tag also sits on after, yet, between and
 exceedingly, so numbers are known by a checked list of number words;
 the Greek numbers that decline are on a like list.
 
-**Six trial measures (trial, fourth round, waiting on a read against
+**Six trial measures (trial, fifth round, waiting on a read against
 the text).** pos_experiment.py scores description, persons, home,
 other places, peoples and numbers as shares of content words in a
 10-verse window, on the heat script's g2 scale, reading an Old
@@ -396,6 +396,49 @@ ordinary text. And Ezekiel's other places, though every hot spot is a
 passage one would name, are hot in 6.6 percent of its windows against
 an ordinary 6.3: the book has no more of them than the Old Testament
 at large, and it is where they fall that is of use.
+
+A fifth round, the same day, on the reviewer's recommendations. Two
+options. `--ordinary group` measures an Old Testament book against the
+other books of its own kind, its baseline group in the catalogue, with
+the book itself left out and the whole testament kept beside it in the
+first table. A New Testament book stays against the whole New
+Testament: Revelation has no other book of its kind there and cannot
+be set against Hebrew. `--passage` takes a named passage, or references
+written out, and sets its parts side by side, each read in its own
+language against its own ordinary. And the Aramaic quantity words
+(saggi, rab, rabrab, ochori, ochoran) joined the list left out of
+description, which they had inflated in Daniel.
+
+What the yardstick shows. Against the whole Old Testament Ezekiel's
+numbers are a little over ordinary (G2 +7); against the other prophets
+they are its mark (3.0 percent against 0.7, G2 +411, hot in 17 percent
+of its windows against 3). Jeremiah is the prophet of persons (4.0
+percent against 1.3 for the others, hot in 23 percent of its windows),
+the reverse of Ezekiel. Isaiah is the one with description above its
+kind (2.9 percent against 1.9). Zechariah has home and numbers (each
+hot in 10 percent of its windows, against 1 and 5). Daniel's kind in
+the catalogue is the Persian period (Ezra, Nehemiah, Esther), whose
+lists of names and numbers make a poor yardstick for its visions;
+against the whole Old Testament its numbers come out at the seventy
+weeks (hot, 9:22 to 10:5), the four beasts and ten horns (warm, 7:15 to
+8:1) and the days of chapter 12 (warm). Whether Daniel should be read
+with the prophets for this purpose is open.
+
+What the passages show. Jeremiah 50 to 51 names Babylon 55 times and
+is far over its kind for other places (6.8 percent, G2 +69). Revelation
+17 to 18 names it 4 times and is ordinary for places, and shows
+instead in numbers (seven heads and ten horns, hot at 17:1 to 18) and
+in the merchandise (warm for description at 18:12 to 21): a city spoken
+of as "the great city" cannot be seen by a measure of names. Ezekiel 16
+and 23 name Jerusalem three times in 112 verses, well under their kind
+for home, and are told through other names: Sodom and Samaria, Egypt,
+Assyria, the Chaldeans, the Amorite and the Hittite. Among the Gentile
+cities, Tyre in Isaiah 23 and Ezekiel 26 to 28 and Babylon in Jeremiah
+pile up place names; Babylon in Isaiah 13 to 14 and 47, and Nineveh in
+Nahum 3, do not. Reports: pos_<book>_<group>.txt for Daniel, Jeremiah,
+Isaiah, Zechariah, Ezekiel and Joel, and pos_passage_<name>_group.txt
+for Harlot city, Gentile cities, Israel harlot and "Ezek 16; Ezek 23;
+Jer 50-51; Rev 17-18".
 
 Known limits: "other places" holds towns of the land (Bethel, Hebron,
 the Jordan) as well as foreign cities, so a strip of foreign places

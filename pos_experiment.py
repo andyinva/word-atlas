@@ -10,9 +10,11 @@ against the book before anything is built into atlas_heat.py.
 
     python3 atlas_pos.py                    (once, to add the columns)
     python3 pos_experiment.py Joel
-    python3 pos_experiment.py Ezekiel
+    python3 pos_experiment.py Ezekiel --ordinary group
     python3 pos_experiment.py Revelation --window 15
     python3 pos_experiment.py Joel --out reports/pos_joel.txt
+    python3 pos_experiment.py --passage "Harlot city"
+    python3 pos_experiment.py --passage "Ezek 16; Jer 50-51; Rev 17-18" --ordinary group
 
 THE MEASURES
     Each is a share of the window's content words.  A content word here
@@ -23,9 +25,9 @@ THE MEASURES
                     once however often it is said, so a refrain ("slain"
                     fourteen times in Ezekiel 32) cannot carry the score;
                     repetition is the hammer measure's business.  The
-                    quantity words (many, other, great; in Greek also
-                    all, whole, each, no one) are left out: see
-                    QUANTITY_WORDS.  Adjectives that name a people in
+                    quantity words (many, other, great, with their
+                    Aramaic fellows; in Greek also all, whole, each, no
+                    one) are left out: see QUANTITY_WORDS.  Adjectives that name a people in
                     Greek (Ephesian) are counted under peoples.
     (persons)       names of men and women.  High in genealogies, lists
                     and narrative about named people.
@@ -93,6 +95,31 @@ THE SCALE
     printed beside each hot or warm peak; a window with none of the
     words is set to 50%, because "none here" is ordinary, not a finding.
 
+THE YARDSTICK (--ordinary)
+    testament   (the default) every book of the same testament.
+    group       the other Old Testament books of the book's own kind,
+                its baseline group in metadata.db (Law, History,
+                Prophecy, Poetry, Persian period).  The whole Old
+                Testament is a poor yardstick for a prophet: half the
+                windows of Joshua are hot for place names, and that
+                raises what counts as ordinary.  The book itself is left
+                out of its group, so a long book is not measured against
+                itself, and the report's first table carries the whole
+                testament beside the group.  A New Testament book is
+                always measured against the whole New Testament:
+                Revelation has no other book of its kind there, and it
+                cannot be set against the Hebrew prophets, whose text is
+                in another language.
+
+A PASSAGE IN PLACE OF A BOOK (--passage)
+    A named passage from metadata.db (python3 atlas_passages.py list),
+    or references written out as atlas_passages.py takes them.  Its
+    parts are set side by side: the share and G squared of each measure
+    in each part, the words of each kind, and the hot and warm spots
+    inside each part.  Each part is read in its own language and
+    measured against its own ordinary, so Ezekiel 16, Jeremiah 50 to 51
+    and Revelation 17 to 18 can stand in one table.
+
 THE WORDS AFTER A SPOT
     The commonest words behind it, each by the King James's usual word
     for it in this book.  A place is named as the Hebrew or Greek source
@@ -111,6 +138,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from atlas_metadata import MetadataStore, PassageStore, ReferenceParser
 from atlas_pos import PosColumns
 
 # Folder this script lives in, so default paths work on Ubuntu and Windows.
@@ -127,6 +155,11 @@ QUANTITY_WORDS = {
     "H7227": "many",            # rab: many, much
     "H312": "other",            # acher: other, another
     "H1419": "great",           # gadol
+    "H7690": "many",            # saggi (Aramaic): much, many
+    "H7229": "great",           # rab (Aramaic)
+    "H7260": "great",           # rabrab (Aramaic)
+    "H317": "other",            # ochori (Aramaic): another
+    "H321": "other",            # ochoran (Aramaic): other
     "G3956": "all",             # pas
     "G537": "all",              # hapas
     "G3650": "whole",           # holos
@@ -408,19 +441,26 @@ def window_totals(windows):
 
 class Ordinary:
     """
-    What is ordinary for a testament, taken from windows of the same
-    size as the book's: the rate of each measure across them (for G
-    squared) and their scores in order (for the percentile).  Using
-    windows on both sides is what lets "different adjectives in a
-    window" be compared fairly.
+    What is ordinary, taken from windows of the same size as the book's:
+    the rate of each measure across them (for G squared) and their
+    scores in order (for the percentile).  Using windows on both sides
+    is what lets "different adjectives in a window" be compared fairly.
+    The windows come from every book of the text, or from the books
+    named (a book's own kind), and 'label' says which in the report.
     """
 
-    def __init__(self, text, size):
+    def __init__(self, text, size, books=None, label=""):
+        self.label = label
+        self.group = ""                 # the group's name, when the books are one group
+        self.short = ""                 # a short name for a table row: "Prophecy without Isaiah"
         # Ordinary windows start every half window, as in atlas_heat.py.
         self.step = max(1, size // 2)
         reference = []
-        for verses in text.by_book.values():
-            reference.extend(windows_of(verses, size, self.step))
+        for book, verses in text.by_book.items():
+            if books is None or book in books:
+                reference.extend(windows_of(verses, size, self.step))
+        if not reference:
+            sys.exit(f"No text to take as ordinary: {label}.")
         self.windows = len(reference)
         self.content, self.counts = window_totals(reference)
         self.sorted = {m.name: sorted(w.share(m.name) for w in reference) for m in MEASURES}
@@ -566,39 +606,22 @@ class SpotFinder:
 
 
 # ===========================================================================
-# The report
+# King James headwords
 # ===========================================================================
-class PosReport:
-    """Scores one book against its testament and writes the report."""
+class Headwords:
+    """The King James's usual word for each Strong's number, book by book."""
 
-    def __init__(self, book, book_number, text, atlas_path, size, threshold):
-        self.book = book
-        self.text = text
+    def __init__(self, atlas_path):
         self.atlas_path = atlas_path
-        self.size = size
-        self.threshold = threshold
-        self.verses = text.by_book.get(book_number, [])
-        self.ordinary = Ordinary(text, size)
-        self.windows = windows_of(self.verses, size, 1)
-        for w in self.windows:
-            self.ordinary.score(w)
-        self.finder = SpotFinder(self.windows, size, threshold, math.sqrt(G2_GOOD))
-        self.headwords = self.load_headwords()
+        self.by_book = {}               # book name -> {root: headword}
 
-    def own_shares(self, name):
-        """
-        (share of the book's windows that are hot, share that are warm),
-        counted window by window exactly as Ordinary counts its own, so
-        the two pairs of figures can be set side by side.
-        """
-        warm_at = math.sqrt(G2_GOOD)
-        scores = [w.z[name] for w in self.windows]
-        if not scores:
-            return 0.0, 0.0
-        return (sum(1 for z in scores if z >= self.threshold) / len(scores),
-                sum(1 for z in scores if warm_at <= z < self.threshold) / len(scores))
+    def of(self, book):
+        """The headwords of one book, read from atlas.db the first time they are asked for."""
+        if book not in self.by_book:
+            self.by_book[book] = self.load(book)
+        return self.by_book[book]
 
-    def load_headwords(self):
+    def load(self, book):
         """
         One English headword per Strong's number: the King James's
         commonest rendering of it in this book, as atlas_heat.py picks
@@ -628,7 +651,7 @@ class PosReport:
                         "SELECT t.verse_id, t.position, t.root, t.surface FROM tokens t "
                         "JOIN verses v USING (verse_id) WHERE v.book = ? "
                         "AND t.root GLOB '[HG][0-9]*' ORDER BY t.verse_id, t.position",
-                        (self.book,)):
+                        (book,)):
                     unit = open_units.get(root)
                     if unit and (unit[0] != verse_id or position - unit[1] > MERGE_GAP):
                         close(root)
@@ -654,13 +677,64 @@ class PosReport:
         except sqlite3.Error:
             return {}
 
-    def build_line(self):
-        """The atlas's own build line when it can be had, else a short one."""
-        try:
-            from atlas_pages import Atlas
-            return Atlas(str(self.atlas_path)).build_line()
-        except Exception:
-            return "Word Atlas (build line not available from here)."
+
+# ===========================================================================
+# A stretch of text, scored
+# ===========================================================================
+class Stretch:
+    """
+    A run of consecutive verses in one book, scored against an ordinary:
+    a whole book, or one part of a passage.  It owns the windows, the
+    spots and the words of that run.
+    """
+
+    def __init__(self, label, book, verses, text, ordinary, size, threshold, headwords):
+        self.label = label              # "Ezekiel", or "Ezekiel 16" for a part of a passage
+        self.book = book                # the book's name, for verse references
+        self.verses = verses
+        self.text = text
+        self.ordinary = ordinary
+        self.size = size
+        self.threshold = threshold
+        self.headwords = headwords      # {root: King James word} for this book
+        self.windows = windows_of(verses, size, 1)
+        for w in self.windows:
+            ordinary.score(w)
+        self.finder = SpotFinder(self.windows, size, threshold, math.sqrt(G2_GOOD))
+
+    @property
+    def content(self):
+        return sum(v.content for v in self.verses)
+
+    def said(self, name):
+        """Every root the stretch counts under a measure, in text order."""
+        return [root for v in self.verses for root in v.roots.get(name, ())]
+
+    def against(self, ordinary=None):
+        """
+        {measure: (share, G squared)} for the stretch as a whole against
+        an ordinary (its own unless another is given).  The stretch is
+        cut into windows laid end to end, so its share is made the way
+        ordinary's is and no verse is counted twice.
+        """
+        ordinary = ordinary or self.ordinary
+        content, counts = window_totals(tiles_of(self.verses, self.size))
+        return {m.name: (counts[m.name] / content if content else 0.0,
+                         g2(counts[m.name], content, ordinary.counts[m.name], ordinary.content))
+                for m in MEASURES}
+
+    def own_shares(self, name):
+        """
+        (share of the stretch's windows that are hot, share that are
+        warm), counted window by window exactly as Ordinary counts its
+        own, so the two pairs of figures can be set side by side.
+        """
+        warm_at = math.sqrt(G2_GOOD)
+        scores = [w.z[name] for w in self.windows]
+        if not scores:
+            return 0.0, 0.0
+        return (sum(1 for z in scores if z >= self.threshold) / len(scores),
+                sum(1 for z in scores if warm_at <= z < self.threshold) / len(scores))
 
     def word(self, root, measure):
         """
@@ -691,128 +765,6 @@ class PosReport:
             tally.update(self.word(r, measure) for r in v.roots.get(measure, []))
         return ", ".join(f"{w} x{n}" if n > 1 else w for w, n in tally.most_common(how_many))
 
-    def left_out(self):
-        """The header lines that name the words the measures leave out."""
-        letter = "H" if self.text.corpus == "TAHOT" else "G"
-
-        def words(listed):
-            """The plain words of one list for this text's language, each once, in list order."""
-            return ", ".join(dict.fromkeys(word for root, word in listed.items()
-                                           if root[0] == letter))
-
-        return [f"Left out of description (quantity words): {words(QUANTITY_WORDS)}.",
-                f"Left out of numbers: {words(ONE_WORDS)}.  Home = {words(HOME_PLACES)}."]
-
-    def render(self):
-        o = self.ordinary
-        content = sum(v.content for v in self.verses)
-        testament = "Old" if self.text.corpus == "TAHOT" else "New"
-        out = [f"PARTS OF SPEECH TRIAL: {self.book}",
-               self.build_line(),
-               f"Text: {self.text.title}; parts of speech filled "
-               f"{self.text.settings.get('pos_filled', '?')}.",
-               f"{self.book}: {len(self.verses):,} verses, {content:,} content words "
-               "(nouns, verbs, adjectives, numbers).",
-               f"Window: {self.size} verses, moving 1 verse at a time; hot and cool spots at "
-               f"G2 {self.threshold ** 2:.2f} and beyond, warm spots from G2 {G2_GOOD}.",
-               f"Ordinary = every {testament} Testament book in the same text, as windows of "
-               f"{self.size} verses ({o.windows:,} windows, one starting every {o.step} verses)."]
-        out.extend(self.left_out())
-        out.append("")
-
-        # The book as a whole against ordinary.  The book is cut into
-        # windows laid end to end, so its share is made the way ordinary's
-        # is and no verse is counted twice.
-        book_content, book_counts = window_totals(tiles_of(self.verses, self.size))
-        out.append("THE BOOK AGAINST ORDINARY")
-        out.append(f"  {'measure':<14}{'words':>7}{'different':>11}{'share':>8}{'ordinary':>10}"
-                   f"{'G2':>9}")
-        for m in MEASURES:
-            said = [root for v in self.verses for root in v.roots.get(m.name, ())]
-            share = book_counts[m.name] / book_content if book_content else 0.0
-            value = g2(book_counts[m.name], book_content, o.counts[m.name], o.content)
-            out.append(f"  {m.name:<14}{len(said):>7,}{len(set(said)):>11,}{share:>8.1%}"
-                       f"{o.rate(m.name):>10.1%}{value:>+9.1f}")
-        out.append("  'words' is every word of the kind in the book and 'different' how many "
-                   "distinct ones. The share is per")
-        out.append("  window of content words; for description it is the different adjectives "
-                   "in a window.")
-        out.append("")
-
-        # Each measure's spots, hot first, in text order.
-        for m in MEASURES:
-            name = m.name
-            what = "different adjectives per window" if m.different else "words"
-            out.append(f"({name})  ordinary rate {o.rate(name):.4f} of content words ({what})")
-            own_hot, own_warm = self.own_shares(name)
-            out.append(f"  windows hot and warm: ordinary {o.hot_share[name]:.1%} and "
-                       f"{o.warm_share[name]:.1%}; {self.book} {own_hot:.1%} and {own_warm:.1%}")
-            hot, warm, cool = self.finder.find(name)
-            for s in hot:
-                out.append(self.spot_line("hot", s, name))
-            if not hot:
-                out.append("  hot: none")
-            # The strongest warm spots only, kept in text order.
-            shown = sorted(warm, key=lambda s: -s.peak.g2[name])[:WARM_SPOTS_SHOWN]
-            for s in warm:
-                if s in shown:
-                    out.append(self.spot_line("warm", s, name))
-            if len(warm) > len(shown):
-                out.append(f"  warm     and {len(warm) - len(shown)} weaker warm spots")
-            if not warm:
-                out.append("  warm: none")
-            if not hot and not warm:
-                # Nothing past either line: still name the window that
-                # came nearest, if any is above ordinary, so a short book
-                # has something to read against the text.
-                best = max(self.windows, key=lambda w: w.g2[name], default=None)
-                if best is not None and best.g2[name] > 0:
-                    out.append(self.spot_line("nearest", Spot(name, [best], "warm"), name))
-            if not cool:
-                out.append("  cool: none")
-            # The strongest cool spots only, kept in text order.
-            strongest = sorted(cool, key=lambda s: s.peak.g2[name])[:COOL_SPOTS_SHOWN]
-            for s in cool:
-                if s in strongest:
-                    out.append(self.spot_line("cool", s, name))
-            if len(cool) > len(strongest):
-                out.append(f"  cool     and {len(cool) - len(strongest)} weaker cool spots; "
-                           "the chapter table shows where the book runs low")
-            out.append("")
-
-        out.extend(self.chapter_table())
-        out.extend([
-            "NOTES",
-            "  G2 is Dunning's G squared (log-likelihood), the atlas's keyness measure:",
-            "  3.84 good evidence, 10.83 strong. A hot spot reaches 10.83; a warm spot",
-            "  reaches 3.84 but not 10.83 and stands clear of every hot spot. A warm spot",
-            "  is a lead to read, not a finding: the line under each heading sets the",
-            "  book's share of hot and of warm windows beside the ordinary share, and where",
-            "  the two are alike the book's warm spots are no more than the ordinary run of",
-            "  things. Those shares count every warm window, the slopes of a hot spot",
-            "  included, so a book can have warm windows and no warm spot of its own.",
-            "  'nearest' is the window that came closest when none",
-            "  reached 3.84. 'n of m' at a peak is the count in that window out of its",
-            "  content words. The percentile after a peak is the share of ordinary windows",
-            "  scoring lower.",
-            "  Two spots of one kind are joined into one line when they share at least half",
-            "  a window of verses; with less they stay apart, so neighbours can still",
-            "  overlap by a few verses. A spot's verses run from its first window's start",
-            "  to its last window's end. The words",
-            "  after a spot are the commonest ones behind it, each by the King James's",
-            "  usual word for it in this book; 'x3' says how often the word comes in the",
-            "  spot, though for description a word scores once however often it comes.",
-            "  A place is named as the source names it, with the King James's word in",
-            "  square brackets where the two differ. A Hebrew name of two words (Beth-el)",
-            "  is counted once.",
-            "  'Other places' is every place name but the four home names, so it holds",
-            "  towns of the land as well as foreign cities and nations. The sources tag",
-            "  the tribes as persons, and Yahweh, God and Lord as titles; titles are in no",
-            "  measure. One Strong's number is one entry, so two men of the same name are",
-            "  not told apart.",
-            "  This is a trial script. Nothing here is stored or shown in the pages."])
-        return "\n".join(out) + "\n"
-
     def spot_line(self, label, spot, name):
         """One line of the spot lists: where, how strong, how many, which words."""
         p = spot.peak
@@ -824,13 +776,241 @@ class PosReport:
             line += f" {p.pct[name]:5.1f}%  {self.top_words(spot.verses(), name)}"
         return line.rstrip()
 
+    def spot_lines(self, name):
+        """The hot, warm and cool lines of one measure, as a book report lists them."""
+        out = []
+        hot, warm, cool = self.finder.find(name)
+        for s in hot:
+            out.append(self.spot_line("hot", s, name))
+        if not hot:
+            out.append("  hot: none")
+        # The strongest warm spots only, kept in text order.
+        shown = sorted(warm, key=lambda s: -s.peak.g2[name])[:WARM_SPOTS_SHOWN]
+        for s in warm:
+            if s in shown:
+                out.append(self.spot_line("warm", s, name))
+        if len(warm) > len(shown):
+            out.append(f"  warm     and {len(warm) - len(shown)} weaker warm spots")
+        if not warm:
+            out.append("  warm: none")
+        if not hot and not warm:
+            # Nothing past either line: still name the window that
+            # came nearest, if any is above ordinary, so a short book
+            # has something to read against the text.
+            best = max(self.windows, key=lambda w: w.g2[name], default=None)
+            if best is not None and best.g2[name] > 0:
+                out.append(self.spot_line("nearest", Spot(name, [best], "warm"), name))
+        if not cool:
+            out.append("  cool: none")
+        # The strongest cool spots only, kept in text order.
+        strongest = sorted(cool, key=lambda s: s.peak.g2[name])[:COOL_SPOTS_SHOWN]
+        for s in cool:
+            if s in strongest:
+                out.append(self.spot_line("cool", s, name))
+        if len(cool) > len(strongest):
+            out.append(f"  cool     and {len(cool) - len(strongest)} weaker cool spots; "
+                       "the chapter table shows where the book runs low")
+        return out
+
+
+# ===========================================================================
+# The trial: texts, yardsticks and the two kinds of report
+# ===========================================================================
+class Trial:
+    """
+    Holds what every report needs: the catalogue, the texts (read once
+    each), the ordinaries (worked out once each) and the headwords.
+    """
+
+    CORPUS = {"OT": "TAHOT", "NT": "GNT"}
+    TESTAMENT = {"OT": "Old", "NT": "New"}
+    LANGUAGE = {"TAHOT": "Hebrew", "GNT": "Greek"}
+
+    def __init__(self, atlas_path, lxx_path, metadata_path, size, threshold, yardstick):
+        self.atlas_path = atlas_path
+        self.lxx_path = lxx_path
+        self.size = size
+        self.threshold = threshold
+        self.yardstick = yardstick              # "testament" or "group"
+        self.metadata = MetadataStore(metadata_path)
+        self.headwords = Headwords(atlas_path)
+        self.texts = {}                         # corpus -> TestamentText
+        self.ordinaries = {}                    # (corpus, books or None) -> Ordinary
+
+    def text_of(self, book_number):
+        """The original-language text a book is read in."""
+        corpus = self.CORPUS[self.metadata.testament_of(book_number)]
+        if corpus not in self.texts:
+            self.texts[corpus] = TestamentText(self.lxx_path, corpus)
+        return self.texts[corpus]
+
+    def testament_ordinary(self, book_number):
+        """Ordinary = every book of the book's testament."""
+        text = self.text_of(book_number)
+        key = (text.corpus, None)
+        if key not in self.ordinaries:
+            name = self.TESTAMENT[self.metadata.testament_of(book_number)]
+            self.ordinaries[key] = Ordinary(
+                text, self.size, None, f"every {name} Testament book in the same text")
+            self.ordinaries[key].short = f"the {name} Testament"
+        return self.ordinaries[key]
+
+    def group_ordinary(self, book_number):
+        """
+        Ordinary = the other Old Testament books of the book's kind (its
+        baseline group in metadata.db), or None when there is no such
+        comparison to make: a New Testament book, or a book alone in its
+        group.  The book itself is left out, so a long book is not
+        measured against itself.
+        """
+        if self.metadata.testament_of(book_number) != "OT":
+            return None
+        group = self.metadata.group_of(book_number)
+        others = [b for b in self.metadata.books_in_group(group)
+                  if b != book_number and self.metadata.testament_of(b) == "OT"]
+        if not others:
+            return None
+        text = self.text_of(book_number)
+        key = (text.corpus, tuple(others))
+        if key not in self.ordinaries:
+            names = ", ".join(self.metadata.name_of(b) for b in others)
+            self.ordinaries[key] = Ordinary(
+                text, self.size, set(others),
+                f"the other books of its kind, {group} ({names})")
+            self.ordinaries[key].group = group
+            # The book left out is part of the name: each prophet is
+            # measured against the others, so each has its own ordinary.
+            self.ordinaries[key].short = f"{group} without {self.metadata.name_of(book_number)}"
+        return self.ordinaries[key]
+
+    def ordinary_of(self, book_number):
+        """The ordinary the chosen yardstick gives a book."""
+        if self.yardstick == "group":
+            return self.group_ordinary(book_number) or self.testament_ordinary(book_number)
+        return self.testament_ordinary(book_number)
+
+    def stretch(self, book_number, verse_range=None):
+        """A whole book, or the verses of it that a range covers, as a scored Stretch."""
+        text = self.text_of(book_number)
+        book = self.metadata.name_of(book_number)
+        verses = text.by_book.get(book_number, [])
+        label = book
+        if verse_range is not None:
+            verses = [v for v in verses if verse_range.contains(book_number, v.chapter, v.verse)]
+            label = verse_range.describe(self.metadata)
+        return Stretch(label, book, verses, text, self.ordinary_of(book_number), self.size,
+                       self.threshold, self.headwords.of(book))
+
+    def build_line(self):
+        """The atlas's own build line when it can be had, else a short one."""
+        try:
+            from atlas_pages import Atlas
+            return Atlas(str(self.atlas_path)).build_line()
+        except Exception:
+            return "Word Atlas (build line not available from here)."
+
+    def left_out(self, corpus):
+        """The header line that names the words the measures leave out of one text."""
+        letter = "H" if corpus == "TAHOT" else "G"
+
+        def words(listed):
+            """The plain words of one list for this text's language, each once, in list order."""
+            return ", ".join(dict.fromkeys(word for root, word in listed.items()
+                                           if root[0] == letter))
+
+        return [f"Left out of description (quantity words): {words(QUANTITY_WORDS)}.",
+                f"Left out of numbers: {words(ONE_WORDS)}.  Home = {words(HOME_PLACES)}."]
+
+    def window_line(self):
+        return (f"Window: {self.size} verses, moving 1 verse at a time; hot and cool spots at "
+                f"G2 {self.threshold ** 2:.2f} and beyond, warm spots from G2 {G2_GOOD}.")
+
+
+# ===========================================================================
+# The report on a book
+# ===========================================================================
+class PosReport:
+    """Scores one book and writes its report."""
+
+    def __init__(self, trial, book_number):
+        self.trial = trial
+        self.book_number = book_number
+        self.part = trial.stretch(book_number)
+        self.book = self.part.book
+        self.text = self.part.text
+        # With the group yardstick the book table also carries the whole
+        # testament, so both comparisons can be read off one report.
+        wide = trial.testament_ordinary(book_number)
+        self.wide = wide if wide is not self.part.ordinary else None
+
+    def render(self):
+        part, o = self.part, self.part.ordinary
+        out = [f"PARTS OF SPEECH TRIAL: {self.book}",
+               self.trial.build_line(),
+               f"Text: {self.text.title}; parts of speech filled "
+               f"{self.text.settings.get('pos_filled', '?')}.",
+               f"{self.book}: {len(part.verses):,} verses, {part.content:,} content words "
+               "(nouns, verbs, adjectives, numbers).",
+               self.trial.window_line(),
+               f"Ordinary = {o.label}, as windows of "
+               f"{self.trial.size} verses ({o.windows:,} windows, one starting every {o.step} "
+               "verses)."]
+        if self.trial.yardstick == "group" and self.wide is None:
+            out.append("Asked for the book's own kind: there is none to compare it with (a New "
+                       "Testament book, or a book alone in its group), so the whole testament "
+                       "is used.")
+        out.extend(self.trial.left_out(self.text.corpus))
+        out.append("")
+
+        # The book as a whole against ordinary.
+        scores = part.against()
+        out.append("THE BOOK AGAINST ORDINARY")
+        head = (f"  {'measure':<14}{'words':>7}{'different':>11}{'share':>8}{'ordinary':>10}"
+                f"{'G2':>9}")
+        if self.wide:
+            testament = Trial.TESTAMENT[self.trial.metadata.testament_of(self.book_number)]
+            wide_scores = part.against(self.wide)
+            head += f"{'all ' + testament + ' T.':>13}{'G2':>9}"
+        out.append(head)
+        for m in MEASURES:
+            said = part.said(m.name)
+            share, value = scores[m.name]
+            line = (f"  {m.name:<14}{len(said):>7,}{len(set(said)):>11,}{share:>8.1%}"
+                    f"{o.rate(m.name):>10.1%}{value:>+9.1f}")
+            if self.wide:
+                line += f"{self.wide.rate(m.name):>13.1%}{wide_scores[m.name][1]:>+9.1f}"
+            out.append(line)
+        out.append("  'words' is every word of the kind in the book and 'different' how many "
+                   "distinct ones. The share is per")
+        out.append("  window of content words; for description it is the different adjectives "
+                   "in a window.")
+        if self.wide:
+            out.append(f"  'ordinary' is the book's own kind ({o.group}); the last two columns "
+                       "set the book against the whole testament.")
+        out.append("")
+
+        # Each measure's spots, hot first, in text order.
+        for m in MEASURES:
+            name = m.name
+            what = "different adjectives per window" if m.different else "words"
+            out.append(f"({name})  ordinary rate {o.rate(name):.4f} of content words ({what})")
+            own_hot, own_warm = part.own_shares(name)
+            out.append(f"  windows hot and warm: ordinary {o.hot_share[name]:.1%} and "
+                       f"{o.warm_share[name]:.1%}; {self.book} {own_hot:.1%} and {own_warm:.1%}")
+            out.extend(part.spot_lines(name))
+            out.append("")
+
+        out.extend(self.chapter_table())
+        out.extend(NOTES)
+        return "\n".join(out) + "\n"
+
     def chapter_table(self):
         """Each chapter's own counts, and the average z-equivalent of its windows."""
         by_chapter = {}
-        for v in self.verses:
+        for v in self.part.verses:
             by_chapter.setdefault(v.chapter, []).append(v)
         centered = {}
-        for w in self.windows:
+        for w in self.part.windows:
             centered.setdefault(w.middle.chapter, []).append(w)
         out = ["CHAPTERS  (count in the chapter, then the average z-equivalent, the signed "
                "square root of G2,",
@@ -850,38 +1030,208 @@ class PosReport:
         return out
 
 
+# The notes that close a book report.
+NOTES = [
+    "NOTES",
+    "  G2 is Dunning's G squared (log-likelihood), the atlas's keyness measure:",
+    "  3.84 good evidence, 10.83 strong. A hot spot reaches 10.83; a warm spot",
+    "  reaches 3.84 but not 10.83 and stands clear of every hot spot. A warm spot",
+    "  is a lead to read, not a finding: the line under each heading sets the",
+    "  book's share of hot and of warm windows beside the ordinary share, and where",
+    "  the two are alike the book's warm spots are no more than the ordinary run of",
+    "  things. Those shares count every warm window, the slopes of a hot spot",
+    "  included, so a book can have warm windows and no warm spot of its own.",
+    "  'nearest' is the window that came closest when none",
+    "  reached 3.84. 'n of m' at a peak is the count in that window out of its",
+    "  content words. The percentile after a peak is the share of ordinary windows",
+    "  scoring lower.",
+    "  Two spots of one kind are joined into one line when they share at least half",
+    "  a window of verses; with less they stay apart, so neighbours can still",
+    "  overlap by a few verses. A spot's verses run from its first window's start",
+    "  to its last window's end. The words",
+    "  after a spot are the commonest ones behind it, each by the King James's",
+    "  usual word for it in this book; 'x3' says how often the word comes in the",
+    "  spot, though for description a word scores once however often it comes.",
+    "  A place is named as the source names it, with the King James's word in",
+    "  square brackets where the two differ. A Hebrew name of two words (Beth-el)",
+    "  is counted once.",
+    "  'Other places' is every place name but the four home names, so it holds",
+    "  towns of the land as well as foreign cities and nations. The sources tag",
+    "  the tribes as persons, and Yahweh, God and Lord as titles; titles are in no",
+    "  measure. One Strong's number is one entry, so two men of the same name are",
+    "  not told apart.",
+    "  This is a trial script. Nothing here is stored or shown in the pages."]
+
+
+# ===========================================================================
+# The report on a passage
+# ===========================================================================
+class PassageReport:
+    """
+    Sets the parts of a passage side by side.  A passage is a name from
+    metadata.db (atlas_passages.py list) or references written out
+    ("Ezek 16; Jer 50-51; Rev 17-18").  Each part is read in its own
+    language and scored against its own ordinary, so a Hebrew part and a
+    Greek part can stand in one table: what is compared across them is
+    how far each stands from what is ordinary for its own text.
+    """
+
+    def __init__(self, trial, wanted):
+        self.trial = trial
+        metadata = trial.metadata
+        passage = PassageStore(metadata).get(wanted)
+        if passage is not None:
+            self.name, self.description, ranges = passage.name, passage.description, passage.ranges
+        else:
+            # Not a stored name: read it as references.  The parser stops
+            # with a plain message when it cannot.
+            if not re.search(r"\d", wanted):
+                names = ", ".join(p.name for p in PassageStore(metadata).all())
+                sys.exit(f"No passage named '{wanted}'. Known passages: {names}. "
+                         "References also work: \"Ezek 16; Jer 50-51\".")
+            ranges = ReferenceParser(metadata).parse(wanted)
+            self.name, self.description = wanted, ""
+        self.parts = [trial.stretch(r.book_num, r) for r in ranges]
+        empty = [p.label for p in self.parts if not p.verses]
+        if empty:
+            sys.exit(f"No verses found for: {', '.join(empty)}")
+
+    def render(self):
+        trial, parts = self.trial, self.parts
+        out = [f"PARTS OF SPEECH TRIAL: passage \"{self.name}\""
+               + (f"  ({self.description})" if self.description else ""),
+               trial.build_line(),
+               "Parts: " + "; ".join(p.label for p in parts) + ".",
+               trial.window_line()]
+        # Each ordinary in use, once, with the parts that are measured by it.
+        ordinaries = []
+        for p in parts:
+            if p.ordinary not in ordinaries:
+                ordinaries.append(p.ordinary)
+        for o in ordinaries:
+            mine = ", ".join(p.label for p in parts if p.ordinary is o)
+            out.append(f"Ordinary for {mine} = {o.label} ({o.windows:,} windows).")
+        # Wide enough for the longest label in the first column of the table.
+        width = max([len(p.label) for p in parts]
+                    + [len("ordinary: " + o.short) for o in ordinaries]) + 2
+        for corpus in dict.fromkeys(p.text.corpus for p in parts):
+            out.append(f"{Trial.LANGUAGE[corpus]} parts:  " + "  ".join(trial.left_out(corpus)))
+        out.append("")
+
+        # The parts side by side.
+        out.append("THE PARTS SIDE BY SIDE  (for each measure: share of content words, then G2 "
+                   "against that part's own ordinary)")
+        out.append(f"  {'part':<{width}}{'text':<8}{'verses':>7}{'content':>9}"
+                   + "".join(f"{m.name:>17}" for m in MEASURES))
+        for p in parts:
+            scores = p.against()
+            cells = "".join(f"{scores[m.name][0]:>9.1%}{scores[m.name][1]:>+8.1f}"
+                            for m in MEASURES)
+            out.append(f"  {p.label:<{width}}{Trial.LANGUAGE[p.text.corpus]:<8}"
+                       f"{len(p.verses):>7,}{p.content:>9,}{cells}")
+        for o in ordinaries:
+            language = Trial.LANGUAGE[next(p for p in parts if p.ordinary is o).text.corpus]
+            label = "ordinary: " + o.short
+            out.append(f"  {label:<{width}}{language:<8}{'':>16}"
+                       + "".join(f"{o.rate(m.name):>9.1%}{'':>8}" for m in MEASURES))
+        out.append("  G2 3.84 is good evidence that a part differs from its ordinary, 10.83 "
+                   "strong; the sign says above or below.")
+        out.append("")
+
+        # The words of each kind in each part.
+        out.append("THE WORDS  (every word of the kind in the part, and how many different "
+                   "ones; then the commonest)")
+        for p in parts:
+            out.append(f"  {p.label}")
+            for m in MEASURES:
+                said = p.said(m.name)
+                words = p.top_words(p.verses, m.name, how_many=10) if said else "-"
+                out.append(f"    {m.name:<14}{len(said):>4}{len(set(said)):>5}   {words}")
+        out.append("")
+
+        # Hot and warm spots inside each part.
+        out.append("HOT AND WARM SPOTS INSIDE EACH PART")
+        for p in parts:
+            out.append(f"  {p.label}")
+            lines = []
+            for m in MEASURES:
+                hot, warm, _ = p.finder.find(m.name)
+                for kind, spots in (("hot", hot), ("warm", warm)):
+                    for s in spots:
+                        lines.append(f"    {m.name:<14}" + p.spot_line(kind, s, m.name).lstrip())
+            out.extend(lines or ["    none"])
+        out.append("")
+        out.extend([
+            "NOTES",
+            "  Each part is read in its own language and measured against its own ordinary,",
+            "  so the table compares how far each part stands from what is ordinary for it,",
+            "  not Hebrew counts with Greek ones. The shares themselves differ by language",
+            "  (Greek uses far more adjectives than Hebrew), which is why the ordinary rows",
+            "  are printed under the parts.",
+            "  G2 is Dunning's G squared: 3.84 good evidence, 10.83 strong. A hot spot",
+            "  reaches 10.83 in a window; a warm spot reaches 3.84, is a lead to read and not",
+            "  a finding, and stands clear of every hot spot. A part shorter than the window",
+            "  is one window.",
+            "  For description a word scores once in a window however often it comes, and the",
+            "  quantity words are left out. A place is named as the source names it, with the",
+            "  King James's word in square brackets where the two differ. Titles (Yahweh, God,",
+            "  Lord, Christ) are in no measure, and a city spoken of without its name (\"the",
+            "  great city\") cannot be seen by the place measures.",
+            "  This is a trial script. Nothing here is stored or shown in the pages."])
+        return "\n".join(out) + "\n"
+
+
+def slug(text):
+    """'Harlot city' -> 'harlot_city', for a file name."""
+    return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Trial: description, persons, home, other places, peoples and numbers "
-                    "by window.")
-    parser.add_argument("book", help="a book name as atlas.db spells it, e.g. Ezekiel")
+                    "by window, for a book or a passage.")
+    parser.add_argument("book", nargs="?",
+                        help="a book name as atlas.db spells it, e.g. Ezekiel")
+    parser.add_argument("--passage",
+                        help="a named passage (atlas_passages.py list) or references such as "
+                             "\"Ezek 16; Jer 50-51; Rev 17-18\", in place of a book")
+    parser.add_argument("--ordinary", choices=["testament", "group"], default="testament",
+                        help="what a book is measured against: its whole testament (default), "
+                             "or the other Old Testament books of its own kind")
     parser.add_argument("--window", type=int, default=10, help="verses per window (default 10)")
     parser.add_argument("--threshold", type=float, default=math.sqrt(G2_STRONG),
                         help="spot threshold in z-like units (default 3.29 = G2 10.83)")
     parser.add_argument("--atlas", type=Path, default=SCRIPT_DIR / "atlas.db")
     parser.add_argument("--lxx", type=Path, default=SCRIPT_DIR / "lxx.db")
+    parser.add_argument("--metadata", type=Path, default=SCRIPT_DIR / "metadata.db")
     parser.add_argument("--out", type=Path, default=None,
-                        help="report file (default reports/pos_<book>.txt)")
+                        help="report file (default reports/pos_<book>.txt, with the group's "
+                             "name added when that is the yardstick)")
     args = parser.parse_args(argv)
 
-    for path, maker in ((args.atlas, "build_atlas.py"), (args.lxx, "build_lxx.py")):
+    if bool(args.book) == bool(args.passage):
+        sys.exit("Give a book (pos_experiment.py Ezekiel) or a passage "
+                 "(pos_experiment.py --passage \"Harlot city\"), one or the other.")
+    for path, maker in ((args.atlas, "build_atlas.py"), (args.lxx, "build_lxx.py"),
+                        (args.metadata, "create_metadata_db.py")):
         if not path.exists():
             sys.exit(f"{path.name} not found at {path}. Run {maker} first.")
 
-    # The book's name, number and testament come from atlas.db.
-    db = sqlite3.connect(args.atlas.resolve().as_uri() + "?mode=ro", uri=True)
-    try:
-        books = {name.lower(): (name, number, testament) for name, number, testament in
-                 db.execute("SELECT book, order_index, testament FROM books")}
-    finally:
-        db.close()
-    if args.book.lower() not in books:
-        sys.exit(f"Unknown book '{args.book}'. Use the name as atlas.db spells it.")
-    book, number, testament = books[args.book.lower()]
-
-    text = TestamentText(args.lxx, "TAHOT" if testament == "Old" else "GNT")
-    report = PosReport(book, number, text, args.atlas, args.window, args.threshold).render()
-    out = args.out or SCRIPT_DIR / "reports" / f"pos_{book.lower().replace(' ', '_')}.txt"
+    trial = Trial(args.atlas, args.lxx, args.metadata, args.window, args.threshold, args.ordinary)
+    if args.passage:
+        passage = PassageReport(trial, args.passage)
+        report = passage.render()
+        name = "pos_passage_" + slug(passage.name) + ("_group" if args.ordinary == "group" else "")
+    else:
+        number = trial.metadata.number_for_name(args.book)
+        if number is None:
+            sys.exit(f"Unknown book '{args.book}'. Use the name as atlas.db spells it.")
+        book = PosReport(trial, number)
+        report = book.render()
+        name = "pos_" + slug(book.book)
+        if book.wide is not None:
+            name += "_" + slug(book.part.ordinary.group)      # pos_ezekiel_prophecy
+    out = args.out or SCRIPT_DIR / "reports" / f"{name}.txt"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(report, encoding="utf-8")
     print(report)
