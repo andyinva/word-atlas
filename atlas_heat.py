@@ -49,7 +49,7 @@ THE FIVE MEASURES
                 --families adds one strip per family as well: emotion,
                 senses, body, violence, sacred, wealth, harlotry; and
                 one per word list of metadata.db (atlas_feelings.py
-                lists): character, divine (the attributes of God), and
+                lists): character, mercy and truth, and
                 for a New Testament book fruit and flesh (Galatians 5).
                 The word lists are counted from the original text in
                 lxx.db, like the names strips, so that the source's
@@ -164,7 +164,7 @@ FAMILY_NAMES = ["emotion", "senses", "body", "violence", "sacred", "wealth", "ha
 # The word lists of metadata.db (atlas_feelings.py), drawn with --families
 # after the families; the ones with no word in a book's language are left
 # out.  They are counted from the original text (atlas_pos.NameReader).
-LIST_NAMES = ["character", "divine", "fruit", "flesh"]
+LIST_NAMES = ["character", "mercy and truth", "fruit", "flesh"]
 
 # Two spots of one kind are joined into one when the verses they share
 # come to at least this part of a window (half: 5 verses of 10); with
@@ -876,11 +876,13 @@ class HeatReport:
         by_chapter = defaultdict(list)
         for w in self.windows:
             by_chapter[w.middle.chapter].append(w)
+        # A column is nine wide, or wider when its name is longer.
+        width = {m: max(9, len(m) + 1) for m in MEASURES}
         out = [f"CHAPTERS  ({self.norms.chapter_note})",
-               "  ch " + "".join(f"{m:>9}" for m in MEASURES) + "   most hammered"]
+               "  ch " + "".join(f"{m:>{width[m]}}" for m in MEASURES) + "   most hammered"]
         for ch in sorted(by_chapter):
             ws = by_chapter[ch]
-            cells = "".join(self.norms.chapter_cell(ws, m) for m in MEASURES)
+            cells = "".join(f"{self.norms.chapter_cell(ws, m).strip():>{width[m]}}" for m in MEASURES)
             words = Counter((w.hammer_word, w.hammer_english) for w in ws if w.hammer_word)
             top = ""
             if words:
@@ -1098,7 +1100,7 @@ def main() -> None:
                  if name in LIST_NAMES and any(r.startswith(letter) for r in roots)}
         if not stored:
             print("Note: no word lists in metadata.db yet (python3 atlas_feelings.py lists), "
-                  "so no character, divine, fruit or flesh strips.\n")
+                  "so no character, mercy and truth, fruit or flesh strips.\n")
         MEASURES.extend(lists)
 
     # The names strips and the word-list strips: the original text's

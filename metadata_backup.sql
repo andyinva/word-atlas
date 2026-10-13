@@ -1,5 +1,5 @@
 -- Word Atlas metadata.db backup (plain SQL; restore with atlas_backup.py)
--- written: 2026-10-13 16:12
+-- written: 2026-10-13 17:02
 BEGIN TRANSACTION;
 CREATE TABLE books (
     book_num       INTEGER PRIMARY KEY,     -- 1 = Genesis ... 66 = Revelation
@@ -15867,14 +15867,14 @@ INSERT INTO "word_lists" VALUES('character','G5281','patience');
 INSERT INTO "word_lists" VALUES('character','G3115','longsuffering');
 INSERT INTO "word_lists" VALUES('character','G4587','grave');
 INSERT INTO "word_lists" VALUES('character','G4586','gravity');
-INSERT INTO "word_lists" VALUES('divine','H2587','gracious');
-INSERT INTO "word_lists" VALUES('divine','H7349','merciful');
-INSERT INTO "word_lists" VALUES('divine','H7356','compassion');
-INSERT INTO "word_lists" VALUES('divine','H2617','mercy');
-INSERT INTO "word_lists" VALUES('divine','H571','truth');
-INSERT INTO "word_lists" VALUES('divine','H530','faithfulness');
-INSERT INTO "word_lists" VALUES('divine','G1656','mercy');
-INSERT INTO "word_lists" VALUES('divine','G3628','compassion');
+INSERT INTO "word_lists" VALUES('mercy and truth','H2587','gracious');
+INSERT INTO "word_lists" VALUES('mercy and truth','H7349','merciful');
+INSERT INTO "word_lists" VALUES('mercy and truth','H7356','compassion');
+INSERT INTO "word_lists" VALUES('mercy and truth','H2617','mercy');
+INSERT INTO "word_lists" VALUES('mercy and truth','H571','truth');
+INSERT INTO "word_lists" VALUES('mercy and truth','H530','faithfulness');
+INSERT INTO "word_lists" VALUES('mercy and truth','G1656','mercy');
+INSERT INTO "word_lists" VALUES('mercy and truth','G3628','compassion');
 INSERT INTO "word_lists" VALUES('fruit','G26','love');
 INSERT INTO "word_lists" VALUES('fruit','G5479','joy');
 INSERT INTO "word_lists" VALUES('fruit','G1515','peace');

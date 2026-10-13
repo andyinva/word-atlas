@@ -6,13 +6,18 @@ Runs the standard set of heat reports for one or more books, so every
 change to Word Atlas can be followed by the same reports and compared
 with the last ones.
 
-For each book it writes three reports to reports/:
+For each book it writes four reports to reports/:
     heat_<book>_self.txt / .svg   the book against itself, percentile scale,
                                   feeling families: the shape of the book
     heat_<book>_ot.txt / .svg     the book against its testament, z scale,
     (or _nt for the New)          families: how the book differs
     heat_<book>_g2.txt            log-likelihood scale, families: which hot
                                   spots are statistically solid
+    heat_<book>_names.txt / .svg  the names and numbers strips (--names) with
+                                  the families, log-likelihood scale, an Old
+                                  Testament book against its own kind
+                                  (--norm group): names in the stories,
+                                  numbers in the visions
 
 Usage:
     python run_heat.py                      (Ezekiel and Revelation)
@@ -72,6 +77,13 @@ def main() -> None:
         run([book, "--families", "--scale", "g2",
              "--out", str(REPORTS / f"{stem}_g2.txt")] + extra)
         print(f"    reports/{stem}_g2.txt")
+        # The own-kind yardstick is for the Old Testament; a New Testament
+        # book is measured against its whole testament whatever is asked.
+        yardstick = ["--norm", "group"] if testament == "ot" else []
+        run([book, "--names", "--families", "--scale", "g2"] + yardstick +
+            ["--out", str(REPORTS / f"{stem}_names.txt"),
+             "--svg", str(REPORTS / f"{stem}_names.svg")] + extra)
+        print(f"    reports/{stem}_names.txt and .svg")
 
 
 if __name__ == "__main__":

@@ -192,6 +192,57 @@ GLOSS_RULES = {
 }
 
 
+# The second halves of the Hebrew teens: "thir-" then "teen", "two [plus]"
+# then "ten".  The source glosses them as two words because the Hebrew
+# has two (shalosh asar); here they are one number, counted once and
+# labelled as one word.
+TEENS = {"one": "eleven", "two": "twelve", "three": "thirteen", "thir": "thirteen",
+         "four": "fourteen", "fif": "fifteen", "six": "sixteen", "seven": "seventeen",
+         "eight": "eighteen", "nine": "nineteen"}
+
+# The small words a gloss puts round a number ('to one', 'O the three
+# of', 'a thousand'), left out of its label.
+NUMBER_HELPS = {"of", "the", "a", "an", "to", "by", "o", "for", "with", "in", "at", "from",
+                "and", "on", "as", "about"}
+
+# Number words the source glosses with nothing but a help ('<the>'), by
+# their Strong's number: Daniel 7:19's Aramaic "fourth".
+GLOSSLESS_NUMBERS = {"H7244": "fourth"}
+
+
+def plain_gloss(gloss):
+    """A gloss without its helps: '[the] four of' -> 'four of', 'two [plus]' -> 'two'."""
+    return " ".join(re.sub(r"\[[^\]]*\]|<[^>]*>", " ", gloss or "").split())
+
+
+def joins_number_before(gloss_before):
+    """Whether a number word continues the number before it ('thir-' + 'teen')."""
+    return bool(gloss_before) and (plain_gloss(gloss_before).endswith("-")
+                                  or "[plus]" in gloss_before)
+
+
+def number_label(gloss, root=""):
+    """
+    A number as a plain word: '[the] four of' -> 'four', '<the> fourth of'
+    -> 'fourth', 'two [plus]' -> 'two'; the Strong's number when the gloss
+    says nothing.
+    """
+    words = [w.strip(",.;:!?") for w in plain_gloss(gloss).lower().split()]
+    words = [w for w in words if w and w not in NUMBER_HELPS]
+    return words[0] if words else GLOSSLESS_NUMBERS.get(root, root)
+
+
+def join_number(label, piece):
+    """'thir-' + 'teen' -> 'thirteen'; 'two' + 'ten' -> 'twelve'; else 'four ten'."""
+    stem = label.rstrip("-")
+    if piece.startswith(("ten", "teen")):
+        teen = TEENS.get(stem, stem + " " + piece)
+        return teen + "th" if piece.endswith("th") else teen      # 'thir-' + 'teenth'
+    if label.endswith("-"):
+        return stem + piece
+    return label + " " + piece
+
+
 def gloss_allows(root, gloss):
     """Whether GLOSS_RULES lets this use of a root count under a word list."""
     must, must_not = GLOSS_RULES.get(root, ((), ()))
@@ -435,9 +486,20 @@ class NameReader:
         counted again.
         """
         marks = [i for i, word in enumerate(words) if word[0] in YEAR_AND_MONTH_WORDS]
+        # A number word that continues the number before it (the "teen"
+        # of "thir- teen"): not counted again, its label joined.
+        joins = [i > 0 and pos == "number" and words[i - 1][1] == "number"
+                 and joins_number_before(words[i - 1][3])
+                 for i, (root, pos, kind, gloss) in enumerate(words)]
         last = None                 # [root, kind, name piece, measure] of the word before
+        number_at = None            # (measure or "dates", index) of the last number label
         for i, (root, pos, kind, gloss) in enumerate(words):
             piece = self.name_piece(gloss) if kind else ""
+            if joins[i] and number_at is not None:
+                held, at = number_at
+                target = counts.dates if held == "dates" else counts.words["numbers"]
+                target[at] = join_number(target[at], number_label(gloss, root))
+                continue
             if (self.corpus == "TAHOT" and kind and last and last[0] == root
                     and last[1] == kind and piece.lower() != last[2].lower()):
                 # The second half joins the name already counted: 'Beth-el'.
@@ -458,18 +520,22 @@ class NameReader:
             elif kind in ("place", "people") or (kind == "person" and root in NATIONS_AS_PERSONS):
                 measure = "nations"
             elif pos == "number":
+                # "One" counts in a date, and as the head of "eleven".
+                continued = i + 1 < len(words) and joins[i + 1]
                 if any(abs(i - j) <= DATE_REACH for j in marks):
-                    counts.dates.append(ONE_WORDS.get(root) or self.name_piece(gloss) or root)
-                elif root not in ONE_WORDS:
+                    counts.dates.append(number_label(gloss, root))
+                    number_at = ("dates", len(counts.dates) - 1)
+                elif root not in ONE_WORDS or continued:
                     measure = "numbers"
             if measure:
                 last[3] = measure
                 setattr(counts, measure, getattr(counts, measure) + 1)
-                word = ONE_WORDS.get(root) or self.name_piece(gloss)
-                # A name keeps its capital; a number is lowered ('Ten' -> 'ten');
-                # a word with no gloss shows its Strong's number.
-                counts.words.setdefault(measure, []).append(
-                    (word if kind else word.lower()) if word else root)
+                if kind:
+                    word = self.name_piece(gloss) or root     # a name keeps its capital
+                else:
+                    word = number_label(gloss, root)
+                    number_at = (measure, len(counts.words.get(measure, [])))
+                counts.words.setdefault(measure, []).append(word)
             if root in FEAST_WORDS and gloss_allows(root, gloss):
                 counts.feasts.append(FEAST_WORDS[root])
             for name, roots in self.lists.items():

@@ -645,14 +645,27 @@ def test_guards(atlas, only):
         elif pos_experiment is not None:
             problems = []
             db = sqlite3.connect(lxx.resolve().as_uri() + "?mode=ro", uri=True)
-            ones = ", ".join(f"'{r}'" for r in pos_experiment.ONE_WORDS)
+            from atlas_pos import joins_number_before
             for corpus, row_filter in (("TAHOT", "t.element = 'root'"), ("GNT", "t.in_tr = 1")):
                 text = pos_experiment.TestamentText(lxx, corpus)
-                held = dict(db.execute(
-                    "SELECT v.eng_book, COUNT(*) FROM tokens t JOIN verses v USING (verse_id) "
-                    f"WHERE v.corpus = ? AND {row_filter} AND v.eng_book IS NOT NULL "
-                    f"AND t.pos = 'number' AND t.root NOT IN ({ones}) GROUP BY v.eng_book",
-                    (corpus,)))
+                # The number words the tokens table holds, by book: a
+                # word that continues the number before it ("thir-" then
+                # "teen") is one number with it, and "one" counts only as
+                # the head of such a pair ("one [plus] ten" is eleven).
+                held, before = {}, None
+                rows = db.execute(
+                    "SELECT t.verse_id, v.eng_book, t.pos, t.root, t.gloss FROM tokens t "
+                    f"JOIN verses v USING (verse_id) WHERE v.corpus = ? AND {row_filter} "
+                    "AND v.eng_book IS NOT NULL ORDER BY t.verse_id, t.position", (corpus,)).fetchall()
+                for n, (vid, book, pos, root, gloss) in enumerate(rows):
+                    joins = (pos == "number" and before is not None and before[0] == vid
+                             and before[1] == "number" and joins_number_before(before[2]))
+                    continued = (n + 1 < len(rows) and rows[n + 1][0] == vid
+                                 and rows[n + 1][2] == "number" and joins_number_before(gloss))
+                    if pos == "number" and not joins and (root not in pos_experiment.ONE_WORDS
+                                                          or continued):
+                        held[book] = held.get(book, 0) + 1
+                    before = (vid, pos, gloss)
                 for book, verses in text.by_book.items():
                     counted = sum(len(v.roots.get("numbers", ())) for v in verses) + sum(
                         1 for v in verses for r in v.roots.get("dates", ())

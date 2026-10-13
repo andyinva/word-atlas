@@ -167,7 +167,7 @@ category both: love is an emotion and a fruit of the Spirit.
 | Strip | Counts | Red example |
 |---|---|---|
 | **character** | what people are: righteous and wicked, upright, true and false, wise and foolish, proud and humble, kind, patient | Ezekiel 18 and 33 (the righteous and the wicked), Isaiah 59 |
-| **divine** | the attributes of God, said of him almost alone: gracious, merciful, compassion, mercy, truth, faithfulness | Joel 2:13, Isaiah 54 and 63 |
+| **mercy and truth** | gracious, merciful, compassion, mercy, truth, faithfulness: what the Old Testament says of God almost alone, and what people are told to show (Zechariah 8:16) | Joel 2:13, Isaiah 54 and 63, Daniel 9 |
 | **fruit** | the fruit of the Spirit, Galatians 5:22-23 (New Testament only) | Galatians 5, Romans 14-15 |
 | **flesh** | the works of the flesh, Galatians 5:19-21 (New Testament only) | Galatians 5, Romans 1 and 13 |
 

@@ -56,9 +56,12 @@ THE WORD LISTS (lists)
         character  qualities of character as people have them: righteous
                    and wicked, upright, true and false, wise and foolish,
                    proud and humble, kind, patient
-        divine     the attributes of God, the words the Old Testament says
-                   of him almost alone: gracious, merciful, compassion,
-                   mercy, truth, faithfulness
+        mercy and truth
+                   gracious, merciful, compassion, mercy, truth,
+                   faithfulness: the words the Old Testament says of God
+                   almost alone, though they are also what people are
+                   told to show ("speak ye every man the truth", Zechariah
+                   8:16), so the list is named for what it counts
         fruit      the fruit of the Spirit, Galatians 5:22 to 23 (Greek)
         flesh      the works of the flesh, Galatians 5:19 to 21 (Greek)
     The lists are WORD_LISTS below, reviewed in the parts-of-speech trial
@@ -159,7 +162,7 @@ WORD_LISTS = {
         "H3477": "upright", "H3476": "uprightness", "H8549": "perfect", "H8537": "integrity",
         "G5046": "perfect", "G273": "blameless", "G299": "blameless",
         "H5355": "innocent", "G121": "innocent", "G172": "harmless",
-        # faithful and true (emeth and emunah, mostly God's, are under divine)
+        # faithful and true (emeth and emunah are under mercy and truth)
         "G4103": "faithful", "G225": "truth", "G227": "true", "G228": "true",
         # deceit and lies
         "H4820": "deceit", "H8267": "falsehood", "G1388": "deceit", "G5579": "lie", "G5571": "false",
@@ -181,7 +184,7 @@ WORD_LISTS = {
         "G1466": "temperance", "G4997": "sobriety", "G4998": "sober",
         "G5281": "patience", "G3115": "longsuffering", "G4587": "grave", "G4586": "gravity",
     },
-    "divine": {
+    "mercy and truth": {
         "H2587": "gracious", "H7349": "merciful", "H7356": "compassion",
         "H2617": "mercy", "H571": "truth", "H530": "faithfulness",
         "G1656": "mercy", "G3628": "compassion",
@@ -203,7 +206,7 @@ WORD_LISTS = {
 # What each list is, for the table's note column and the listing.
 LIST_NOTES = {
     "character": "qualities of character as people have them",
-    "divine": "the attributes of God",
+    "mercy and truth": "gracious, merciful, mercy, truth, faithfulness: God's, and asked of people",
     "fruit": "the fruit of the Spirit, Galatians 5:22-23 (Greek)",
     "flesh": "the works of the flesh, Galatians 5:19-21 (Greek)",
 }
@@ -231,7 +234,7 @@ TABLE_SQL = """
 # more than one list, so the key is the pair.
 LISTS_SQL = """
     CREATE TABLE IF NOT EXISTS word_lists (
-        list      TEXT NOT NULL,      -- character, divine, fruit, flesh (see atlas_feelings.py)
+        list      TEXT NOT NULL,      -- character, mercy and truth, fruit, flesh (atlas_feelings.py)
         root      TEXT NOT NULL,      -- Strong's number, e.g. H6662
         note      TEXT,               -- the plain word, for reading the table
         PRIMARY KEY (list, root)
@@ -484,7 +487,7 @@ def main() -> None:
     d.add_argument("--out", type=Path, default=SCRIPT_DIR / "feeling_words_draft.tsv")
     i = commands.add_parser("import", help="store a reviewed draft in metadata.db")
     i.add_argument("file", type=Path)
-    commands.add_parser("lists", help="store the four word lists (character, divine, fruit, "
+    commands.add_parser("lists", help="store the four word lists (character, mercy and truth, fruit, "
                                        "flesh) in metadata.db")
     commands.add_parser("list", help="show what metadata.db holds")
     args = parser.parse_args()

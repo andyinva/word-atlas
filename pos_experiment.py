@@ -79,11 +79,13 @@ THE MEASURES
                     true, deceitful, wise and foolish, proud and humble,
                     kind, patient (CHARACTER_WORDS).  Holy, love and
                     fear are left to the feeling lists.
-    (divine)        the attributes of God: the words the Old Testament
-                    says of him almost alone, gracious, merciful,
-                    compassion, mercy, truth, faithfulness
-                    (DIVINE_WORDS).  Joel 2:13 is God's character, not
-                    the people's, and the two are kept apart.
+    (mercy and truth)
+                    gracious, merciful, compassion, mercy, truth,
+                    faithfulness (MERCY_WORDS): the words the Old
+                    Testament says of God almost alone (Joel 2:13,
+                    Daniel 9), and also what people are told to show
+                    (Zechariah 8:16), so the measure is named for what
+                    it counts and kept apart from character.
     (fruit)         the fruit of the Spirit, the nine of Galatians 5:22
                     to 23 (FRUIT_WORDS); faith counts only where the
                     source glosses it "faithfulness".  Greek only.
@@ -213,7 +215,8 @@ from pathlib import Path
 from atlas_feelings import WORD_LISTS
 from atlas_metadata import MetadataStore, PassageStore, ReferenceParser
 from atlas_pos import (PosColumns, CONTENT, ONE_WORDS, HOME_PLACES, NATIONS_AS_PERSONS,
-                       YEAR_AND_MONTH_WORDS, DATE_REACH, FEAST_WORDS, GLOSS_RULES, gloss_allows)
+                       YEAR_AND_MONTH_WORDS, DATE_REACH, FEAST_WORDS, GLOSS_RULES, gloss_allows,
+                       joins_number_before)
 
 # Folder this script lives in, so default paths work on Ubuntu and Windows.
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -250,7 +253,7 @@ WEALTH_WORDS = set()
 
 # The word lists below, each a Strong's number and the plain English
 # word the notes print for it, make the (landscape), (character),
-# (divine), (fruit) and (flesh) measures, which count a word of the list
+# (mercy and truth), (fruit) and (flesh) measures, which count a word of the list
 # whatever its part of speech.  The feast list, the home names, the
 # "one" words, the date words and the gloss rules (GLOSS_RULES, which
 # say which uses count where one number carries two meanings) are
@@ -283,7 +286,7 @@ LANDSCAPE_WORDS = {
 # lists atlas_feelings.py keeps (WORD_LISTS), which metadata.db stores and
 # atlas_heat.py draws, both with the gloss rules of atlas_pos.py.
 CHARACTER_WORDS = WORD_LISTS["character"]
-DIVINE_WORDS = WORD_LISTS["divine"]
+MERCY_WORDS = WORD_LISTS["mercy and truth"]
 FRUIT_WORDS = WORD_LISTS["fruit"]
 FLESH_WORDS = WORD_LISTS["flesh"]
 
@@ -292,7 +295,7 @@ FLESH_WORDS = WORD_LISTS["flesh"]
 # book, since the latter can mislead (Ezekiel's usual word for yam is
 # "west", but the sea of chapter 27 is the sea).
 LIST_MEASURES = {"feasts": FEAST_WORDS, "landscape": LANDSCAPE_WORDS,
-                 "character": CHARACTER_WORDS, "divine": DIVINE_WORDS,
+                 "character": CHARACTER_WORDS, "mercy and truth": MERCY_WORDS,
                  "fruit": FRUIT_WORDS, "flesh": FLESH_WORDS}
 
 # A measure with no more words than this in a book or a part has every
@@ -385,7 +388,7 @@ MEASURES = [
     Measure("feasts", listed(FEAST_WORDS)),
     Measure("landscape", listed(LANDSCAPE_WORDS)),
     Measure("character", listed(CHARACTER_WORDS)),
-    Measure("divine", listed(DIVINE_WORDS)),
+    Measure("mercy and truth", listed(MERCY_WORDS)),
     Measure("fruit", listed(FRUIT_WORDS), corpora=("GNT",)),
     Measure("flesh", listed(FLESH_WORDS), corpora=("GNT",)),
     Measure("wealth", listed(WEALTH_WORDS), passage_only=True),
@@ -497,6 +500,11 @@ class TestamentText:
         """
         # Where "year" and "month" stand in the verse.
         marks = [i for i, word in enumerate(words) if word[0] in YEAR_AND_MONTH_WORDS]
+        # A number word that continues the number before it (the "teen"
+        # of "thir- teen"): one number, not counted again (atlas_pos).
+        joins = [i > 0 and pos == "number" and words[i - 1][1] == "number"
+                 and joins_number_before(words[i - 1][3])
+                 for i, (root, pos, kind, gloss) in enumerate(words)]
         last = None                     # the word before: [root, kind, name parts]
 
         def close_name():
@@ -517,10 +525,13 @@ class TestamentText:
                 continue
             close_name()
             last = [root, kind, [part]]
-            if pos not in CONTENT:
+            if pos not in CONTENT or joins[i]:
                 continue
             current.content += 1
             dated = pos == "number" and any(abs(i - j) <= DATE_REACH for j in marks)
+            # "One" is the head of "eleven" when the next word joins it.
+            if pos == "number" and root in ONE_WORDS and i + 1 < len(words) and joins[i + 1]:
+                root = "H6249"              # ashte, the "one" of eleven: a number, not "one"
             for m in MEASURES:
                 if m.counts(pos, kind, root, dated, gloss):
                     current.roots.setdefault(m.name, []).append(root)
@@ -1274,14 +1285,15 @@ class PosReport:
                "           of the windows centered in it; +3.29 is G2 10.83. For description "
                "the count is the",
                "           different adjectives in the chapter.)",
-               f"  {'ch':>3}{'content':>9}" + "".join(f"{m.name:>13}" for m in self.measures)]
+               f"  {'ch':>3}{'content':>9}" + "".join(f"{m.name:>{max(13, len(m.name) + 1)}}"
+                                                   for m in self.measures)]
         for chapter in sorted(by_chapter):
             verses = by_chapter[chapter]
             cells = ""
             for m in self.measures:
                 ws = centered.get(chapter, [])
                 z = sum(w.z[m.name] for w in ws) / len(ws) if ws else 0.0
-                cells += f"{m.window_count(verses):>7}{z:>+6.1f}"
+                cells += f"{m.window_count(verses):>{max(13, len(m.name) + 1) - 6}}{z:>+6.1f}"
             out.append(f"  {chapter:>3}{sum(v.content for v in verses):>9,}{cells}")
         out.append("")
         return out
@@ -1317,7 +1329,7 @@ NOTES = [
     "  twelfth year, in the twelfth month') do not pass for measurement. A span of",
     "  years or months ('forty years', 'forty and two months') is counted there too.",
     "  'Day' is not part of the test: the 1,290 days stay with numbers.",
-    "  Feasts, landscape, character, divine (the attributes of God), fruit and flesh",
+    "  Feasts, landscape, character, mercy and truth, fruit and flesh",
     "  (Galatians 5) count the words of lists kept in the script, whatever their",
     "  part of speech; where one Strong's number has two",
     "  meanings the source's gloss decides (H4150 counts as an appointed feast, not",
@@ -1478,7 +1490,7 @@ class PassageReport:
             "  of years or months is counted there too. Wealth is the feeling list's wealth",
             "  words only: it sees gold, silver, pearls, silk and ivory, and not the spices,",
             "  grain, cattle and slaves that fill out a cargo list. Feasts, landscape,",
-            "  character, divine (the attributes of God), fruit and flesh (Galatians 5) count",
+            "  character, mercy and truth, fruit and flesh (Galatians 5) count",
             "  the words of lists kept in the script, whatever their part of speech; the",
             "  last two are Greek only. Where one Strong's number has two meanings the gloss",
             "  decides (the tent of meeting is not a feast, nor the month a new moon).",

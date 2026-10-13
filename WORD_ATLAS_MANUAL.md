@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.97. Andrew Hopkins, with Claude.
+For version 0.10.98. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -5101,6 +5101,24 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.98.** Three small things from the first reading of the names
+strips. `run_heat.py` writes a fourth report for each book,
+`heat_<book>_names` (the names strips with the families, log-likelihood
+scale, an Old Testament book against its own kind), so one command
+gives the whole set. The words behind a numbers spot are labelled by
+whole words: the source glosses "four of them" and "fourteen" in pieces
+("four of", "four-" and "teen"), and the labels had carried the pieces
+('of', 'four-', 'teen'); the counts were right for "of", which is no
+token, but the Hebrew teens are two words (shalosh asar, "thir-" then
+"teen") and had counted as two numbers. They now count as one, labelled
+as one ("thirteen", "twelve"), in the strips, the date marks and the
+trial script alike, and the guard test counts them the same way; the
+Aramaic "fourth" of Daniel 7, which the source glosses with nothing,
+has its word. And the word list "divine" is renamed "mercy and truth",
+for what it counts: in Zechariah 8:16 the truth it finds is what people
+are told to speak, not an attribute of God. `python3 atlas_feelings.py
+lists` stores the renamed list.
 
 **0.10.97.** Two corrections to 0.10.96 from its first reading. The
 four word-list strips (character, divine, fruit, flesh) had been
