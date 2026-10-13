@@ -332,7 +332,7 @@ TAHOT's cardinal-number tag also sits on after, yet, between and
 exceedingly, so numbers are known by a checked list of number words;
 the Greek numbers that decline are on a like list.
 
-**Seven trial measures (trial, sixth round, waiting on a read against
+**Ten trial measures (trial, seventh round, waiting on a read against
 the text).** pos_experiment.py scores description, persons, home,
 other places, peoples and numbers as shares of content words in a
 10-verse window, on the heat script's g2 scale, reading an Old
@@ -470,6 +470,49 @@ sees part of each list; a trade list of its own would see it all.
 Reports: pos_daniel_prophecy.txt and pos_passage_ezek_27_rev_18_group.txt
 beside the earlier ones, and every earlier report rerun, since numbers
 changed.
+
+A seventh round, the same day, at Andrew's asking. Three word-list
+measures, in book reports and passage reports alike, each a list of
+Strong's numbers kept in the script and counted whatever the part of
+speech: feasts (passover, unleavened bread, sabbath, Pentecost,
+firstfruits, atonement, booths, jubilee, new moon, the appointed feasts,
+the month names; 29 Hebrew and 9 Greek words), landscape (mountain,
+hill, river, brook, sea, wilderness, plain, valley, island, rock,
+spring, forest, field as common nouns; named rivers and mountains stay
+under other places) and character (righteous and wicked, upright,
+faithful and true, deceitful, wise and foolish, proud and humble,
+merciful, patient; 37 Hebrew and 44 Greek words). Where one Strong's
+number carries two meanings the source's gloss decides which uses count
+(GLOSS_RULES): moed counts as an appointed feast and not as the tent of
+meeting nor Daniel's appointed time of the end; chodesh as the new moon
+and not the month; yam as the sea and not the west; tamim as a blameless
+man and not an unblemished lamb. Shabua "week" is left out, being the
+seventy weeks of Daniel far more often than the Feast of Weeks. The
+words of these three are printed by the list's own word, not the King
+James's usual word in the book, which misled (Ezekiel's usual word for
+yam is "west"). And a "where" line under every measure with no more
+than 40 words in the book or part lists each one by its verse, because
+in a study of prophecy a feast word or a mountain is worth finding
+wherever it stands; a spot list cannot show one verse.
+
+What it showed. Feasts are rare in the prophets and fall where a reader
+would want them: Isaiah 1:13 to 14 and 66:23 (new moon and sabbath),
+Isaiah 56 and 58 (sabbath), Jeremiah 17 (sabbath, seven times),
+Ezekiel 20 (the sabbaths in the wilderness) and 45 to 46 (the prince's
+feasts, passover and unleavened bread), Zechariah 14:16 to 19 (the
+feast of booths, G2 +52) and Zechariah's two month names; Daniel has
+none, and Revelation one word, the firstfruits of 14:4. Landscape is
+Joel's (3.5 percent against 1.4 for the prophets), Isaiah's (G2 +25
+against its kind) and Revelation's (hot at the sixth seal, the trumpets,
+the dragon and the sea beast, the bowls; 6.6 percent of its windows hot
+against 1.2); Daniel has ten such words in the book, and the river of
+chapter 12 is the Nile word yeor. Character is Isaiah's above its kind
+(G2 +24; righteousness through 5, 11, 26, 33, 58 to 59, pride at Moab
+in 16 and Babylon in 13), Ezekiel's at 3, 18 and 33 (the righteous and
+the wicked, G2 +35, +53, +66) and 28 (the wisdom of Tyre), and in
+Jeremiah it is falsehood (sheqer) through 7 to 10, 14, 23 and 27, the
+word of the false prophets. Reports: every report rerun; the seven
+earlier measures are unchanged.
 
 Known limits: "other places" holds towns of the land (Bethel, Hebron,
 the Jordan) as well as foreign cities, so a strip of foreign places

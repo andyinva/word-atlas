@@ -2,7 +2,7 @@
 """
 pos_experiment.py
 
-A trial of seven heat-style measures that read the part of speech and the
+A trial of ten heat-style measures that read the part of speech and the
 kind of name of each Hebrew or Greek word (the pos and name_kind columns
 atlas_pos.py adds to lxx.db).  Like joel_experiment.py it stores nothing:
 every run reads the texts and writes one plain-text report, to be read
@@ -60,6 +60,30 @@ THE MEASURES
                     days stay with the numbers.  "One" counts here though
                     it does not under numbers: "the first of the month"
                     is written with it.
+    (feasts)        the feasts and seasons of the calendar: passover,
+                    unleavened bread, sabbath, Pentecost, firstfruits,
+                    atonement, booths, jubilee, new moon, the appointed
+                    feasts, and the names of the months (FEAST_WORDS).
+                    Rare outside the Law, which is the point: in a
+                    prophet a feast word tells by where it stands.
+    (landscape)     the features of the land as common nouns: mountain,
+                    hill, river, brook, sea, wilderness, plain, valley,
+                    island, rock, spring, forest, field (LANDSCAPE_WORDS).
+                    A named river or mountain is a place name and stays
+                    under (other places), so the two side by side show
+                    whether a writer uses the land by name or by feature.
+    (character)     qualities of character, good and bad: righteous and
+                    wicked, upright, faithful and true, deceitful, wise
+                    and foolish, proud and humble, merciful, patient
+                    (CHARACTER_WORDS).  Holy, love and fear are left to
+                    the feeling lists.
+                    These three count a word of their list whatever its
+                    part of speech.  Where one Strong's number carries
+                    two meanings, the source's gloss decides which uses
+                    count (GLOSS_RULES): the tent of meeting is not an
+                    appointed feast, the month is not the new moon, the
+                    west is not the sea, the unblemished lamb is not a
+                    blameless man.
     (wealth)        in passage reports only: the wealth words of the
                     feeling list in metadata.db (gold, silver, pearls,
                     silk, ivory, merchandise), whatever their part of
@@ -151,7 +175,15 @@ THE WORDS AFTER A SPOT
     for it in this book.  A place is named as the Hebrew or Greek source
     names it, with the King James's word after it in square brackets
     where the two differ: 'Thebes [No]', 'Migdol [Tower]', 'Tyre
-    [Tyrus]'.
+    [Tyrus]'.  A word of the three lists is printed by the list's own
+    word ('sea', 'booth', 'mercy'), not the King James's.
+
+WHERE THE RARE WORDS STAND
+    A measure with no more than SIGHTINGS_LIMIT words in a book or a
+    part has every one of them listed by verse ("where: 9:4 'passover';
+    12:3 'feast' x2").  A spot list cannot show one verse, and in a
+    study of prophecy a feast word or a mountain is worth finding
+    wherever it stands, however few there are.
 """
 
 import argparse
@@ -234,6 +266,138 @@ WEALTH_WORDS = set()
 # contrast, is tagged as a place.)
 NATIONS_AS_PERSONS = {"H5983", "H123"}      # Ammon, Edom
 
+# Three word lists, each a Strong's number and the plain English word
+# the notes print for it.  They make the (feasts), (landscape) and
+# (character) measures, which count a word of the list whatever its part
+# of speech, in book reports and passage reports alike.  Each number was
+# checked against the glosses the tagged texts give it; where one number
+# carries two meanings, GLOSS_RULES below says which uses count.
+
+# The feasts and seasons of the calendar, and the names of the months.
+FEAST_WORDS = {
+    "H6453": "passover", "G3957": "passover",
+    "H2282": "feast", "H2287": "keep a feast", "G1859": "feast",
+    "H4682": "unleavened bread", "G106": "unleavened bread",
+    "H7676": "sabbath", "H7677": "sabbath rest", "G4521": "sabbath",
+    "G4005": "Pentecost",
+    "H1061": "firstfruits", "G536": "firstfruits",
+    "H3725": "atonement",
+    "H5521": "booth", "G4634": "feast of tabernacles",
+    "H3104": "jubilee",
+    "H6332": "Purim",
+    "H2598": "dedication", "G1456": "dedication",
+    "H4150": "appointed feast", "H6116": "solemn assembly", "H4744": "convocation",
+    "H2320": "new moon", "G3561": "new moon",
+    # the month names
+    "H24": "Abib", "H5212": "Nisan", "H2099": "Ziv", "H388": "Ethanim", "H945": "Bul",
+    "H2887": "Tebeth", "H7627": "Shebat", "H143": "Adar", "H5510": "Sivan",
+    "H435": "Elul", "H3691": "Chislev",
+}
+# Not in the list: shabua "week" (H7620), which is the seventy weeks of
+# Daniel far more often than the Feast of Weeks, whose "feast" word is
+# counted anyway; and Tammuz (H8542), which in Ezekiel 8 is the god.
+
+# The features of the land, as common nouns.  Named rivers and mountains
+# (Jordan, Euphrates, Carmel) are place names and stay in (other places).
+LANDSCAPE_WORDS = {
+    "H2022": "mountain", "G3735": "mountain",
+    "H1389": "hill", "G1015": "hill",
+    "H5104": "river", "G4215": "river",
+    "H2975": "river (yeor)",                 # the Nile, and the Tigris in Daniel 12
+    "H5158": "brook",
+    "H3220": "sea", "G2281": "sea",
+    "H4057": "wilderness", "G2048": "wilderness", "H3452": "desert", "H6723": "dry place",
+    "H6160": "plain (arabah)", "H4334": "plain", "H8219": "lowland",
+    "H1237": "wide valley", "H6010": "valley", "H1516": "valley", "G5327": "valley",
+    "H339": "island", "G3520": "island",
+    "H5553": "rock", "H6697": "rock", "G4073": "rock",
+    "H4599": "spring", "G4077": "fountain",
+    "H3293": "forest",
+    "H7704": "field", "G68": "field",
+    "H3004": "dry land",
+}
+
+# Qualities of character, good and bad: the words that say what a person
+# is like.  Holy, love, fear and violence are left to the feeling lists.
+CHARACTER_WORDS = {
+    # righteous and wicked
+    "H6662": "righteous", "H6664": "righteousness", "H6666": "righteousness",
+    "G1342": "righteous", "G1343": "righteousness", "G93": "unrighteousness", "G94": "unjust",
+    "H7563": "wicked", "H7562": "wickedness", "G4190": "wicked", "G4189": "wickedness",
+    # upright, perfect, innocent
+    "H3477": "upright", "H3476": "uprightness", "H8549": "perfect", "H8537": "integrity",
+    "G5046": "perfect", "G273": "blameless", "G299": "blameless",
+    "H5355": "innocent", "G121": "innocent", "G172": "harmless",
+    # faithful and true
+    "H530": "faithfulness", "H571": "truth", "G4103": "faithful",
+    "G225": "truth", "G227": "true", "G228": "true",
+    # deceit and lies
+    "H4820": "deceit", "H8267": "falsehood", "G1388": "deceit", "G5579": "lie", "G5571": "false",
+    # wise and foolish
+    "H2450": "wise", "H2451": "wisdom", "H6175": "prudent", "H6195": "prudence",
+    "H8394": "understanding", "G4680": "wise", "G4678": "wisdom", "G5429": "prudent",
+    "H3684": "fool", "H191": "fool", "H5036": "fool", "H200": "folly", "H3887": "scorner",
+    "G3474": "foolish", "G3472": "foolishness", "G453": "foolish", "G878": "foolish",
+    # proud and humble
+    "H1341": "proud", "H1343": "proud", "H1346": "pride", "H1347": "pride",
+    "H2086": "proud", "H2087": "presumption", "G5244": "proud", "G5243": "pride",
+    "H6035": "humble", "H6038": "humility",
+    "G5011": "humble", "G5012": "humility", "G4235": "meek", "G4240": "meekness",
+    # merciful, gracious, kind
+    "H2623": "godly", "H2617": "mercy", "H7349": "merciful", "H7356": "compassion",
+    "H2587": "gracious", "G1656": "mercy", "G1655": "merciful", "G3628": "compassion",
+    "G3629": "merciful", "G5543": "kind", "G5544": "kindness",
+    # self-control and patience
+    "G1466": "temperance", "G4997": "sobriety", "G4998": "sober",
+    "G5281": "patience", "G3115": "longsuffering", "G4587": "grave", "G4586": "gravity",
+}
+
+# Where one Strong's number carries two meanings, the source's gloss
+# tells them apart.  root -> (words the gloss must have, words it must
+# not have); either tuple may be empty.  So H4150 counts as a feast only
+# when it is not the tent of "meeting", H2320 only as "new moon" and not
+# as "month", H3220 as the sea and not as "west", and H8549 as a
+# blameless person and not an "unblemished" lamb.
+GLOSS_RULES = {
+    "H4150": (("feast",), ()),              # appointed feast, not tent of meeting
+                                            # nor the appointed time of the end
+    "H2320": (("new moon",), ()),           # new moon, not month
+    "G4521": ((), ("week",)),               # sabbath, not the first day of the week
+    "H3104": ((), ("horn",)),               # jubilee, not the ram's horn
+    "H24": ((), ("barley",)),               # the month Abib, not ears of barley
+    "H3220": ((), ("west",)),               # sea, not west
+    "H4334": ((), ("upright",)),            # plain, not uprightness
+    "H8549": ((), ("unblemished",)),        # blameless, not an unblemished offering
+    "G299": ((), ("unblemished",)),
+    "H1346": ((), ("majesty",)),            # pride, not the majesty of God
+    "H1347": ((), ("majesty",)),
+    "H6035": ((), ("poor",)),               # humble, not the poor
+    "H7356": ((), ("womb",)),               # compassion, not the womb
+    "H3887": ((), ("interpret",)),          # scorner, not interpreter
+}
+
+# The word-list measures, each with its list: their words are printed by
+# the list's own plain word, not by the King James's usual word in the
+# book, since the latter can mislead (Ezekiel's usual word for yam is
+# "west", but the sea of chapter 27 is the sea).
+LIST_MEASURES = {"feasts": FEAST_WORDS, "landscape": LANDSCAPE_WORDS,
+                 "character": CHARACTER_WORDS}
+
+# A measure with no more words than this in a book or a part has every
+# one of them listed by verse, so a rare word is seen where it stands.
+SIGHTINGS_LIMIT = 40
+
+
+def listed(words):
+    """The counting test for a word-list measure: in the list, and the gloss allows it."""
+    def counts(pos, kind, root, dated, gloss):
+        if root not in words:
+            return False
+        must, must_not = GLOSS_RULES.get(root, ((), ()))
+        text = (gloss or "").lower()
+        return all(w in text for w in must) and not any(w in text for w in must_not)
+    return counts
+
 # Strong and good evidence on the log-likelihood scale, as atlas_heat.py
 # names them.  A hot or cool spot reaches the first, a warm spot the second.
 G2_STRONG = 10.83
@@ -268,8 +432,8 @@ class Measure:
     One measure: its name, the test a word must pass to count, whether
     a window counts every such word or only the different ones, and
     whether the measure belongs to passage reports alone.  The test is
-    given the word's pos, name_kind and root, and 'dated': True for a
-    number that stands by "year" or "month".
+    given the word's pos, name_kind and root, 'dated' (True for a
+    number that stands by "year" or "month") and the source's gloss.
     """
     name: str
     counts: object
@@ -283,7 +447,7 @@ class Measure:
         return sum(len(v.roots.get(self.name, ())) for v in verses)
 
 
-def is_other_place(pos, kind, root, dated):
+def is_other_place(pos, kind, root, dated, gloss):
     """A place name outside the homeland, or a nation the source calls a person."""
     return (kind == "place" and root not in HOME_PLACES) or \
         (kind == "person" and root in NATIONS_AS_PERSONS)
@@ -292,19 +456,23 @@ def is_other_place(pos, kind, root, dated):
 # The measures in report order.
 MEASURES = [
     Measure("description",
-            lambda pos, kind, root, dated: pos == "adjective" and kind is None
+            lambda pos, kind, root, dated, gloss: pos == "adjective" and kind is None
             and root not in QUANTITY_WORDS, different=True),
-    Measure("persons", lambda pos, kind, root, dated: kind == "person"
+    Measure("persons", lambda pos, kind, root, dated, gloss: kind == "person"
             and root not in NATIONS_AS_PERSONS),
-    Measure("home", lambda pos, kind, root, dated: kind == "place" and root in HOME_PLACES),
+    Measure("home", lambda pos, kind, root, dated, gloss: kind == "place"
+            and root in HOME_PLACES),
     Measure("other places", is_other_place),
-    Measure("peoples", lambda pos, kind, root, dated: kind == "people"),
-    Measure("numbers", lambda pos, kind, root, dated: pos == "number" and not dated
+    Measure("peoples", lambda pos, kind, root, dated, gloss: kind == "people"),
+    Measure("numbers", lambda pos, kind, root, dated, gloss: pos == "number" and not dated
             and root not in ONE_WORDS),
     # "One" does count here: "the first day of the month" is written
     # with it in Hebrew, and "in year one" is a date.
-    Measure("dates", lambda pos, kind, root, dated: pos == "number" and dated),
-    Measure("wealth", lambda pos, kind, root, dated: root in WEALTH_WORDS, passage_only=True),
+    Measure("dates", lambda pos, kind, root, dated, gloss: pos == "number" and dated),
+    Measure("feasts", listed(FEAST_WORDS)),
+    Measure("landscape", listed(LANDSCAPE_WORDS)),
+    Measure("character", listed(CHARACTER_WORDS)),
+    Measure("wealth", listed(WEALTH_WORDS), passage_only=True),
 ]
 
 # The measures a book report prints; a passage report prints them all.
@@ -436,7 +604,7 @@ class TestamentText:
             current.content += 1
             dated = pos == "number" and any(abs(i - j) <= DATE_REACH for j in marks)
             for m in MEASURES:
-                if m.counts(pos, kind, root, dated):
+                if m.counts(pos, kind, root, dated, gloss):
                     current.roots.setdefault(m.name, []).append(root)
         close_name()
 
@@ -821,6 +989,8 @@ class Stretch:
         'Thebes [No]', 'Migdol [Tower]', 'Tyre [Tyrus]'.
         """
         form = self.headwords.get(root, root)
+        if measure in LIST_MEASURES:
+            form = LIST_MEASURES[measure].get(root, form)
         if measure == "dates" and root in ONE_WORDS:
             form = ONE_WORDS[root]      # "the first of the month" is "one" in Hebrew
         if measure in NAME_MEASURES and form != root:
@@ -854,6 +1024,36 @@ class Stretch:
             # only: a cool spot is mostly "none here", which has neither.
             line += f" {p.pct[name]:5.1f}%  {self.top_words(spot.verses(), name)}"
         return line.rstrip()
+
+    def sightings(self, name, label="where: ", indent="  "):
+        """
+        Where a rare measure's words stand, verse by verse: "where: 9:4
+        'passover'; 12:3 'feast' x2".  A word that comes seldom tells
+        most by where it is, and a spot list cannot show a single verse.
+        Given only when the stretch has no more than SIGHTINGS_LIMIT
+        such words; with more, the spots and the chapter table serve.
+        'label' opens the first line and sets the indent of the rest.
+        """
+        hits = [(v, v.roots[name]) for v in self.verses if v.roots.get(name)]
+        total = sum(len(roots) for _, roots in hits)
+        if not hits or total > SIGHTINGS_LIMIT:
+            return []
+        pieces = []
+        for v, roots in hits:
+            tally = Counter(self.word(r, name) for r in roots)
+            words = ", ".join(f"{w} x{n}" if n > 1 else w for w, n in tally.items())
+            pieces.append(f"{v.ref} {words}")
+        # Wrap to the page, breaking only between verses.
+        lines, line, empty = [], indent + label, True
+        for piece in pieces:
+            addition = piece + "; "
+            if len(line) + len(addition) > 96 and not empty:
+                lines.append(line.rstrip())
+                line = indent + " " * len(label)
+            line += addition
+            empty = False
+        lines.append(line.rstrip().rstrip(";"))
+        return lines
 
     def spot_lines(self, name):
         """The hot, warm and cool lines of one measure, as a book report lists them."""
@@ -1035,6 +1235,20 @@ class Trial:
         return [f"Left out of description (quantity words): {words(QUANTITY_WORDS)}.",
                 f"Left out of numbers: {words(ONE_WORDS)}.  Home = {words(HOME_PLACES)}."]
 
+    @staticmethod
+    def list_lines():
+        """The header lines that say what the three word lists hold."""
+        def size(listed, letter):
+            return sum(1 for root in listed if root[0] == letter)
+
+        out = []
+        for name, listed in LIST_MEASURES.items():
+            sample = ", ".join(dict.fromkeys(list(listed.values())[:7]))
+            out.append(f"{name.title()} = {size(listed, 'H')} Hebrew and {size(listed, 'G')} Greek "
+                       f"words of the list in the script ({sample}, ...), whatever their part "
+                       "of speech.")
+        return out
+
     def window_line(self):
         return (f"Window: {self.size} verses, moving 1 verse at a time; hot and cool spots at "
                 f"G2 {self.threshold ** 2:.2f} and beyond, warm spots from G2 {G2_GOOD}.")
@@ -1074,6 +1288,7 @@ class PosReport:
                        "with (a New Testament book, or a group with no other book in it), so "
                        "the whole testament is used.")
         out.extend(self.trial.left_out(self.text.corpus))
+        out.extend(Trial.list_lines())
         out.append("")
 
         # The book as a whole against ordinary.
@@ -1114,6 +1329,7 @@ class PosReport:
             out.append(f"  windows hot and warm: ordinary {o.hot_share[name]:.1%} and "
                        f"{o.warm_share[name]:.1%}; {self.book} {own_hot:.1%} and {own_warm:.1%}")
             out.extend(part.spot_lines(name))
+            out.extend(part.sightings(name))
             out.append("")
 
         out.extend(self.chapter_table())
@@ -1133,14 +1349,14 @@ class PosReport:
                "           of the windows centered in it; +3.29 is G2 10.83. For description "
                "the count is the",
                "           different adjectives in the chapter.)",
-               f"  {'ch':>3}{'content':>9}" + "".join(f"{m.name:>15}" for m in BOOK_MEASURES)]
+               f"  {'ch':>3}{'content':>9}" + "".join(f"{m.name:>13}" for m in BOOK_MEASURES)]
         for chapter in sorted(by_chapter):
             verses = by_chapter[chapter]
             cells = ""
             for m in BOOK_MEASURES:
                 ws = centered.get(chapter, [])
                 z = sum(w.z[m.name] for w in ws) / len(ws) if ws else 0.0
-                cells += f"{m.window_count(verses):>8}{z:>+7.1f}"
+                cells += f"{m.window_count(verses):>7}{z:>+6.1f}"
             out.append(f"  {chapter:>3}{sum(v.content for v in verses):>9,}{cells}")
         out.append("")
         return out
@@ -1176,6 +1392,14 @@ NOTES = [
     "  twelfth year, in the twelfth month') do not pass for measurement. A span of",
     "  years or months ('forty years', 'forty and two months') is counted there too.",
     "  'Day' is not part of the test: the 1,290 days stay with numbers.",
+    "  Feasts, landscape and character count the words of three lists kept in the",
+    "  script, whatever their part of speech; where one Strong's number has two",
+    "  meanings the source's gloss decides (H4150 counts as an appointed feast, not",
+    "  as the tent of meeting or the appointed time of the end; H2320 as the new",
+    "  moon, not the month). Their words are printed by the list's own word, not",
+    "  the King James's usual word in the book. A measure",
+    "  with no more than 40 words in the book has every one listed by verse under",
+    "  'where', since a rare word says most by where it stands.",
     "  'Other places' is every place name but the four home names, so it holds",
     "  towns of the land as well as foreign cities and nations. The sources tag",
     "  the tribes as persons, and Yahweh, God and Lord as titles; titles are in no",
@@ -1236,6 +1460,7 @@ class PassageReport:
             out.append(f"Ordinary for {mine} = {o.label} ({o.windows:,} windows).")
         for corpus in dict.fromkeys(p.text.corpus for p in parts):
             out.append(f"{Trial.LANGUAGE[corpus]} parts:  " + "  ".join(trial.left_out(corpus)))
+        out.extend(Trial.list_lines())
         if WEALTH_WORDS:
             out.append(f"Wealth = the {len(WEALTH_WORDS)} wealth words of the feeling list in "
                        "metadata.db (gold, silver, pearls, silk, merchandise), whatever their "
@@ -1292,6 +1517,17 @@ class PassageReport:
                         lines.append(f"    {m.name:<14}" + p.spot_line(kind, s, m.name).lstrip())
             out.extend(lines or ["    none"])
         out.append("")
+
+        # Where the rare words stand in each part, verse by verse.
+        out.append(f"WHERE THE RARE WORDS STAND  (a measure with no more than {SIGHTINGS_LIMIT} "
+                   "words in the part, each by its verse)")
+        for p in parts:
+            out.append(f"  {p.label}")
+            lines = []
+            for m in measures:
+                lines.extend(p.sightings(m.name, label=f"{m.name:<14}", indent="    "))
+            out.extend(lines or ["    none"])
+        out.append("")
         out.extend([
             "NOTES",
             "  These profiles show how each part is built: what it names, counts and",
@@ -1314,7 +1550,10 @@ class PassageReport:
             "  A number within two words of 'year' or 'month' is a date, not a number; a span",
             "  of years or months is counted there too. Wealth is the feeling list's wealth",
             "  words only: it sees gold, silver, pearls, silk and ivory, and not the spices,",
-            "  grain, cattle and slaves that fill out a cargo list.",
+            "  grain, cattle and slaves that fill out a cargo list. Feasts, landscape and",
+            "  character count the words of three lists kept in the script, whatever their",
+            "  part of speech; where one Strong's number has two meanings the source's gloss",
+            "  decides (the tent of meeting is not a feast, nor the month a new moon).",
             "  This is a trial script. Nothing here is stored or shown in the pages."])
         return "\n".join(out) + "\n"
 
