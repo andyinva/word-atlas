@@ -547,6 +547,52 @@ def test_guards(atlas, only):
         stray = [k for k in texts.lxx_total if k in {"G4675", "G3450", "G5213", "G1473", "G4771"}]
         report(name, not stray, f"pronoun numbers counted as content: {stray}" if stray else "")
 
+    # pos_experiment.py (trial): the split of number words into numbers
+    # and dates loses nothing.  For every book, the words the trial counts
+    # under numbers and under dates (less the "one" words, which dates
+    # keeps and numbers leaves out) come to the number words the tokens
+    # table holds for it, counted here by a query of its own.
+    name = "guard: pos_experiment's numbers and dates add up to the number words"
+    if not only or only in name:
+        try:
+            import sqlite3
+            from pathlib import Path
+            import pos_experiment
+            from atlas_pos import PosColumns
+            lxx = Path(path)
+            db = sqlite3.connect(lxx.resolve().as_uri() + "?mode=ro", uri=True)
+            try:
+                filled = PosColumns.has_columns(db) and not any(
+                    PosColumns.unfilled(db, corpus) for corpus in ("TAHOT", "GNT"))
+            finally:
+                db.close()
+        except Exception as e:                               # noqa: BLE001
+            filled, pos_experiment = False, None
+            skip(name, f"pos_experiment could not load: {e}")
+        if pos_experiment is not None and not filled:
+            skip(name, "lxx.db has no filled pos column (python3 atlas_pos.py)")
+        elif pos_experiment is not None:
+            problems = []
+            db = sqlite3.connect(lxx.resolve().as_uri() + "?mode=ro", uri=True)
+            ones = ", ".join(f"'{r}'" for r in pos_experiment.ONE_WORDS)
+            for corpus, row_filter in (("TAHOT", "t.element = 'root'"), ("GNT", "t.in_tr = 1")):
+                text = pos_experiment.TestamentText(lxx, corpus)
+                held = dict(db.execute(
+                    "SELECT v.eng_book, COUNT(*) FROM tokens t JOIN verses v USING (verse_id) "
+                    f"WHERE v.corpus = ? AND {row_filter} AND v.eng_book IS NOT NULL "
+                    f"AND t.pos = 'number' AND t.root NOT IN ({ones}) GROUP BY v.eng_book",
+                    (corpus,)))
+                for book, verses in text.by_book.items():
+                    counted = sum(len(v.roots.get("numbers", ())) for v in verses) + sum(
+                        1 for v in verses for r in v.roots.get("dates", ())
+                        if r not in pos_experiment.ONE_WORDS)
+                    if counted != held.get(book, 0):
+                        problems.append(f"{corpus} book {book}: {counted} counted, "
+                                        f"{held.get(book, 0)} held")
+            db.close()
+            report(name, not problems, "; ".join(problems[:4]) if problems else
+                   "66 books, numbers + dates = the number words")
+
 
 # --- the window -----------------------------------------------------------------------------
 WINDOW_SCRIPT = """
@@ -988,6 +1034,7 @@ def main(argv):
         for args in DETERMINISM_COMMANDS:
             print("determinism:", " ".join(args))
         print("guard: names test; Greek New Testament verses; equivalents lemma keys; pronouns; the window's double-click")
+        print("guard: pos_experiment's numbers and dates add up to the number words")
         print("guard: the window's two tabs; the workbench's commands; atlas_dist's bundle; atlas_usb's drive and installer")
         print("guard: atlas_source's own text taken out of a bibles.db")
         print("housekeeping: one version everywhere; no em dash; every module compiles")

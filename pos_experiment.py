@@ -2,7 +2,7 @@
 """
 pos_experiment.py
 
-A trial of ten heat-style measures that read the part of speech and the
+A trial of thirteen heat-style measures that read the part of speech and the
 kind of name of each Hebrew or Greek word (the pos and name_kind columns
 atlas_pos.py adds to lxx.db).  Like joel_experiment.py it stores nothing:
 every run reads the texts and writes one plain-text report, to be read
@@ -68,16 +68,30 @@ THE MEASURES
                     prophet a feast word tells by where it stands.
     (landscape)     the features of the land as common nouns: mountain,
                     hill, river, brook, sea, wilderness, plain, valley,
-                    island, rock, spring, forest, field (LANDSCAPE_WORDS).
+                    island, rock, spring, forest (LANDSCAPE_WORDS).
+                    "Field" is left out: it is farmland and the beast
+                    of the field far more than a feature of the land.
                     A named river or mountain is a place name and stays
                     under (other places), so the two side by side show
                     whether a writer uses the land by name or by feature.
-    (character)     qualities of character, good and bad: righteous and
-                    wicked, upright, faithful and true, deceitful, wise
-                    and foolish, proud and humble, merciful, patient
-                    (CHARACTER_WORDS).  Holy, love and fear are left to
-                    the feeling lists.
-                    These three count a word of their list whatever its
+    (character)     qualities of character, good and bad, as people have
+                    them: righteous and wicked, upright, faithful and
+                    true, deceitful, wise and foolish, proud and humble,
+                    kind, patient (CHARACTER_WORDS).  Holy, love and
+                    fear are left to the feeling lists.
+    (divine)        the attributes of God: the words the Old Testament
+                    says of him almost alone, gracious, merciful,
+                    compassion, mercy, truth, faithfulness
+                    (DIVINE_WORDS).  Joel 2:13 is God's character, not
+                    the people's, and the two are kept apart.
+    (fruit)         the fruit of the Spirit, the nine of Galatians 5:22
+                    to 23 (FRUIT_WORDS); faith counts only where the
+                    source glosses it "faithfulness".  Greek only.
+    (flesh)         the works of the flesh, the seventeen of Galatians
+                    5:19 to 21 (FLESH_WORDS).  Greek only.  A word may
+                    count here and under character or a feeling list
+                    too; the measures are separate.
+                    These lists count a word of theirs whatever its
                     part of speech.  Where one Strong's number carries
                     two meanings, the source's gloss decides which uses
                     count (GLOSS_RULES): the tent of meeting is not an
@@ -313,12 +327,16 @@ LANDSCAPE_WORDS = {
     "H5553": "rock", "H6697": "rock", "G4073": "rock",
     "H4599": "spring", "G4077": "fountain",
     "H3293": "forest",
-    "H7704": "field", "G68": "field",
     "H3004": "dry land",
 }
+# Not in the list: "field" (H7704, G68), which is farmland and the "beast
+# of the field" far more than a feature of the land; it had 49 of
+# Genesis's 121 landscape words and 6 of Joel's 27.
 
 # Qualities of character, good and bad: the words that say what a person
-# is like.  Holy, love, fear and violence are left to the feeling lists.
+# is like.  Holy, love, fear and violence are left to the feeling lists,
+# and the words the Old Testament says almost only of God (gracious,
+# merciful, mercy, truth) are a list of their own below.
 CHARACTER_WORDS = {
     # righteous and wicked
     "H6662": "righteous", "H6664": "righteousness", "H6666": "righteousness",
@@ -342,14 +360,46 @@ CHARACTER_WORDS = {
     "H1341": "proud", "H1343": "proud", "H1346": "pride", "H1347": "pride",
     "H2086": "proud", "H2087": "presumption", "G5244": "proud", "G5243": "pride",
     "H6035": "humble", "H6038": "humility",
-    "G5011": "humble", "G5012": "humility", "G4235": "meek", "G4240": "meekness",
-    # merciful, gracious, kind
-    "H2623": "godly", "H2617": "mercy", "H7349": "merciful", "H7356": "compassion",
-    "H2587": "gracious", "G1656": "mercy", "G1655": "merciful", "G3628": "compassion",
-    "G3629": "merciful", "G5543": "kind", "G5544": "kindness",
+    "G5011": "humble", "G5012": "humility",
+    "G4235": "meek", "G4236": "meekness", "G4240": "meekness",
+    # merciful and kind, as people are told to be
+    "H2623": "godly", "G1655": "merciful", "G3629": "merciful",
+    "G5543": "kind", "G5544": "kindness",
     # self-control and patience
     "G1466": "temperance", "G4997": "sobriety", "G4998": "sober",
     "G5281": "patience", "G3115": "longsuffering", "G4587": "grave", "G4586": "gravity",
+}
+
+# The attributes of God: the words the Old Testament uses of him almost
+# alone.  Gracious (chanun) is said of no one else, merciful (rachum) of
+# hardly anyone, and mercy (chesed) and truth (emeth) are mostly his.
+# Joel 2:13 ("gracious and merciful, slow to anger") describes God, not
+# people, and a study of prophecy wants the two kept apart.
+DIVINE_WORDS = {
+    "H2587": "gracious", "H7349": "merciful", "H7356": "compassion",
+    "H2617": "mercy", "H571": "truth", "H530": "faithfulness",
+    "G1656": "mercy", "G3628": "compassion",
+}
+
+# The fruit of the Spirit, the nine of Galatians 5:22 to 23 as the
+# Textus Receptus has them (meekness is praotes there, G4236, and
+# prautes, G4240, in Galatians itself).  Greek only.  Faith (pistis)
+# counts only where the source glosses it "faithfulness", the fruit, and
+# not where it is belief: see GLOSS_RULES.
+FRUIT_WORDS = {
+    "G26": "love", "G5479": "joy", "G1515": "peace", "G3115": "longsuffering",
+    "G5544": "gentleness", "G19": "goodness", "G4102": "faith",
+    "G4236": "meekness", "G4240": "meekness", "G1466": "temperance",
+}
+
+# The works of the flesh, the seventeen of Galatians 5:19 to 21, the
+# natural opposite.  Greek only.
+FLESH_WORDS = {
+    "G3430": "adultery", "G4202": "fornication", "G167": "uncleanness",
+    "G766": "lasciviousness", "G1495": "idolatry", "G5331": "witchcraft",
+    "G2189": "hatred", "G2054": "variance", "G2205": "emulations", "G2372": "wrath",
+    "G2052": "strife", "G1370": "seditions", "G139": "heresies", "G5355": "envyings",
+    "G5408": "murders", "G3178": "drunkenness", "G2970": "revellings",
 }
 
 # Where one Strong's number carries two meanings, the source's gloss
@@ -374,6 +424,7 @@ GLOSS_RULES = {
     "H6035": ((), ("poor",)),               # humble, not the poor
     "H7356": ((), ("womb",)),               # compassion, not the womb
     "H3887": ((), ("interpret",)),          # scorner, not interpreter
+    "G4102": (("faithful",), ()),           # faithfulness the fruit, not belief
 }
 
 # The word-list measures, each with its list: their words are printed by
@@ -381,7 +432,8 @@ GLOSS_RULES = {
 # book, since the latter can mislead (Ezekiel's usual word for yam is
 # "west", but the sea of chapter 27 is the sea).
 LIST_MEASURES = {"feasts": FEAST_WORDS, "landscape": LANDSCAPE_WORDS,
-                 "character": CHARACTER_WORDS}
+                 "character": CHARACTER_WORDS, "divine": DIVINE_WORDS,
+                 "fruit": FRUIT_WORDS, "flesh": FLESH_WORDS}
 
 # A measure with no more words than this in a book or a part has every
 # one of them listed by verse, so a rare word is seen where it stands.
@@ -439,6 +491,11 @@ class Measure:
     counts: object
     different: bool = False
     passage_only: bool = False
+    corpora: tuple = ("TAHOT", "GNT")     # the texts the measure is shown for
+
+    def fits(self, corpus):
+        """Whether a report on this text prints the measure."""
+        return corpus in self.corpora
 
     def window_count(self, verses):
         """How much a run of verses scores on this measure."""
@@ -472,11 +529,16 @@ MEASURES = [
     Measure("feasts", listed(FEAST_WORDS)),
     Measure("landscape", listed(LANDSCAPE_WORDS)),
     Measure("character", listed(CHARACTER_WORDS)),
+    Measure("divine", listed(DIVINE_WORDS)),
+    Measure("fruit", listed(FRUIT_WORDS), corpora=("GNT",)),
+    Measure("flesh", listed(FLESH_WORDS), corpora=("GNT",)),
     Measure("wealth", listed(WEALTH_WORDS), passage_only=True),
 ]
 
-# The measures a book report prints; a passage report prints them all.
-BOOK_MEASURES = [m for m in MEASURES if not m.passage_only]
+# The measures a book report prints (those fitting the text's language);
+# a passage report prints them all.
+def book_measures(corpus):
+    return [m for m in MEASURES if not m.passage_only and m.fits(corpus)]
 
 
 def g2(k, n, big_k, big_n):
@@ -1236,17 +1298,23 @@ class Trial:
                 f"Left out of numbers: {words(ONE_WORDS)}.  Home = {words(HOME_PLACES)}."]
 
     @staticmethod
-    def list_lines():
-        """The header lines that say what the three word lists hold."""
+    def list_lines(corpus=None):
+        """
+        The header lines that say what the word lists hold; with a
+        corpus, only the lists that have words in its language.
+        """
         def size(listed, letter):
             return sum(1 for root in listed if root[0] == letter)
 
         out = []
         for name, listed in LIST_MEASURES.items():
+            if corpus == "TAHOT" and not size(listed, "H"):
+                continue
             sample = ", ".join(dict.fromkeys(list(listed.values())[:7]))
-            out.append(f"{name.title()} = {size(listed, 'H')} Hebrew and {size(listed, 'G')} Greek "
-                       f"words of the list in the script ({sample}, ...), whatever their part "
-                       "of speech.")
+            counts = (f"{size(listed, 'H')} Hebrew and {size(listed, 'G')} Greek"
+                      if size(listed, 'H') else f"{size(listed, 'G')} Greek")
+            out.append(f"{name.title()} = {counts} words of the list in the script "
+                       f"({sample}, ...), whatever their part of speech.")
         return out
 
     def window_line(self):
@@ -1270,6 +1338,7 @@ class PosReport:
         # testament, so both comparisons can be read off one report.
         wide = trial.testament_ordinary(book_number)
         self.wide = wide if wide is not self.part.ordinary else None
+        self.measures = book_measures(self.text.corpus)
 
     def render(self):
         part, o = self.part, self.part.ordinary
@@ -1288,7 +1357,7 @@ class PosReport:
                        "with (a New Testament book, or a group with no other book in it), so "
                        "the whole testament is used.")
         out.extend(self.trial.left_out(self.text.corpus))
-        out.extend(Trial.list_lines())
+        out.extend(Trial.list_lines(self.text.corpus))
         out.append("")
 
         # The book as a whole against ordinary.
@@ -1301,7 +1370,7 @@ class PosReport:
             wide_scores = part.against(self.wide)
             head += f"{'all ' + testament + ' T.':>13}{'G2':>9}"
         out.append(head)
-        for m in BOOK_MEASURES:
+        for m in self.measures:
             said = part.said(m.name)
             share, value = scores[m.name]
             line = (f"  {m.name:<14}{len(said):>7,}{len(set(said)):>11,}{share:>8.1%}"
@@ -1321,7 +1390,7 @@ class PosReport:
         out.append("")
 
         # Each measure's spots, hot first, in text order.
-        for m in BOOK_MEASURES:
+        for m in self.measures:
             name = m.name
             what = "different adjectives per window" if m.different else "words"
             out.append(f"({name})  ordinary rate {o.rate(name):.4f} of content words ({what})")
@@ -1349,11 +1418,11 @@ class PosReport:
                "           of the windows centered in it; +3.29 is G2 10.83. For description "
                "the count is the",
                "           different adjectives in the chapter.)",
-               f"  {'ch':>3}{'content':>9}" + "".join(f"{m.name:>13}" for m in BOOK_MEASURES)]
+               f"  {'ch':>3}{'content':>9}" + "".join(f"{m.name:>13}" for m in self.measures)]
         for chapter in sorted(by_chapter):
             verses = by_chapter[chapter]
             cells = ""
-            for m in BOOK_MEASURES:
+            for m in self.measures:
                 ws = centered.get(chapter, [])
                 z = sum(w.z[m.name] for w in ws) / len(ws) if ws else 0.0
                 cells += f"{m.window_count(verses):>7}{z:>+6.1f}"
@@ -1392,8 +1461,9 @@ NOTES = [
     "  twelfth year, in the twelfth month') do not pass for measurement. A span of",
     "  years or months ('forty years', 'forty and two months') is counted there too.",
     "  'Day' is not part of the test: the 1,290 days stay with numbers.",
-    "  Feasts, landscape and character count the words of three lists kept in the",
-    "  script, whatever their part of speech; where one Strong's number has two",
+    "  Feasts, landscape, character, divine (the attributes of God), fruit and flesh",
+    "  (Galatians 5) count the words of lists kept in the script, whatever their",
+    "  part of speech; where one Strong's number has two",
     "  meanings the source's gloss decides (H4150 counts as an appointed feast, not",
     "  as the tent of meeting or the appointed time of the end; H2320 as the new",
     "  moon, not the month). Their words are printed by the list's own word, not",
@@ -1444,7 +1514,8 @@ class PassageReport:
     def render(self):
         trial, parts = self.trial, self.parts
         # Wealth is shown only when the feeling list is there to supply it.
-        measures = [m for m in MEASURES if m.name != "wealth" or WEALTH_WORDS]
+        measures = [m for m in MEASURES if (m.name != "wealth" or WEALTH_WORDS)
+                    and any(m.fits(p.text.corpus) for p in parts)]
         out = [f"PARTS OF SPEECH TRIAL: passage \"{self.name}\""
                + (f"  ({self.description})" if self.description else ""),
                trial.build_line(),
@@ -1550,9 +1621,10 @@ class PassageReport:
             "  A number within two words of 'year' or 'month' is a date, not a number; a span",
             "  of years or months is counted there too. Wealth is the feeling list's wealth",
             "  words only: it sees gold, silver, pearls, silk and ivory, and not the spices,",
-            "  grain, cattle and slaves that fill out a cargo list. Feasts, landscape and",
-            "  character count the words of three lists kept in the script, whatever their",
-            "  part of speech; where one Strong's number has two meanings the source's gloss",
+            "  grain, cattle and slaves that fill out a cargo list. Feasts, landscape,",
+            "  character, divine (the attributes of God), fruit and flesh (Galatians 5) count",
+            "  the words of lists kept in the script, whatever their part of speech; the",
+            "  last two are Greek only. Where one Strong's number has two meanings the gloss",
             "  decides (the tent of meeting is not a feast, nor the month a new moon).",
             "  This is a trial script. Nothing here is stored or shown in the pages."])
         return "\n".join(out) + "\n"

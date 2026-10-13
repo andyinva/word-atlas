@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.94. Andrew Hopkins, with Claude.
+For version 0.10.95. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -5101,6 +5101,18 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.95.** A guard test for the trial script. `test_atlas.py` now
+checks that `pos_experiment.py`'s split of the number words into
+numbers and dates loses nothing: for each of the 66 books, the words it
+counts under the two measures come to the number words the tokens table
+holds, counted by a query of the test's own. It is skipped with a note
+when `lxx.db` has no filled part-of-speech column. No page changes. The
+trial script itself grew to thirteen measures (feasts, landscape,
+character, the attributes of God, and the fruit of the Spirit and works
+of the flesh of Galatians 5, each a word list in the script), with a
+line under every rare measure listing its words by verse; its notes are
+in IMPROVEMENTS.md.
 
 **0.10.94.** The Aramaic stop words of the Hebrew text.
 `build_tahot.py` decided whether a word standing alone is a stop word
