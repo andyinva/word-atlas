@@ -302,6 +302,22 @@ python atlas_query.py dossier Ezekiel --brief
 python atlas_query.py ask "'day' + 'night' [Ezekiel]"
 ```
 
+A second kind of report, the heat strips, reads a book as a strip
+chart: a window of ten verses slides through the book and is scored
+against ordinary text on each measure (wording, feeling families, word
+lists, and with `--names` the names and numbers strips). They are not
+pages and are not in the dossier; `READING_THE_HEAT_STRIPS.md` explains
+the colors and every strip.
+
+```
+python run_heat.py Daniel                     four reports and three charts in reports/
+python run_heat.py Daniel --one --no-svg      the four as one text file, no charts
+python run_heat.py --all --one --no-svg       every book, one text file each
+python heat_explore.py summary                questions of reports/heat_reports.json, every
+python heat_explore.py book Daniel            book's reports gathered into one file (also
+python heat_explore.py strip persons          strip, word, compare, chapters, csv)
+```
+
 ## 10. Things to know
 
 The atlas is built on the King James text with its Strong's tagging,

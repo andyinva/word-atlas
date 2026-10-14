@@ -19,7 +19,10 @@ For each book it writes four reports to reports/:
                                   (--norm group): names in the stories,
                                   numbers in the visions
 
-Two options of its own, which can stand anywhere after the book names:
+Three options of its own, which can stand anywhere after the book names:
+    --all       every book of the Bible, in order, instead of named books
+                (about a quarter of an hour; the names strips read lxx.db
+                once per run)
     --one       also write heat_<book>_all.txt, the four text reports one
                 after another with a divider line between them
     --no-svg    write the text reports only, no charts
@@ -30,8 +33,10 @@ Usage:
     python run_heat.py Joel Malachi
     python run_heat.py Isaiah --window 15   (extra options go to every run)
     python run_heat.py Daniel --one --no-svg
+    python run_heat.py --all --one --no-svg    (every book, one text file each)
 """
 
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -52,6 +57,18 @@ NEW_TESTAMENT = {
 }
 
 
+def every_book() -> list[str]:
+    """The 66 books in order, as atlas.db spells them."""
+    path = SCRIPT_DIR / "atlas.db"
+    if not path.exists():
+        sys.exit(f"atlas.db not found at {path}. Run build_atlas.py first.")
+    db = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+    try:
+        return [b for (b,) in db.execute("SELECT book FROM books ORDER BY order_index")]
+    finally:
+        db.close()
+
+
 def run(args: list[str]) -> None:
     """Run atlas_heat.py with these arguments, stopping if it fails."""
     command = [sys.executable, str(SCRIPT_DIR / "atlas_heat.py")] + args
@@ -66,10 +83,10 @@ def main() -> None:
     # this script's own two options.
     argv = sys.argv[1:]
     first_option = next((i for i, a in enumerate(argv) if a.startswith("--")), len(argv))
-    books = argv[:first_option] or DEFAULT_BOOKS
+    books = every_book() if "--all" in argv else (argv[:first_option] or DEFAULT_BOOKS)
     one = "--one" in argv
     charts = "--no-svg" not in argv
-    extra = [a for a in argv[first_option:] if a not in ("--one", "--no-svg")]
+    extra = [a for a in argv[first_option:] if a not in ("--all", "--one", "--no-svg")]
     REPORTS.mkdir(exist_ok=True)
 
     for book in books:

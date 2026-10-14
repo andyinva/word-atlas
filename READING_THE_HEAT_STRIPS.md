@@ -242,6 +242,18 @@ The text report (`--out`) holds the same information as lists:
     python run_heat.py                                (the standard set for Ezekiel and Revelation)
     python run_heat.py Joel Malachi                   (the standard set for other books)
     python run_heat.py Daniel --one --no-svg          (the four text reports in one file, no charts)
+    python run_heat.py --all --one --no-svg           (every book, one text file each)
+
+With every book's reports gathered into reports/heat_reports.json,
+`heat_explore.py` asks questions of the whole:
+
+    python heat_explore.py summary                    (every strip: its strongest spots in the Bible)
+    python heat_explore.py book Daniel                (one book, every strip, its dates and feasts)
+    python heat_explore.py strip persons --top 30     (one strip across the Bible)
+    python heat_explore.py word Babylon               (every spot a word is behind)
+    python heat_explore.py compare Ezekiel Revelation (two books strip by strip)
+    python heat_explore.py chapters Joel              (a book's chapter table)
+    python heat_explore.py csv reports/heat_chapters.csv   (every chapter as a row, for a spreadsheet)
     python atlas_heat.py Ezekiel --svg reports/heat_ezekiel.svg
     python atlas_heat.py Ezekiel --families --svg reports/heat_ezekiel_feelings.svg
     python atlas_heat.py Ezekiel --norm book          (compare the book with itself)

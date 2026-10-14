@@ -160,6 +160,14 @@ means.
 Help mode in the window (the ? button, or F1) explains any control,
 column or cell while you point at it.
 
+`READING_THE_HEAT_STRIPS.md` is for the second kind of report, the
+heat strips (`run_heat.py`, `atlas_heat.py`): a book read as a strip
+chart, red where a measure runs high and blue where it runs low, with
+the names and numbers strips read from the Hebrew and Greek. With every
+book's reports gathered into `reports/heat_reports.json`,
+`heat_explore.py` asks questions of the whole Bible at once (manual,
+section 8).
+
 ## Licence
 
 The code and documents are released under the MIT licence (see

@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.99. Andrew Hopkins, with Claude.
+For version 0.10.100. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -321,6 +321,63 @@ references behind every row. `atlas_query.py` renders a Report as
 text and `word_atlas.py` renders it as tables and pictures. One set of
 logic, two displays, so a saved report and the window never disagree.
 
+**The heat strips.** Beside the pages, a second kind of report reads
+a book as a strip chart: a window of ten verses slides through the
+book one verse at a time, and each window is scored against ordinary
+text on a set of measures, red where it runs high and blue where it
+runs low. `atlas_heat.py` draws one book; `run_heat.py` writes the
+standard set of four reports for each book named (the book against
+itself, against its testament on two scales, and the names report,
+which adds the names and numbers strips and the word lists and
+measures an Old Testament book against the other books of its own
+kind); READING_THE_HEAT_STRIPS.md says what every strip measures and
+how to read the colors.
+
+```
+python3 run_heat.py Daniel                     four reports and three charts in reports/
+python3 run_heat.py Daniel --one --no-svg      the four as one text file, heat_daniel_all.txt, no charts
+python3 run_heat.py --all --one --no-svg       every book, one text file each (a quarter of an hour)
+python3 atlas_heat.py Daniel --names --norm group:Prophecy --scale g2
+                                               Daniel against the prophets rather than its own kind
+```
+
+The strips are not pages: they are not in the dossier, in
+reports/results.db or in the Reader's dataset, and they are written
+only by these two scripts.
+
+**Reading every book at once.** The 66 text files of `run_heat.py
+--all --one` can be gathered into one JSON file,
+`reports/heat_reports.json`: for every book its four reports, each
+broken into its strips (the hot and cool spots with their verses,
+peak scores and the words behind them), its chapter table, and the
+dated verses and feast verses of the names report. The file is made
+outside Word Atlas (the gathering was done in a chat session from the
+text files); the program's part is `heat_explore.py`, which asks
+questions of it:
+
+```
+python3 heat_explore.py summary                       every strip: its strongest spots in the Bible
+python3 heat_explore.py book Daniel                   one book, every strip, its dates and feasts
+python3 heat_explore.py strip persons --top 30        one strip across the Bible, strongest first
+python3 heat_explore.py word Babylon                  every spot a word is behind, on any strip
+python3 heat_explore.py compare Ezekiel Revelation    two or more books strip by strip
+python3 heat_explore.py chapters Joel                 a book's chapter table
+python3 heat_explore.py csv reports/heat_chapters.csv every chapter of every book as a row
+python3 heat_explore.py book Daniel --report g2       one of the other reports (self, testament, g2, names)
+```
+
+`--json` names another file; the tool writes nothing except the csv.
+A spot's "words" are the names, numbers or list words behind it, or
+for the hammer strip the hammered word; a chapter's number is the
+average z-equivalent of the windows centered in it, and a chapter at
+3.29 or beyond is called hot (G2 10.83). A first reading of the whole
+file: the Table of Nations (Genesis 10) is the strongest nations spot
+in the Bible, Jacob's household going to Egypt (Genesis 45 to 46) the
+strongest for persons, Ezekiel 48 for numbers (G2 +373, the highest
+of any strip anywhere), Ezekiel 33 for character, Psalm 136 for mercy
+and truth, Ezekiel 27 then 1 Chronicles 28 to 29 then Revelation 18
+for wealth, and Ezekiel 16 ahead of Hosea for harlotry.
+
 **A new install.** The Workbench tab's Install menu (0.10.85), or
 `python3 atlas_dist.py check`, says what a folder has and what it
 still has to make, with the command for each in order: restore
@@ -519,6 +576,12 @@ English ones.
 | `atlas_listed.py` | The cross references (OpenBible.info on the Treasury of Scripture Knowledge, from bibles.db) behind the `listed` column and footers of sections 4, 4e and 6 |
 | `atlas_results.py` | Questions across the canon asked of reports/results.db, each answer saved as a text file under reports/ (section 19) |
 | `atlas_pack.py` | Packs reports/results.db with a manifest into one `.wadb` file for the Word Atlas Reader, the separate viewer for readers who have the dataset and not the program (section 19) |
+| `atlas_heat.py` | One book as heat strips: wording, feeling families, word lists, and with `--names` the names and numbers strips with their date and feast marks; a text report and an SVG chart (section 8, READING_THE_HEAT_STRIPS.md) |
+| `run_heat.py` | The standard four heat reports for the books named, or `--all` for every book; `--one` joins them into one text file, `--no-svg` leaves the charts out (section 8) |
+| `heat_explore.py` | Questions asked of `reports/heat_reports.json`, every book's heat reports gathered into one file: summary, book, strip, word, compare, chapters, csv (section 8) |
+| `atlas_pos.py` | The plain part-of-speech and name columns of the tagged texts in lxx.db, filled by the two builders, and the counting rules the names strips and the trial script share (section 28c) |
+| `atlas_feelings.py` | The feeling-word list and the four word lists (character, mercy and truth, fruit, flesh) in metadata.db, behind the feeling strips (section 8) |
+| `pos_experiment.py` | The trial script behind the names strips, kept for reading: thirteen measures with a warm tier and verse-by-verse lists, on books and passages (IMPROVEMENTS.md) |
 | `test_atlas.py` | The check before a commit: smoke, determinism, guards and housekeeping (section 41) |
 | `WORD_ATLAS_MANUAL.md` | This manual |
 | `HOW_WORD_ATLAS_GREW.md` | The story of how the program was built |
@@ -5101,6 +5164,14 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.100.** `run_heat.py --all` runs the set for every book of the
+Bible in order, so `python3 run_heat.py --all --one --no-svg` leaves one
+text file per book in `reports/` (about a quarter of an hour). With it
+`heat_explore.py`, for the reading of those files once they are
+gathered into `reports/heat_reports.json`: summary, book, strip, word,
+compare, chapters and csv. Section 8 describes both, and the file table
+of section 10 now lists the heat tools.
 
 **0.10.99.** Two options for `run_heat.py`: `--one` also writes
 `heat_<book>_all.txt`, the four text reports one after another with a
