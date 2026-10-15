@@ -76,7 +76,18 @@ class VocabBuilder:
         try:
             self.settings = dict(db.execute("SELECT key, value FROM settings"))
             self.testament = dict(db.execute("SELECT book, testament FROM books"))
-            self.glosses = {r: f for r, f in db.execute("SELECT root, form FROM words") if f}
+            # Fallback glosses: the lexicon's first King James rendering.
+            self.lexicon = {}
+            try:
+                for num, kjv in db.execute("SELECT number, kjv_def FROM lexicon"):
+                    first = (kjv or "").split(",")[0].strip(" .()+X")
+                    if first:
+                        self.lexicon[num] = first
+            except sqlite3.OperationalError:
+                pass
+            # Each Strong's word's King James renderings, counted as the
+            # tokens are read; its gloss is the commonest (kai = "and").
+            self.renderings = defaultdict(Counter)
             try:
                 self.aramaic = {r for (r,) in db.execute(
                     "SELECT number FROM lexicon WHERE derivation LIKE '(Aramaic)%' "
@@ -112,14 +123,17 @@ class VocabBuilder:
             if unit["stop"]:
                 self.stop_uses[(verse["testament"], unit["root"])] += 1
 
-        for vid, pos, root, is_stop in db.execute(
-                "SELECT verse_id, position, root, is_stop FROM tokens ORDER BY verse_id, position"):
+        for vid, pos, root, is_stop, surface in db.execute(
+                "SELECT verse_id, position, root, is_stop, surface FROM tokens "
+                "ORDER BY verse_id, position"):
             if vid not in self.index:
                 continue
             while open_units and (open_units[0]["vid"] != vid
                                   or pos - open_units[0]["last"] > MERGE_GAP):
                 close(open_units.pop(0))
             if is_strongs(root):
+                if surface:
+                    self.renderings[root][surface.lower()] += 1
                 unit = next((u for u in open_units if u["root"] == root), None)
                 if unit is not None:
                     unit["stop"] = unit["stop"] and bool(is_stop)
@@ -136,6 +150,15 @@ class VocabBuilder:
                     self.stop_uses[(verse["testament"], key)] += 1
         for unit in open_units:
             close(unit)
+
+    def gloss(self, word: str) -> str:
+        """An English gloss: the word itself for English, else the commonest rendering."""
+        if word.startswith("en:"):
+            return word[3:]
+        said = self.renderings.get(word)
+        if said:
+            return said.most_common(1)[0][0]
+        return self.lexicon.get(word, word)
 
     def kind(self, word: str) -> str:
         if word.startswith("en:"):
@@ -173,7 +196,7 @@ class VocabBuilder:
             "words": {
                 "id": words,
                 "kind": [self.kind(w) for w in words],
-                "gloss": [w[3:] if w.startswith("en:") else self.glosses.get(w, "") for w in words],
+                "gloss": [self.gloss(w) for w in words],
                 "uses": [used[w] for w in words],
                 "small": [small(w) for w in words],
             },

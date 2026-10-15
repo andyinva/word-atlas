@@ -36,6 +36,15 @@ WHAT IT WRITES
     The raw values do not depend on any baseline, so a new baseline can be
     built from these files later without running Word Atlas again.
 
+CONTROL WINDOWS (Eval_data/windows/control/control_<book>.json)
+    For every book and baseline, as many "chance" windows as the book has
+    real ones: each is 10 verses drawn at random from the baseline's own
+    pool (the testament, the book's group, or the book), scored the same
+    way and measured against the same baseline.  They answer "how extreme
+    can 10 verses get with no passage holding them together?", which is
+    the chance level isolation.py compares real passages with.
+    --no-control skips them; --seed changes the draw.
+
 LAYOUT
     Lists, not one object per window: item i of every list belongs to
     window i.  This keeps the files small and loads straight into pandas:
@@ -47,12 +56,14 @@ Usage (from the word_atlas folder or from Eval_data, Ubuntu or Windows):
     python3 Eval_data/export_windows.py Genesis Ezekiel  named books
     python3 Eval_data/export_windows.py --window 15
     python3 Eval_data/export_windows.py --gzip           .json.gz files
+    python3 Eval_data/export_windows.py --no-control     no control windows
 """
 
 import argparse
 import gzip
 import json
 import math
+import random
 import re
 import sys
 import time
@@ -116,8 +127,9 @@ class Baseline:
     strip (mean and spread for z, word totals for G2).
     """
 
-    def __init__(self, name: str, label: str, reference: list, step: int):
+    def __init__(self, name: str, label: str, reference: list, step: int, pool: list):
         self.name = name
+        self.pool = pool           # the verses this baseline is drawn from, for control windows
         self.label = label
         self.step = step
         # atlas_heat's own scale classes compute the numbers, so the export
@@ -175,6 +187,14 @@ class WindowExporter:
         if not self.feelings:
             print("Note: no feeling words in metadata.db, so no feeling or family strips.")
 
+        # Rare words, each judged within its own language (the Aramaic of
+        # Daniel and Ezra against the Aramaic), as atlas_heat.py does.
+        if args.rare_by == "language":
+            self.rare, self.rare_summary = ah.rare_roots(self.loader, args.rare)
+        else:
+            self.rare = None
+            self.rare_summary = f"used {args.rare} times or fewer in the Bible (--rare-by bible)"
+
         # Per testament ("Old" / "New"): its word lists, strips and scorer.
         self.strips, self.scorers = {}, {}
         for testament, letter, corpus in (("Old", "H", "TAHOT"), ("New", "G", "GNT")):
@@ -188,7 +208,7 @@ class WindowExporter:
             self.scorers[testament] = (
                 ah.Scorer(self.loader.weight, args.rare, self.feelings,
                           ah.FAMILY_NAMES if self.feelings else [], skip,
-                          self.names_ok, lists),
+                          self.names_ok, lists, self.rare),
                 summary)
 
         # Reference windows of each book (step = half a window), scored
@@ -240,20 +260,25 @@ class WindowExporter:
 
         result = []
         reference = [w for b in same for w in self.reference_of(b)]
+        pool = [v for b in same for v in self.loader.verses_of(b)]
         result.append(Baseline("testament", f"every {testament} Testament book ({language})",
-                               reference, step))
+                               reference, step, pool))
 
         group = self.metadata.group_of(number)
         others = [b for b in same if b != book
                   and self.metadata.group_of(self.loader.books.index(b) + 1) == group]
         if others:
             reference = [w for b in others for w in self.reference_of(b)]
+            # Control windows for the group come from the whole group, the
+            # book included, so they stand for "anywhere in this kind of book".
+            pool = [v for b in others + [book] for v in self.loader.verses_of(b)]
             result.append(Baseline("group", f"the other {group} books ({len(others)} books, "
-                                   f"{book} left out)", reference, step))
+                                   f"{book} left out)", reference, step, pool))
 
         # The book against itself, every window (as atlas_heat --norm book).
         if len(windows) > 1:
-            result.append(Baseline("book", f"{book} itself", windows, 1))
+            result.append(Baseline("book", f"{book} itself", windows, 1,
+                                   self.loader.verses_of(book)))
         return result
 
     # ----- one book --------------------------------------------------------
@@ -285,6 +310,7 @@ class WindowExporter:
                 "step": 1,
                 "hammer_window": self.args.hammer_window or self.args.window,
                 "rare_limit": self.args.rare,
+                "rare": self.rare_summary,
                 "hammer_skip": self.scorers[testament][1],
             },
             "measures": measures,
@@ -321,9 +347,56 @@ class WindowExporter:
         else:
             path.write_text(text, encoding="utf-8")
 
-        return {"book": book, "book_number": number, "testament": testament,
-                "group": data["group"], "file": name, "windows": len(windows),
-                "baselines": list(data["baselines"]), "measures": measures}
+        entry = {"book": book, "book_number": number, "testament": testament,
+                 "group": data["group"], "file": name, "windows": len(windows),
+                 "baselines": list(data["baselines"]), "measures": measures}
+        if not self.args.no_control:
+            entry["control"] = self.export_control(book, number, len(windows), baselines, measures)
+        return entry
+
+    def export_control(self, book: str, number: int, how_many: int, baselines: list,
+                       measures: list) -> str:
+        """
+        Chance windows for one book: for each baseline, how_many windows of
+        verses drawn at random from that baseline's pool, scored and
+        measured exactly like the real ones.  Returns the file name.
+        """
+        testament = self.loader.testament[book]
+        self.strips[testament].activate()
+        scorer = self.scorers[testament][0]
+        size = self.args.window
+        # One seed per book, so a rerun of one book draws the same verses.
+        rng = random.Random(self.args.seed * 1000 + number)
+        data = {"format": "word_atlas_control", "format_version": FORMAT_VERSION,
+                "book": book, "window": size, "measures": measures, "baselines": {}}
+        for base in baselines:
+            pool = base.pool
+            if len(pool) < size:
+                continue
+            windows = []
+            for _ in range(how_many):
+                # Verses kept in Bible order inside the window, like a real one.
+                picked = sorted(rng.sample(pool, size), key=lambda v: v.verse_id)
+                w = ah.Window(picked)
+                scorer.score(w)
+                windows.append(w)
+            if base.name == "group":
+                where = f"the {self.metadata.group_of(number)} books, {book} included"
+            else:
+                where = base.label
+            entry = {"pool": f"{len(pool):,} verses ({where})", "windows": how_many}
+            entry.update(base.series(windows, measures))
+            data["baselines"][base.name] = entry
+        folder = self.args.out / "control"
+        folder.mkdir(parents=True, exist_ok=True)
+        name = f"control_{slug(book)}.json" + (".gz" if self.args.gzip else "")
+        text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+        if self.args.gzip:
+            with gzip.open(folder / name, "wt", encoding="utf-8") as fh:
+                fh.write(text)
+        else:
+            (folder / name).write_text(text, encoding="utf-8")
+        return "control/" + name
 
     def run(self, books: list) -> None:
         self.args.out.mkdir(parents=True, exist_ok=True)
@@ -364,6 +437,8 @@ def main() -> None:
                         help="measure hammer over this many verses (default: the window)")
     parser.add_argument("--rare", type=int, default=10,
                         help="a word is rare at this many uses in the Bible or fewer (default 10)")
+    parser.add_argument("--rare-by", choices=["language", "bible"], default="language",
+                        help="judge rare words within their own language (default) or by one limit")
     parser.add_argument("--hammer-skip", type=int, default=100,
                         help="hammer ignores this many of the most used words (default 100)")
     parser.add_argument("--atlas", type=Path, default=ATLAS_DIR / "atlas.db")
@@ -372,6 +447,10 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=EVAL_DIR / "windows",
                         help="folder for the JSON files (default Eval_data/windows)")
     parser.add_argument("--gzip", action="store_true", help="write .json.gz files")
+    parser.add_argument("--no-control", action="store_true",
+                        help="skip the control (chance) windows")
+    parser.add_argument("--seed", type=int, default=1,
+                        help="random seed for the control windows (default 1)")
     args = parser.parse_args()
 
     exporter = WindowExporter(args)

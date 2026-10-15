@@ -23,7 +23,15 @@ THE FIVE MEASURES
                 repeats the same ones.
     (rare)      share of content words used 10 times or fewer in the
                 whole Bible (--rare changes the limit). Vivid poetry
-                reaches for unusual vocabulary.
+                reaches for unusual vocabulary.  The Aramaic of Daniel
+                and Ezra is judged within its own language: it is so
+                small (about 270 verses) that half its words fall under
+                10 uses, so every Aramaic passage would look rare.  An
+                Aramaic word is rare when it is among the least used
+                Aramaic words that make up the same share of the Aramaic
+                text as rare words make up of the Hebrew (in practice:
+                used once).  --rare-by bible goes back to one limit for
+                every word.
     (hammer)    share of the window's content words taken by its single
                 most repeated word: the "vertical" or depth idea. Emotional
                 rhetoric hammers a word. The divine-speech words of the
@@ -229,6 +237,15 @@ class VerseLoader:
             # How often each root occurs in the whole Bible, for (rare).
             self.weight = dict(conn.execute("SELECT root, weight FROM words"))
             self.glosses = {r: f for r, f in conn.execute("SELECT root, form FROM words") if f}
+            # The Strong's numbers the lexicon marks as Aramaic (as
+            # atlas_pages.Atlas.aramaic_roots), for judging rare words
+            # within their own language.  Empty when there is no lexicon.
+            try:
+                self.aramaic = {r for (r,) in conn.execute(
+                    "SELECT number FROM lexicon WHERE derivation LIKE '(Aramaic)%' "
+                    "OR derivation LIKE '(Chaldee)%'")}
+            except sqlite3.OperationalError:
+                self.aramaic = set()
 
             self.verses: dict[int, Verse] = {}
             for vid, book, ch, vs in conn.execute(
@@ -353,8 +370,12 @@ class Scorer:
 
     def __init__(self, weight: dict, rare_limit: int, feelings: dict | None = None,
                  families: list | None = None, hammer_skip: set | None = None,
-                 names: bool = False, lists: dict | None = None):
+                 names: bool = False, lists: dict | None = None,
+                 rare_roots: set | None = None):
         self.weight = weight
+        # The roots that count as rare (see rare_roots()); None = the old
+        # rule, one limit on whole-Bible use for every word.
+        self.rare_roots = rare_roots
         self.names = names              # score the names strips too (--names)
         self.lists = lists or {}        # list name -> roots, the word-list strips (--families)
         self.rare_limit = rare_limit
@@ -376,7 +397,10 @@ class Scorer:
         c["density"] = (content_en, words)
         s["density"] = content_en / words if words else 0.0
         s["variety"] = self._mattr(units)
-        rare = sum(1 for u in units if self.weight.get(u, 0) <= self.rare_limit)
+        if self.rare_roots is not None:
+            rare = sum(1 for u in units if u in self.rare_roots)
+        else:
+            rare = sum(1 for u in units if self.weight.get(u, 0) <= self.rare_limit)
         c["rare"] = (rare, n)
         s["rare"] = rare / n if n else 0.0
         # Hammer may look over a wider span than the window (--hammer-window).
@@ -492,6 +516,47 @@ def most_common_roots(loader: "VerseLoader", language: str, how_many: int) -> tu
                f"{len(function - common)} more function words, "
                f"{len(place - common - function)} more place words, {len(voice)} voice-formula words)")
     return skip, summary
+
+
+def rare_roots(loader: "VerseLoader", limit: int) -> tuple[set, str]:
+    """
+    The roots that count as rare for (rare), each judged within its own
+    language:
+      * Hebrew and Greek: used `limit` times or fewer in the whole Bible
+        (the usual rule; a Greek book is only ever measured against the
+        New Testament, so Greek keeps the plain limit)
+      * Aramaic (the roots the lexicon marks so): used no more than the
+        Aramaic limit, chosen so that rare words make up as nearly as
+        possible the same share of the Aramaic text as rare words make
+        up of the Hebrew.  The Aramaic is about 270 verses, so a plain
+        limit of 10 would call half its words rare.
+    Returns the set and a one-line summary for the report header.
+    """
+    weight = {r: (w or 0) for r, w in loader.weight.items()}
+    aramaic = loader.aramaic
+    hebrew = [r for r in weight if r[:1] == "H" and r not in aramaic]
+    rare = {r for r in weight if r not in aramaic and weight[r] <= limit}
+    if not aramaic:
+        return rare, f"used {limit} times or fewer in the Bible (no Aramaic list in atlas.db)"
+
+    # The share of the Hebrew text taken by its rare words.
+    heb_total = sum(weight[r] for r in hebrew) or 1
+    target = sum(weight[r] for r in hebrew if weight[r] <= limit) / heb_total
+
+    # The Aramaic limit whose share comes closest to it.
+    ara = [r for r in weight if r in aramaic]
+    ara_total = sum(weight[r] for r in ara) or 1
+    best, best_gap, best_share = 0, 1.0, 0.0
+    for t in range(0, limit + 1):
+        share = sum(weight[r] for r in ara if weight[r] <= t) / ara_total
+        if abs(share - target) < best_gap:
+            best, best_gap, best_share = t, abs(share - target), share
+    rare |= {r for r in ara if weight[r] <= best}
+    times = "once" if best == 1 else f"{best} times or fewer"
+    summary = (f"used {limit} times or fewer in the Bible; Aramaic words judged within the "
+               f"Aramaic, rare when used {times} ({100 * best_share:.1f}% of the Aramaic text, "
+               f"as rare words are {100 * target:.1f}% of the Hebrew)")
+    return rare, summary
 
 
 # ===========================================================================
@@ -801,6 +866,7 @@ class HeatReport:
                f"(not the build line's word window of {self.loader.settings.get('window', '?')}); "
                f"{self.norms.threshold_text(a.threshold)} (scale: {self.norms.name}).",
                f"Hammer: over {a.hammer_window or a.window} verses; {a.skip_summary}.",
+               f"Rare: {a.rare_summary}.",
                f"Ordinary = {self.norms.label} ({self.norms.count:,} windows{self.norms.sampling}).",
                ""]
 
@@ -1047,6 +1113,9 @@ def main() -> None:
                         help="spot threshold in z-like units (default 2; 3.29 = G2 10.83 for g2)")
     parser.add_argument("--rare", type=int, default=10,
                         help="a word is rare at this many uses in the Bible or fewer (default 10)")
+    parser.add_argument("--rare-by", choices=["language", "bible"], default="language",
+                        help="judge rare words within their own language (default; the Aramaic "
+                             "of Daniel and Ezra against the Aramaic) or by one limit for all")
     parser.add_argument("--norm", default="bible",
                         help="ordinary = bible (the Bible in the same language, the default), book "
                              "(the book itself), group (the other Old Testament books of the "
@@ -1119,7 +1188,11 @@ def main() -> None:
 
     skip, args.skip_summary = most_common_roots(loader, loader.language_of(book), args.hammer_skip) \
         if args.hammer_skip else (set(), "only the voice-formula words skipped")
-    scorer = Scorer(loader.weight, args.rare, feelings, families, skip, args.names, lists)
+    if args.rare_by == "language":
+        rare, args.rare_summary = rare_roots(loader, args.rare)
+    else:
+        rare, args.rare_summary = None, f"used {args.rare} times or fewer in the Bible (--rare-by bible)"
+    scorer = Scorer(loader.weight, args.rare, feelings, families, skip, args.names, lists, rare)
     windows = windows_of(loader.verses_of(book), args.window, 1, args.hammer_window)
     for w in windows:
         scorer.score(w)
