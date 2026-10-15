@@ -44,3 +44,9 @@ sefaria_links.db
 
 # Eval_data: window series made by Eval_data/export_windows.py (rebuilt in seconds)
 Eval_data/windows/
+# Eval_data: reports, CSVs and PDFs made by Eval_data/isolation.py (rebuilt in seconds)
+Eval_data/results/
+# heat_reports.json: made from reports/ by heat_to_json.py
+heat_reports.json
+# Eval_data: full vocabulary of every verse, made by Eval_data/export_vocab.py (rebuilt in seconds)
+Eval_data/vocab/
