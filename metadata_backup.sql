@@ -1,5 +1,5 @@
 -- Word Atlas metadata.db backup (plain SQL; restore with atlas_backup.py)
--- written: 2026-10-13 17:02
+-- written: 2026-10-15 18:00
 BEGIN TRANSACTION;
 CREATE TABLE books (
     book_num       INTEGER PRIMARY KEY,     -- 1 = Genesis ... 66 = Revelation
@@ -75,6 +75,35 @@ INSERT INTO "books" VALUES(63,'2 John','NT','General Epistles','Epistles','seed:
 INSERT INTO "books" VALUES(64,'3 John','NT','General Epistles','Epistles','seed: standard canon grouping (editable)');
 INSERT INTO "books" VALUES(65,'Jude','NT','General Epistles','Epistles','seed: standard canon grouping (editable)');
 INSERT INTO "books" VALUES(66,'Revelation','NT','Apocalyptic','Prophecy','seed: standard canon grouping (editable)');
+CREATE TABLE context_names (
+    layer      TEXT NOT NULL,      -- content or orientation
+    testament  TEXT NOT NULL,      -- Old or New
+    number     INTEGER NOT NULL,   -- the context's number when it was named
+    name       TEXT NOT NULL,      -- the reader's name for it
+    words      TEXT NOT NULL,      -- its marking words then, comma separated
+    saved      TEXT NOT NULL,      -- when it was stored
+    PRIMARY KEY (layer, testament, number)
+);
+INSERT INTO "context_names" VALUES('content','Old',1,'Personal Prayer','o,my,me,mine,mercy,selah,salvation','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',2,'Saul and David','saul,david,philistines,jonathan,abner,joab','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',3,'Priestly Ordination','moses,aaron,congregation,tabernacle,service,eleazar','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',4,'Covenant Exhortation','your,you,ye,statutes,serve,heard','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',5,'Narrative Dialogue','lord,pray,me,said,behold,what','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',6,'Tribal Allotment','tribe,families,suburbs,manasseh,lot,inheritance','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',7,'Moses'' Charge','thy,thine,thee,thou,may,keep','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',8,'Prophetic Judgment','god,saith,lord,nations,sword,desolate,prophesy','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',9,'Women and Family','her,she,wife,damsel,sister,daughter,mother','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',10,'Wisdom Sayings','wicked,righteous,fool,wise,knowledge,heart,wisdom','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',11,'Sacred Architecture','cubits,breadth,length,overlaid,rings,cherubims,shittim','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',12,'Sacrificial Ritual','lambs,bullock,ram,offering,burnt,kid,flour','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',13,'Patriarchs','jacob,abraham,isaac,esau,joseph,pharaoh,laban','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',14,'Temple Worship','solomon,levites,priest,built,house,porters,asaph','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',15,'Communal Lament','us,we,our,let,people','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',16,'Babylonian Court Tales','daniel,kingdom,changed,king,decree','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',17,'Journey and Conquest','joshua,mount,amorites,sea,jordan,sihon,river','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',18,'Purity Laws','unclean,plague,wash,clean,leprosy,flesh','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',19,'Census and Registers','hundred,thousand,twenty,fifty,six,forty','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',20,'Royal Annals','reigned,jeroboam,stead,book,judah,rest,samaria','2026-10-15 18:00');
 CREATE TABLE corpora (
     corpus      TEXT PRIMARY KEY,
     language    TEXT NOT NULL CHECK (language IN ('Hebrew', 'Greek')),

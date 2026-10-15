@@ -1,0 +1,53 @@
+# context_names.txt
+#
+# Names for the contexts the data found (discover_contexts.py).  The data
+# finds and numbers the contexts; naming them is the reader's judgement.
+#
+# One context per line:
+#
+#     layer testament number | name | the words that mark it
+#
+#   layer      content (every word) or orientation (the small words)
+#   testament  Old or New
+#   number     the context's number in the report it was named from
+#   words      the context's marking words when it was named; they let
+#              name_contexts.py find the same context again if a later run
+#              numbers the contexts differently
+#
+# After editing, run:   python3 Eval_data/name_contexts.py save
+# which stores the names in metadata.db and refreshes metadata_backup.sql.
+# Lines starting with # are notes and are skipped; a name of ? is not yet named.
+
+# ----- Old Testament, content contexts (named by Andrew Hopkins, 2026-10-15) -----
+content Old 1  | Personal Prayer         | o, my, me, mine, mercy, selah, salvation
+content Old 2  | Saul and David          | saul, david, philistines, jonathan, abner, joab
+content Old 3  | Priestly Ordination     | moses, aaron, congregation, tabernacle, service, eleazar
+content Old 4  | Covenant Exhortation    | your, you, ye, statutes, serve, heard
+content Old 5  | Narrative Dialogue      | lord, pray, me, said, behold, what
+content Old 6  | Tribal Allotment        | tribe, families, suburbs, manasseh, lot, inheritance
+content Old 7  | Moses' Charge           | thy, thine, thee, thou, may, keep
+content Old 8  | Prophetic Judgment      | god, saith, lord, nations, sword, desolate, prophesy
+content Old 9  | Women and Family        | her, she, wife, damsel, sister, daughter, mother
+content Old 10 | Wisdom Sayings          | wicked, righteous, fool, wise, knowledge, heart, wisdom
+content Old 11 | Sacred Architecture     | cubits, breadth, length, overlaid, rings, cherubims, shittim
+content Old 12 | Sacrificial Ritual      | lambs, bullock, ram, offering, burnt, kid, flour
+content Old 13 | Patriarchs              | jacob, abraham, isaac, esau, joseph, pharaoh, laban
+content Old 14 | Temple Worship          | solomon, levites, priest, built, house, porters, asaph
+content Old 15 | Communal Lament         | us, we, our, let, people
+content Old 16 | Babylonian Court Tales  | daniel, kingdom, changed, king, decree
+content Old 17 | Journey and Conquest    | joshua, mount, amorites, sea, jordan, sihon, river
+content Old 18 | Purity Laws             | unclean, plague, wash, clean, leprosy, flesh
+content Old 19 | Census and Registers    | hundred, thousand, twenty, fifty, six, forty
+content Old 20 | Royal Annals            | reigned, jeroboam, stead, book, judah, rest, samaria
+
+# ----- Old Testament, orientation voices (not yet named) -----
+orientation Old 1  | ? | their, they, them, those
+orientation Old 2  | ? | my, me, i, mine
+orientation Old 3  | ? | ye, your, you
+orientation Old 4  | ? | said, pass, come, go, behold
+orientation Old 5  | ? | his, he, him, whoso
+orientation Old 6  | ? | her, she, whose
+orientation Old 7  | ? | thy, thou, thee, thine
+orientation Old 8  | ? | our, us, we, why, wherefore
+orientation Old 9  | ? | these, of, the, stead, pertain
+orientation Old 10 | ? | one, thereof, on, shekel, thereon

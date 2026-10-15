@@ -137,6 +137,13 @@ class ContextModel:
         W = self.nmf.transform(self.T_all)
         total = W.sum(axis=1, keepdims=True)
         self.mix = np.divide(W, total, out=np.zeros_like(W), where=total > 0)
+        # The reader's names for the contexts (name_contexts.py), matched by
+        # their marking words; contexts with no name keep their word label.
+        try:
+            from name_contexts import match_names
+            self.names = match_names(self, self.layer, a.testament)
+        except Exception:
+            self.names = {}
 
     def mix_of(self, counts) -> np.ndarray:
         """
@@ -173,6 +180,11 @@ class ContextModel:
         return out
 
     def label(self, c: int) -> str:
+        """The reader's name for context c if it has one, else its three most telling words."""
+        names = getattr(self, "names", {})
+        return names[c] if c in names else self.word_label(c)
+
+    def word_label(self, c: int) -> str:
         """The three most telling words; "(Aramaic)" when the context's words are mostly Aramaic."""
         words = self.telling_words(c, 6)
         text = ", ".join(w["gloss"] for w in words[:3])
@@ -295,7 +307,7 @@ class ContextReport:
             steady = m.steadiness[c]
             flag = "" if steady >= STEADY else ' <span class="tag">unsteady</span>'
             out.append(f"""<div class="ctxbox">
-<h3>{c + 1}. {escape(m.label(c))}{flag}</h3>
+<h3>{c + 1}. {escape(m.label(c))}{flag}{"" if c not in getattr(m, "names", {}) else f' <span class="small">({escape(m.word_label(c))})</span>'}</h3>
 <p><b>Marked by:</b> {word_html}</p>
 <p><b>Strongest in:</b> {book_html}</p>
 <p><b>Peaks:</b> {peak_html}</p>
@@ -378,8 +390,8 @@ each one in plain words.</p>
 <div class="chart">{self.strip_chart()}</div>
 
 <h2>The contexts one by one</h2>
-<p>Each context is numbered and labelled by its three most telling words. Naming them is the
-reader's work.</p>
+<p>Each context is numbered and labelled by the reader's name for it (context_names.txt) or, where it
+has no name yet, by its three most telling words.</p>
 {self.contexts_section()}
 
 <h2>Books and their contexts</h2>
@@ -460,7 +472,8 @@ def main() -> None:
     summary = {"settings": settings, "contexts": [], "books": books}
     for c in range(args.contexts):
         summary["contexts"].append({
-            "number": c + 1, "label": model.label(c),
+            "number": c + 1, "label": model.label(c), "words_label": model.word_label(c),
+            "named": c in getattr(model, "names", {}),
             "steadiness": round(float(model.steadiness[c]), 3),
             "share": round(float(model.mix[:, c].mean()), 4),
             "words": model.telling_words(c, 40),
