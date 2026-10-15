@@ -1,0 +1,82 @@
+# known_seams.txt
+#
+# Places where readers and scholars have long seen a change in a book:
+# a new source, a new section, a change of language, speaker or setting.
+# find_shifts.py checks whether the data finds a change at each of them.
+#
+# This list was drawn up from general knowledge of biblical scholarship,
+# not from Word Atlas data, and it is meant to be edited: add a seam you
+# know of, remove one you doubt, correct a verse.  One seam per line:
+#
+#     Book chapter:verse    a short note
+#
+# The verse is the first verse AFTER the change.  Lines starting with #
+# are notes and are skipped.
+
+# ----- Old Testament -----
+Genesis 2:4          second creation account begins
+Genesis 12:1         from the primeval history to Abraham
+Genesis 37:1         the Joseph story begins
+Exodus 19:1          arrival at Sinai
+Exodus 25:1          instructions for the tabernacle
+Exodus 35:1          the tabernacle built
+Leviticus 17:1       the Holiness Code begins
+Leviticus 27:1       appendix on vows
+Numbers 10:11        departure from Sinai
+Deuteronomy 5:1      the second address
+Deuteronomy 12:1     the law code begins
+Deuteronomy 27:1     blessings and curses
+Deuteronomy 31:1     Moses' last days
+Joshua 13:1          the allotment of the land
+Judges 2:6           second introduction
+Judges 17:1          the appendix stories
+1 Samuel 16:1        David enters
+2 Samuel 9:1         the Succession Narrative
+2 Samuel 21:1        the appendix
+1 Kings 12:1         the kingdom divides
+2 Kings 17:1         the fall of Samaria
+1 Chronicles 10:1    from genealogies to narrative
+Ezra 4:8             Hebrew to Aramaic
+Ezra 6:19            Aramaic to Hebrew
+Ezra 7:1             Ezra arrives
+Nehemiah 8:1         the reading of the law
+Job 3:1              prose frame to poetry
+Job 32:1             the Elihu speeches
+Job 38:1             the LORD answers
+Job 42:7             back to prose
+Proverbs 10:1        the proverbs of Solomon
+Proverbs 22:17       the words of the wise
+Proverbs 25:1        Hezekiah's collection
+Proverbs 30:1        the words of Agur
+Isaiah 13:1          oracles against the nations
+Isaiah 24:1          the "Isaiah apocalypse"
+Isaiah 36:1          narrative of Hezekiah
+Isaiah 40:1          "Comfort ye" (Second Isaiah)
+Isaiah 56:1          Third Isaiah
+Jeremiah 26:1        biographical narratives
+Jeremiah 46:1        oracles against the nations
+Jeremiah 52:1        historical appendix
+Ezekiel 25:1         oracles against the nations
+Ezekiel 33:1         after the fall of Jerusalem
+Ezekiel 40:1         the temple vision
+Daniel 2:4           Hebrew to Aramaic
+Daniel 7:1           from court stories to visions
+Daniel 8:1           Aramaic to Hebrew
+Hosea 4:1            from the marriage to the oracles
+Amos 7:1             the visions
+Micah 4:1            oracles of hope (cf. Isaiah 2:2-4)
+Micah 6:1            the LORD's controversy
+Zechariah 9:1        "Second Zechariah"
+
+# ----- New Testament -----
+Mark 16:9            the longer ending
+John 7:53            the woman taken in adultery
+John 21:1            the epilogue
+Acts 13:1            Paul's missions begin
+Acts 16:10           the first "we" passage
+Romans 16:1          greetings and commendations
+2 Corinthians 6:14   "be ye not unequally yoked" (an inserted passage?)
+2 Corinthians 10:1   the "severe letter" chapters
+Philippians 3:2      "beware of dogs" (a change of tone)
+Revelation 4:1       from the letters to the throne vision
+Revelation 21:1      the new heaven and new earth

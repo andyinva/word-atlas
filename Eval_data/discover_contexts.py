@@ -110,7 +110,7 @@ class ContextModel:
         # Steadiness: refit on random four-fifths of the windows from a
         # random start; match each refit context to a main one.
         rng = np.random.default_rng(a.seed)
-        scores = np.zeros((a.resamples, a.contexts))
+        scores = np.ones((max(a.resamples, 1), a.contexts))   # no resamples: taken as steady
         for r in range(a.resamples):
             rows = np.sort(rng.choice(self.T_fit.shape[0], int(0.8 * self.T_fit.shape[0]), replace=False))
             m = NMF(a.contexts, init="random", random_state=a.seed + 1 + r, max_iter=800, tol=1e-4)
@@ -124,6 +124,17 @@ class ContextModel:
         W = self.nmf.transform(self.T_all)
         total = W.sum(axis=1, keepdims=True)
         self.mix = np.divide(W, total, out=np.zeros_like(W), where=total > 0)
+
+    def mix_of(self, counts) -> np.ndarray:
+        """
+        The mix of contexts for any table of word counts (rows = stretches
+        of text, columns = the testament's full vocabulary), scaled so
+        each row adds to 1.  Used by find_shifts.py for the text before
+        and after each verse.
+        """
+        W = self.nmf.transform(self.tfidf.transform(counts[:, self.keep]))
+        total = W.sum(axis=1, keepdims=True)
+        return np.divide(W, total, out=np.zeros_like(W), where=total > 0)
 
     def telling_words(self, c: int, n: int = 15) -> list:
         """
