@@ -86,9 +86,13 @@ class ShiftFinder:
         self.args = args
         # The same contexts as discover_contexts.py (same settings and seed),
         # without the steadiness reruns, which are not needed here.
-        contexts = 20 if args.testament == "Old" else 16
+        if args.layer == "orientation":
+            contexts = 10 if args.testament == "Old" else 8
+        else:
+            contexts = 20 if args.testament == "Old" else 16
         margs = Namespace(testament=args.testament, contexts=args.contexts or contexts, size=10,
-                          step=5, min_windows=5, strongs_only=False, resamples=0, seed=1)
+                          step=5, min_windows=5, strongs_only=False, resamples=0, seed=1,
+                          keep_aramaic=False, layer=args.layer)
         self.model = ContextModel(margs)
         self.model.fit()
         self.voc = self.model.voc
@@ -388,7 +392,8 @@ chance</b> is how often a method that saw nothing real would find as many seams 
         found = [r for r in ch.results if r.get("found") is not None]
         n_found = sum(1 for r in found if r["found"])
         rate = n_found / len(found) if found else 0
-        title = f"Changes of context: {s['testament']} Testament"
+        title = (f"Changes of orientation: {s['testament']} Testament" if s.get("layer") == "orientation"
+                 else f"Changes of context: {s['testament']} Testament")
         css = HtmlReport.CSS + """
 table.shifts td { font-size: 12.5px; }
 @media print { table.shifts { font-size: 7.5pt; } }
@@ -449,6 +454,8 @@ def main() -> None:
     parser.add_argument("--contexts", type=int, default=None,
                         help="contexts to use (default as discover_contexts.py: 20 Old, 16 New)")
     parser.add_argument("--top", type=int, default=40, help="changes listed per scale (default 40)")
+    parser.add_argument("--layer", choices=["content", "orientation"], default="content",
+                        help="content contexts (default) or orientation contexts (the small words)")
     parser.add_argument("--seams", type=Path, default=EVAL_DIR / "known_seams.txt")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--out", type=Path, default=EVAL_DIR / "results")
@@ -503,7 +510,7 @@ def main() -> None:
 
     # Write the CSV, JSON and HTML.
     args.out.mkdir(parents=True, exist_ok=True)
-    stem = f"shifts_{args.testament.lower()}"
+    stem = f"shifts_{args.testament.lower()}" + ("_orientation" if args.layer == "orientation" else "")
     near_at = {int(p): (float(c), float(w)) for p, c, w in
                zip(scales[0]["points"], scales[0]["change"], scales[0]["words"])}
     far_at = {int(p): (float(c), float(w)) for p, c, w in
@@ -518,7 +525,7 @@ def main() -> None:
             w.writerow([v["book"][i], v["chapter"][i], v["verse"][i],
                         round(n_[0], 4) if n_[0] != "" else "", round(n_[1], 4) if n_[1] != "" else "",
                         round(f_[0], 4) if f_[0] != "" else "", round(f_[1], 4) if f_[1] != "" else ""])
-    settings = {"testament": args.testament, "near": args.near, "far": args.far,
+    settings = {"testament": args.testament, "near": args.near, "far": args.far, "layer": args.layer,
                 "contexts": len(labels), "made": time.strftime("%Y-%m-%d %H:%M")}
     clean = lambda items: [{k: v for k, v in d.items() if k != "direction"} for d in items]
     (args.out / f"{stem}.json").write_text(json.dumps(

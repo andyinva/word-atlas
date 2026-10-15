@@ -91,6 +91,19 @@ class ContextModel:
         keep = present >= args.min_windows
         if args.strongs_only:
             keep &= np.array([k != "english" for k in words["kind"]])
+        # The orientation layer: only the small words (the King James's
+        # untagged words, and Strong's words rendered by stop words at
+        # least half the time) - the words that say who speaks, to whom,
+        # from where and when, rather than what about.
+        self.layer = getattr(args, "layer", "content")
+        if self.layer == "orientation":
+            keep &= np.array([k == "english" or sm >= 0.5
+                              for k, sm in zip(words["kind"], words["small"])])
+        # Aramaic words with no Hebrew counterpart (mostly small words such
+        # as di, "of, which") mark the language, not the meaning, so they
+        # are set aside unless --keep-aramaic is given.
+        if not getattr(args, "keep_aramaic", False):
+            keep &= np.array([k != "aramaic" for k in words["kind"]])
         self.keep = np.flatnonzero(keep)
         self.ids = [words["id"][i] for i in self.keep]
         self.gloss = [words["gloss"][i] for i in self.keep]
@@ -334,7 +347,8 @@ context. (Statisticians call this non-negative matrix factorisation, NMF.)</dd>
     def render(self) -> str:
         m, s = self.m, self.s
         n_unsteady = int((m.steadiness < STEADY).sum())
-        title = f"Contexts: {s['testament']} Testament"
+        title = (f"Orientation: {s['testament']} Testament" if s.get("layer") == "orientation"
+                 else f"Contexts: {s['testament']} Testament")
         css = HtmlReport.CSS + """
 .ctxbox { border-top: 1px solid var(--grid); padding: 4px 0 8px; break-inside: avoid; }
 .ctxbox h3 { margin: 10px 0 4px; }
@@ -349,8 +363,8 @@ table.ctx td, table.ctx th { padding: 3px 4px; }
 <title>{escape(title)}</title><style>{css}</style></head>
 <body><main>
 <h1>{escape(title)}</h1>
-<p>{len(m.where):,} windows of {s["size"]} verses, described by {len(m.ids):,} words (Hebrew,
-Aramaic and Greek words by Strong's number{"" if s["strongs_only"] else ", and the King James's untagged small words"}),
+<p>{len(m.where):,} windows of {s["size"]} verses, described by {len(m.ids):,} words
+{"(the small words only: pronouns, here and there, the little words of direction, time and relation; the words that say who speaks, to whom and from where, rather than what about)" if s.get("layer") == "orientation" else "(Hebrew, Aramaic and Greek words by Strong's number" + ("" if s["strongs_only"] else ", and the King James's untagged small words") + ")"},
 sorted into {s["contexts"]} contexts with nothing labelled beforehand. Made {escape(s["made"])}.</p>
 <p>New to these terms? <a href="#glossary">What the words mean</a> at the end of the page explains
 each one in plain words.</p>
@@ -401,12 +415,19 @@ def main() -> None:
                         help="a word must be in at least this many fitting windows (default 5)")
     parser.add_argument("--strongs-only", action="store_true",
                         help="leave out the King James's untagged English words")
+    parser.add_argument("--layer", choices=["content", "orientation"], default="content",
+                        help="content (every word, the default) or orientation (the small words only)")
+    parser.add_argument("--keep-aramaic", action="store_true",
+                        help="keep the Aramaic words that have no Hebrew counterpart")
     parser.add_argument("--resamples", type=int, default=6, help="reruns for steadiness (default 6)")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--out", type=Path, default=EVAL_DIR / "results")
     args = parser.parse_args()
     if args.contexts is None:
-        args.contexts = 20 if args.testament == "Old" else 16
+        if args.layer == "orientation":
+            args.contexts = 10 if args.testament == "Old" else 8
+        else:
+            args.contexts = 20 if args.testament == "Old" else 16
     started = time.time()
 
     model = ContextModel(args)
@@ -416,10 +437,12 @@ def main() -> None:
     print(f"  {args.contexts} contexts found in {time.time() - started:.0f} s")
 
     args.out.mkdir(parents=True, exist_ok=True)
-    stem = f"contexts_{args.testament.lower()}" + ("_strongs" if args.strongs_only else "")
+    stem = (f"contexts_{args.testament.lower()}" + ("_strongs" if args.strongs_only else "")
+            + ("_orientation" if args.layer == "orientation" else ""))
     settings = {"testament": args.testament, "contexts": args.contexts, "size": args.size,
                 "step": args.step, "min_windows": args.min_windows, "strongs_only": args.strongs_only,
                 "resamples": args.resamples, "seed": args.seed, "made": time.strftime("%Y-%m-%d %H:%M"),
+                "layer": args.layer,
                 "words": len(model.ids)}
 
     # Every window and its mix.

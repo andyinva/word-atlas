@@ -14,6 +14,14 @@ WHAT IS COUNTED IN EACH VERSE
                      many English words render it (the same joining rule
                      as atlas_heat.py: a token joins a unit of the same
                      number up to 2 positions back in the verse)
+    Aramaic words    by default counted as their Hebrew counterpart where
+                     the Strong's lexicon names one ("(Aramaic) corresponding
+                     to H4428": Aramaic melek = Hebrew melek, king), about
+                     two thirds of the Aramaic text.  The Aramaic of Daniel
+                     and Ezra is then read for what it says, not for the
+                     language it says it in.  Words with no counterpart named
+                     stay Aramaic.  --aramaic keep counts every Aramaic word
+                     as itself.
     English words    every King James word with no Strong's number:
                      mostly the small words (the, and, unto, there, we),
                      kept as "en:there" and so on.  They follow the King
@@ -38,11 +46,13 @@ WHAT IS WRITTEN (Eval_data/vocab/)
 Usage:
     python3 Eval_data/export_vocab.py
     python3 Eval_data/export_vocab.py --gzip
+    python3 Eval_data/export_vocab.py --aramaic keep
 """
 
 import argparse
 import gzip
 import json
+import re
 import sqlite3
 import sys
 import time
@@ -69,7 +79,8 @@ def is_strongs(root) -> bool:
 class VocabBuilder:
     """Reads atlas.db once and counts every word of every verse."""
 
-    def __init__(self, atlas_path: Path):
+    def __init__(self, atlas_path: Path, pair_aramaic: bool = True):
+        self.pair_aramaic = pair_aramaic
         if not atlas_path.exists():
             sys.exit(f"atlas.db not found at {atlas_path}.")
         db = sqlite3.connect(atlas_path.resolve().as_uri() + "?mode=ro", uri=True)
@@ -94,6 +105,22 @@ class VocabBuilder:
                     "OR derivation LIKE '(Chaldee)%'")}
             except sqlite3.OperationalError:
                 self.aramaic = set()
+            # Aramaic -> Hebrew, where the lexicon says "(Aramaic)
+            # corresponding to H1234".  Looser links ("from a root
+            # corresponding to") are not used.
+            self.pairs = {}
+            if pair_aramaic:
+                direct = re.compile(r"^\((?:Aramaic|Chaldee)\)\s+corresponding to (H\d+)")
+                try:
+                    for num, der in db.execute(
+                            "SELECT number, derivation FROM lexicon WHERE derivation LIKE '(Aramaic)%' "
+                            "OR derivation LIKE '(Chaldee)%'"):
+                        m = direct.match(der or "")
+                        if m:
+                            self.pairs[num] = m.group(1)
+                except sqlite3.OperationalError:
+                    pass
+            self.paired_uses = 0
             # The verses, in Bible order, with the language the build gave them.
             self.verses = []
             self.index = {}
@@ -118,10 +145,15 @@ class VocabBuilder:
 
         def close(unit):
             verse = self.verses[self.index[unit["vid"]]]
-            verse["counts"][unit["root"]] += 1
-            self.uses[(verse["testament"], unit["root"])] += 1
+            root = unit["root"]
+            if root in self.pairs:
+                # An Aramaic word counted as its Hebrew counterpart.
+                root = self.pairs[root]
+                self.paired_uses += 1
+            verse["counts"][root] += 1
+            self.uses[(verse["testament"], root)] += 1
             if unit["stop"]:
-                self.stop_uses[(verse["testament"], unit["root"])] += 1
+                self.stop_uses[(verse["testament"], root)] += 1
 
         for vid, pos, root, is_stop, surface in db.execute(
                 "SELECT verse_id, position, root, is_stop, surface FROM tokens "
@@ -191,6 +223,8 @@ class VocabBuilder:
             "build": {k: self.settings.get(k) for k in ("label", "built", "translation")},
             "made": datetime.now().isoformat(timespec="seconds"),
             "merge_gap": MERGE_GAP,
+            "aramaic": "paired with Hebrew where the lexicon names a counterpart"
+                       if self.pair_aramaic else "kept as Aramaic",
             "word_count": len(words),
             "verse_count": len(verses),
             "words": {
@@ -220,11 +254,15 @@ def main() -> None:
     parser.add_argument("--atlas", type=Path, default=ATLAS_DIR / "atlas.db")
     parser.add_argument("--out", type=Path, default=EVAL_DIR / "vocab")
     parser.add_argument("--gzip", action="store_true", help="write .json.gz files")
+    parser.add_argument("--aramaic", choices=["pair", "keep"], default="pair",
+                        help="count Aramaic words as their Hebrew counterparts (default) or keep them")
     args = parser.parse_args()
 
     started = time.time()
     print("Reading atlas.db ...")
-    builder = VocabBuilder(args.atlas)
+    builder = VocabBuilder(args.atlas, pair_aramaic=args.aramaic == "pair")
+    if builder.pairs:
+        print(f"  {len(builder.pairs)} Aramaic words paired with Hebrew ({builder.paired_uses:,} uses)")
     args.out.mkdir(parents=True, exist_ok=True)
     for testament, name in (("Old", "old"), ("New", "new")):
         data = builder.build(testament)
