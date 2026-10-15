@@ -152,7 +152,7 @@ def list_names(metadata: Path = METADATA) -> None:
             if rows:
                 print(f"{layer}, {testament} Testament:")
                 for n, name, words in sorted(rows):
-                    print(f"  {n:>2}. {name:<26} {', '.join(words[:6])}")
+                    print(f"  {n:>2}. {name:<34} {', '.join(words[:6])}")
 
 
 def check() -> None:
@@ -173,7 +173,7 @@ def check() -> None:
             print(f"{layer}, {testament} Testament: {len(got)} of {k} contexts named")
             for c in range(k):
                 words = ", ".join(w["gloss"] for w in m.telling_words(c, 4))
-                print(f"  {c + 1:>2}. {got.get(c, '(unnamed)'):<26} {words}")
+                print(f"  {c + 1:>2}. {got.get(c, '(unnamed)'):<34} {words}")
 
 
 def main() -> None:

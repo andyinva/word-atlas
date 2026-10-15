@@ -40,14 +40,14 @@ content Old 18 | Purity Laws             | unclean, plague, wash, clean, leprosy
 content Old 19 | Census and Registers    | hundred, thousand, twenty, fifty, six, forty
 content Old 20 | Royal Annals            | reigned, jeroboam, stead, book, judah, rest, samaria
 
-# ----- Old Testament, orientation voices (not yet named) -----
-orientation Old 1  | ? | their, they, them, those
-orientation Old 2  | ? | my, me, i, mine
-orientation Old 3  | ? | ye, your, you
-orientation Old 4  | ? | said, pass, come, go, behold
-orientation Old 5  | ? | his, he, him, whoso
-orientation Old 6  | ? | her, she, whose
-orientation Old 7  | ? | thy, thou, thee, thine
-orientation Old 8  | ? | our, us, we, why, wherefore
-orientation Old 9  | ? | these, of, the, stead, pertain
-orientation Old 10 | ? | one, thereof, on, shekel, thereon
+# ----- Old Testament, orientation voices (named by Andrew Hopkins, 2026-10-15) -----
+orientation Old 1  | They: Peoples Described           | their, they, them, those
+orientation Old 2  | I: The Personal Voice             | my, me, i, mine
+orientation Old 3  | Ye: The People Addressed          | ye, your, you
+orientation Old 4  | Storytelling                      | said, pass, come, go, behold
+orientation Old 5  | He Who: The General Case          | his, he, him, whoso
+orientation Old 6  | She: Women and Cities as Women    | her, she, whose
+orientation Old 7  | Thou: Israel as One Hearer        | thy, thou, thee, thine
+orientation Old 8  | We: The Community Speaks          | our, us, we, why, wherefore
+orientation Old 9  | Lists and Genealogies             | these, of, the, stead, pertain
+orientation Old 10 | Things and Measures               | one, thereof, on, shekel, thereon

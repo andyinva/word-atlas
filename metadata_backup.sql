@@ -1,5 +1,5 @@
 -- Word Atlas metadata.db backup (plain SQL; restore with atlas_backup.py)
--- written: 2026-10-15 18:00
+-- written: 2026-10-15 18:45
 BEGIN TRANSACTION;
 CREATE TABLE books (
     book_num       INTEGER PRIMARY KEY,     -- 1 = Genesis ... 66 = Revelation
@@ -84,26 +84,36 @@ CREATE TABLE context_names (
     saved      TEXT NOT NULL,      -- when it was stored
     PRIMARY KEY (layer, testament, number)
 );
-INSERT INTO "context_names" VALUES('content','Old',1,'Personal Prayer','o,my,me,mine,mercy,selah,salvation','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',2,'Saul and David','saul,david,philistines,jonathan,abner,joab','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',3,'Priestly Ordination','moses,aaron,congregation,tabernacle,service,eleazar','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',4,'Covenant Exhortation','your,you,ye,statutes,serve,heard','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',5,'Narrative Dialogue','lord,pray,me,said,behold,what','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',6,'Tribal Allotment','tribe,families,suburbs,manasseh,lot,inheritance','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',7,'Moses'' Charge','thy,thine,thee,thou,may,keep','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',8,'Prophetic Judgment','god,saith,lord,nations,sword,desolate,prophesy','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',9,'Women and Family','her,she,wife,damsel,sister,daughter,mother','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',10,'Wisdom Sayings','wicked,righteous,fool,wise,knowledge,heart,wisdom','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',11,'Sacred Architecture','cubits,breadth,length,overlaid,rings,cherubims,shittim','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',12,'Sacrificial Ritual','lambs,bullock,ram,offering,burnt,kid,flour','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',13,'Patriarchs','jacob,abraham,isaac,esau,joseph,pharaoh,laban','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',14,'Temple Worship','solomon,levites,priest,built,house,porters,asaph','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',15,'Communal Lament','us,we,our,let,people','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',16,'Babylonian Court Tales','daniel,kingdom,changed,king,decree','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',17,'Journey and Conquest','joshua,mount,amorites,sea,jordan,sihon,river','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',18,'Purity Laws','unclean,plague,wash,clean,leprosy,flesh','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',19,'Census and Registers','hundred,thousand,twenty,fifty,six,forty','2026-10-15 18:00');
-INSERT INTO "context_names" VALUES('content','Old',20,'Royal Annals','reigned,jeroboam,stead,book,judah,rest,samaria','2026-10-15 18:00');
+INSERT INTO "context_names" VALUES('content','Old',1,'Personal Prayer','o,my,me,mine,mercy,selah,salvation','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',2,'Saul and David','saul,david,philistines,jonathan,abner,joab','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',3,'Priestly Ordination','moses,aaron,congregation,tabernacle,service,eleazar','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',4,'Covenant Exhortation','your,you,ye,statutes,serve,heard','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',5,'Narrative Dialogue','lord,pray,me,said,behold,what','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',6,'Tribal Allotment','tribe,families,suburbs,manasseh,lot,inheritance','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',7,'Moses'' Charge','thy,thine,thee,thou,may,keep','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',8,'Prophetic Judgment','god,saith,lord,nations,sword,desolate,prophesy','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',9,'Women and Family','her,she,wife,damsel,sister,daughter,mother','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',10,'Wisdom Sayings','wicked,righteous,fool,wise,knowledge,heart,wisdom','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',11,'Sacred Architecture','cubits,breadth,length,overlaid,rings,cherubims,shittim','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',12,'Sacrificial Ritual','lambs,bullock,ram,offering,burnt,kid,flour','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',13,'Patriarchs','jacob,abraham,isaac,esau,joseph,pharaoh,laban','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',14,'Temple Worship','solomon,levites,priest,built,house,porters,asaph','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',15,'Communal Lament','us,we,our,let,people','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',16,'Babylonian Court Tales','daniel,kingdom,changed,king,decree','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',17,'Journey and Conquest','joshua,mount,amorites,sea,jordan,sihon,river','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',18,'Purity Laws','unclean,plague,wash,clean,leprosy,flesh','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',19,'Census and Registers','hundred,thousand,twenty,fifty,six,forty','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('content','Old',20,'Royal Annals','reigned,jeroboam,stead,book,judah,rest,samaria','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('orientation','Old',1,'They: Peoples Described','their,they,them,those','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('orientation','Old',2,'I: The Personal Voice','my,me,i,mine','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('orientation','Old',3,'Ye: The People Addressed','ye,your,you','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('orientation','Old',4,'Storytelling','said,pass,come,go,behold','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('orientation','Old',5,'He Who: The General Case','his,he,him,whoso','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('orientation','Old',6,'She: Women and Cities as Women','her,she,whose','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('orientation','Old',7,'Thou: Israel as One Hearer','thy,thou,thee,thine','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('orientation','Old',8,'We: The Community Speaks','our,us,we,why,wherefore','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('orientation','Old',9,'Lists and Genealogies','these,of,the,stead,pertain','2026-10-15 18:45');
+INSERT INTO "context_names" VALUES('orientation','Old',10,'Things and Measures','one,thereof,on,shekel,thereon','2026-10-15 18:45');
 CREATE TABLE corpora (
     corpus      TEXT PRIMARY KEY,
     language    TEXT NOT NULL CHECK (language IN ('Hebrew', 'Greek')),
