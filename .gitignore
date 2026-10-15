@@ -41,3 +41,6 @@ translations_index.db
 
 # The cited layer (0.10.81): Sefaria's export lives under data/, the derived pairs here
 sefaria_links.db
+
+# Eval_data: window series made by Eval_data/export_windows.py (rebuilt in seconds)
+Eval_data/windows/
