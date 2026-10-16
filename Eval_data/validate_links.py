@@ -24,10 +24,15 @@ TWO TESTS
                     the companion?  A ratio of 2 means companions are
                     cross-referenced twice as often as chance.
     Leans to        For every book, the other book it leans to.  Among all
-                    the other books, where does that one rank by density
-                    of cross references (links per verse pair)?  Rank 1 is
-                    the most cross-referenced; chance would put it in the
-                    middle.
+                    the other books, where does that one rank by cross
+                    references against the number expected?  Expected is
+                    the book's links to other books shared out by how many
+                    links each other book receives (obs/exp, as the 4a
+                    table does), so neither a small book nor a much-cited
+                    one wins by its size.  Rank 1 is the most
+                    cross-referenced; chance would put it in the middle.
+                    (Links per verse pair, the first way, let the smallest
+                    books win: Genesis's top book came out as Malachi.)
 
 OUTPUT
     Eval_data/results/links_<testament>_<baseline>.txt    the summary
@@ -194,7 +199,7 @@ def companion_test(table, web, start_id, end_id, idx, rng, draws: int, boots: in
 
 
 def leans_to_test(table, web, nearest_book: np.ndarray, verse_ids_of_book: dict) -> dict:
-    """Rank of each book's leans-to book by cross-reference density."""
+    """Rank of each book's leans-to book by cross references against expected (obs/exp)."""
     books = table.books
     # Links between every pair of books.
     book_of = {}
@@ -210,7 +215,12 @@ def leans_to_test(table, web, nearest_book: np.ndarray, verse_ids_of_book: dict)
             bb = book_of.get(t)
             if bb is not None and bb != ba:
                 counts[(ba, bb)] += 1
-    size = {b: len(v) for b, v in verse_ids_of_book.items()}
+    # Each book's links out to other books, and links in from them.
+    out_links, in_links = defaultdict(int), defaultdict(int)
+    for (ba, bb), n in counts.items():
+        out_links[ba] += n
+        in_links[bb] += n
+    total = sum(counts.values())
     rows, ranks = [], []
     from collections import Counter
     for bi, name in enumerate(books):
@@ -219,12 +229,22 @@ def leans_to_test(table, web, nearest_book: np.ndarray, verse_ids_of_book: dict)
         if not near:
             continue
         lean = books[near.most_common(1)[0][0]]
-        dens = {o: counts[(name, o)] / (size[name] * size[o]) for o in books if o != name}
-        order = sorted(dens, key=lambda o: -dens[o])
+        # Expected links to book o: this book's links out, shared by o's
+        # part of all the links that land outside this book.
+        landing = total - in_links[name]
+        ratio = {}
+        for o in books:
+            if o == name:
+                continue
+            expected = out_links[name] * in_links[o] / landing if landing else 0.0
+            ratio[o] = counts[(name, o)] / expected if expected else 0.0
+        order = sorted(ratio, key=lambda o: -ratio[o])
         rank = order.index(lean) + 1
         ranks.append(rank / len(order))
         rows.append({"book": name, "leans_to": lean, "rank": rank, "of": len(order),
-                     "most_cross_referenced": order[0]})
+                     "obs_exp": round(ratio[lean], 2),
+                     "most_cross_referenced": order[0],
+                     "most_obs_exp": round(ratio[order[0]], 2)})
     return {"books": rows,
             "median_rank_share": round(float(np.median(ranks)), 3) if ranks else None,
             "top3": sum(1 for r in rows if r["rank"] <= 3), "count": len(rows)}
@@ -297,14 +317,18 @@ def main() -> None:
                      f"way down the list (chance: 50%)")
         for r in lean["books"]:
             lines.append(f"    {r['book']:<16} leans to {r['leans_to']:<16} rank {r['rank']:>2} of {r['of']}"
-                         f"   (most cross-referenced: {r['most_cross_referenced']})")
+                         f"  obs/exp {r['obs_exp']:>5.2f}   (most cross-referenced: "
+                         f"{r['most_cross_referenced']}, {r['most_obs_exp']:.2f})")
         lines.append("")
     lines += ["HOW TO READ THIS",
               "  linked: the share of window-and-companion pairs joined by at least one cross reference.",
               "  random: the same for a window picked at random from the companion's book.",
               "  ratio: linked divided by random. 1 = no better than chance; 2 = twice as often.",
-              "  rank: among all other books, where the leans-to book stands by cross references per",
-              "        pair of verses (1 = the most cross-referenced)."]
+              "  rank: among all other books, where the leans-to book stands by cross references",
+              "        against the number expected (1 = the most cross-referenced).",
+              "  obs/exp: the cross references found between the two books divided by the number",
+              "        expected from how many links the book makes to other books and how many the",
+              "        other book receives. 1 = as expected; 2 = twice as many."]
     text = "\n".join(lines)
     print("\n" + text)
     args.out.mkdir(parents=True, exist_ok=True)

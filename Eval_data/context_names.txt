@@ -18,27 +18,39 @@
 # which stores the names in metadata.db and refreshes metadata_backup.sql.
 # Lines starting with # are notes and are skipped; a name of ? is not yet named.
 
-# ----- Old Testament, content contexts (named by Andrew Hopkins, 2026-10-15) -----
-content Old 1  | Personal Prayer         | o, my, me, mine, mercy, selah, salvation
-content Old 2  | Saul and David          | saul, david, philistines, jonathan, abner, joab
-content Old 3  | Priestly Ordination     | moses, aaron, congregation, tabernacle, service, eleazar
-content Old 4  | Covenant Exhortation    | your, you, ye, statutes, serve, heard
-content Old 5  | Narrative Dialogue      | lord, pray, me, said, behold, what
-content Old 6  | Tribal Allotment        | tribe, families, suburbs, manasseh, lot, inheritance
-content Old 7  | Moses' Charge           | thy, thine, thee, thou, may, keep
-content Old 8  | Prophetic Judgment      | god, saith, lord, nations, sword, desolate, prophesy
-content Old 9  | Women and Family        | her, she, wife, damsel, sister, daughter, mother
-content Old 10 | Wisdom Sayings          | wicked, righteous, fool, wise, knowledge, heart, wisdom
-content Old 11 | Sacred Architecture     | cubits, breadth, length, overlaid, rings, cherubims, shittim
-content Old 12 | Sacrificial Ritual      | lambs, bullock, ram, offering, burnt, kid, flour
-content Old 13 | Patriarchs              | jacob, abraham, isaac, esau, joseph, pharaoh, laban
-content Old 14 | Temple Worship          | solomon, levites, priest, built, house, porters, asaph
-content Old 15 | Communal Lament         | us, we, our, let, people
-content Old 16 | Babylonian Court Tales  | daniel, kingdom, changed, king, decree
-content Old 17 | Journey and Conquest    | joshua, mount, amorites, sea, jordan, sihon, river
-content Old 18 | Purity Laws             | unclean, plague, wash, clean, leprosy, flesh
-content Old 19 | Census and Registers    | hundred, thousand, twenty, fifty, six, forty
-content Old 20 | Royal Annals            | reigned, jeroboam, stead, book, judah, rest, samaria
+# ----- Old Testament, content contexts (named by Andrew Hopkins, 2026-10-15;
+#       refitted on content words only the same day, numbers and words updated;
+#       contexts 1, 13, 15, 19 and 20 are new with the refit) -----
+content Old 1  | Jeremiah's Prose Narrative        | babylon, jeremiah, zedekiah, prophet, chaldeans, judah, nebuchadrezzar
+content Old 2  | Temple Worship                    | levites, priest, porters, brethren, asaph, shemaiah, zechariah
+content Old 3  | Priestly Ordination               | moses, aaron, congregation, tabernacle, sinai, commanded, eleazar
+content Old 4  | Wisdom Sayings                    | wicked, righteous, heart, fool, knowledge, wise, lips
+content Old 5  | Saul and David                    | saul, philistines, david, jonathan, samuel, abner, spear
+content Old 6  | Census and Registers              | hundred, thousand, fifty, twenty, six, five, forty
+content Old 7  | Prophetic Judgment                | god, lord, idols, saith, desolate, man, midst
+content Old 8  | Patriarchs                        | begat, abraham, isaac, jacob, esau, daughter, laban
+content Old 9  | Sacred Architecture               | cubits, breadth, length, overlaid, side, shittim, cherubims
+content Old 10 | Personal Prayer                   | mercy, praise, selah, ever, salvation, lord, sing
+content Old 11 | Sacrificial Ritual                | lambs, bullock, offering, burnt, ram, kid, flour
+content Old 12 | Tribal Allotment                  | border, jordan, inheritance, tribe, suburbs, manasseh, joshua
+content Old 13 | Israel in Egypt                   | pharaoh, egypt, joseph, river, goshen, grievous, magicians
+content Old 14 | Royal Annals                      | reigned, jeroboam, samaria, asa, rest, jehoshaphat, buried
+content Old 15 | Solomon's Succession and Building | solomon, david, built, throne, nathan, adonijah, hiram
+content Old 16 | Purity Laws                       | unclean, wash, plague, clean, flesh, leprosy, garments
+content Old 17 | Babylonian Court Tales            | god, kingdom, daniel, decree, changed, provinces, man
+content Old 18 | Covenant Exhortation              | commandments, possess, keep, statutes, god, commanded, sware
+content Old 19 | The Storm Theophany               | water, dried, mount, sea, voice, light, zion
+content Old 20 | Guests and Households             | lord, young, go, man, angel, elijah, elisha
+
+# Retired 2026-10-15 when the content layer was refitted without the small
+# words.  Four were marked by pronouns and copied an orientation voice
+# (the voice now carries them); Journey and Conquest merged into Tribal
+# Allotment.  Kept here as notes only.
+#   Narrative Dialogue      (lord, pray, me)      now Storytelling / I: The Personal Voice
+#   Moses' Charge           (thy, thine, thee)    now Thou: Israel as One Hearer
+#   Women and Family        (her, she, wife)      now She: Women and Cities as Women
+#   Communal Lament         (us, we, our)         now We: The Community Speaks
+#   Journey and Conquest    (joshua, mount, amorites)  merged into Tribal Allotment
 
 # ----- Old Testament, orientation voices (named by Andrew Hopkins, 2026-10-15) -----
 orientation Old 1  | They: Peoples Described           | their, they, them, those

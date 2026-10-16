@@ -1290,6 +1290,11 @@ def choose_contexts(args, windows: list, contexts: list, made: str) -> None:
         note += f"; past the threshold in {share}% of the book's windows"
         if not entry.get("steady", True):
             note += f"; unsteady (steadiness {entry['steadiness']:.2f}), read with care"
+        if past > 0.5 and args.norm != "book":
+            # A context that fills most of the book is a solid bar against
+            # the testament: it shows the book is itself, not where the
+            # context rises and falls within it.
+            note += "; it fills most of the book, so --norm book shows its rise and fall better"
         args.context_notes[label] = note
     layers = sorted({layer for _, layer, _ in contexts}, key=["content", "orientation"].index)
     summary = (f"{' and '.join(layers)} layer{'s' if len(layers) > 1 else ''}, "

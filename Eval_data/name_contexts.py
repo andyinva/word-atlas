@@ -101,19 +101,21 @@ def match_names(model, layer: str, testament: str, metadata: Path = METADATA) ->
         return {}
     k = model.H.shape[0]
     own = [{w["gloss"].lower() for w in model.telling_words(c, 30)} for c in range(k)]
-    scores = []
+    # Each name's best context only.  When two names want the same
+    # context (two contexts of an earlier run have merged), the closer
+    # match keeps it and the other name is left out: it is never passed
+    # on to its second choice, which it may not describe at all.
+    best = []
     for n, name, words in names:
         words = [w for w in words if w]
-        for c in range(k):
-            share = sum(1 for w in words if w in own[c]) / max(1, len(words))
-            scores.append((share, n, name, c))
-    out, used_names, used_contexts = {}, set(), set()
-    for share, n, name, c in sorted(scores, reverse=True):
-        if share < MATCH or name in used_names or c in used_contexts:
+        shares = [sum(1 for w in words if w in own[c]) / max(1, len(words)) for c in range(k)]
+        c = max(range(k), key=lambda i: shares[i])
+        best.append((shares[c], n, name, c))
+    out = {}
+    for share, n, name, c in sorted(best, reverse=True):
+        if share < MATCH or c in out:
             continue
         out[c] = name
-        used_names.add(name)
-        used_contexts.add(c)
     return out
 
 

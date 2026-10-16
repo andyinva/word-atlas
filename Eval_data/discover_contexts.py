@@ -4,8 +4,7 @@ discover_contexts.py
 
 Plan step 4: let the data find the contexts of a testament by itself.
 Nothing is labelled beforehand.  Every window of 10 verses is described by
-its whole vocabulary (export_vocab.py: the Strong's words and the King
-James's untagged small words), and the windows are sorted into a number of
+its vocabulary (export_vocab.py), and the windows are sorted into a number of
 recurring "contexts": groups of words that keep turning up together.  Each
 window is then a mix of contexts, and the mix can be followed along a book.
 
@@ -31,6 +30,17 @@ WHAT IT WRITES (Eval_data/results/)
     contexts_<testament>.json          the contexts: words, weights, books,
                                        steadiness, settings (for later steps)
 
+TWO LAYERS (--layer), sharing no word
+    content       the content words: the Strong's words the King James
+                  renders with content words at least half the time.  The
+                  small words are left out (--all-words puts them back, as
+                  in the first reports), because with them in, six content
+                  contexts were marked by pronouns and copied the voices.
+    orientation   the small words only: the King James's untagged words
+                  (pronouns, here and there, of, thereof) and the Strong's
+                  words rendered by small words at least half the time
+                  ('said', 'one', 'up').  Who speaks, to whom, from where.
+
 NAMING
     The contexts are numbered and labelled with their three most telling
     words.  Naming them is the reader's work: what a context is (exile,
@@ -40,7 +50,8 @@ Usage:
     python3 Eval_data/discover_contexts.py                    Old Testament, 20 contexts
     python3 Eval_data/discover_contexts.py --testament New --contexts 10
     python3 Eval_data/discover_contexts.py --contexts 20
-    python3 Eval_data/discover_contexts.py --strongs-only     leave out the English small words
+    python3 Eval_data/discover_contexts.py --layer orientation    the small words, the voices
+    python3 Eval_data/discover_contexts.py --all-words        content with the small words left in
 """
 
 import argparse
@@ -98,6 +109,15 @@ class ContextModel:
         self.layer = getattr(args, "layer", "content")
         if self.layer == "orientation":
             keep &= np.array([k == "english" or sm >= 0.5
+                              for k, sm in zip(words["kind"], words["small"])])
+        # The content layer: the other words only, so the two layers are
+        # complementary and share no word.  With the small words left in,
+        # six content contexts were marked by pronouns (your/you/ye,
+        # thy/thee/thou, us/we/our, her/she, me/my) and copied the
+        # orientation voices, naming one thing twice.  --all-words puts
+        # them back, for comparison with the earlier reports.
+        elif not getattr(args, "all_words", False):
+            keep &= np.array([k != "english" and sm < 0.5
                               for k, sm in zip(words["kind"], words["small"])])
         # Aramaic words with no Hebrew counterpart (mostly small words such
         # as di, "of, which") mark the language, not the meaning, so they
@@ -376,7 +396,7 @@ table.ctx td, table.ctx th { padding: 3px 4px; }
 <body><main>
 <h1>{escape(title)}</h1>
 <p>{len(m.where):,} windows of {s["size"]} verses, described by {len(m.ids):,} words
-{"(the small words only: pronouns, here and there, the little words of direction, time and relation; the words that say who speaks, to whom and from where, rather than what about)" if s.get("layer") == "orientation" else "(Hebrew, Aramaic and Greek words by Strong's number" + ("" if s["strongs_only"] else ", and the King James's untagged small words") + ")"},
+{"(the small words only: pronouns, here and there, the little words of direction, time and relation; the words that say who speaks, to whom and from where, rather than what about)" if s.get("layer") == "orientation" else ("(Hebrew, Aramaic and Greek words by Strong's number" + ("" if s["strongs_only"] else ", and the King James's untagged small words") + ")" if s.get("all_words") else "(the content words: Hebrew, Aramaic and Greek words by Strong's number that the King James renders with content words at least half the time; the small words are in the orientation layer)")},
 sorted into {s["contexts"]} contexts with nothing labelled beforehand. Made {escape(s["made"])}.</p>
 <p>New to these terms? <a href="#glossary">What the words mean</a> at the end of the page explains
 each one in plain words.</p>
@@ -428,7 +448,9 @@ def main() -> None:
     parser.add_argument("--strongs-only", action="store_true",
                         help="leave out the King James's untagged English words")
     parser.add_argument("--layer", choices=["content", "orientation"], default="content",
-                        help="content (every word, the default) or orientation (the small words only)")
+                        help="content (the content words, the default) or orientation (the small words only)")
+    parser.add_argument("--all-words", action="store_true",
+                        help="content layer with the small words left in (the earlier reports)")
     parser.add_argument("--keep-aramaic", action="store_true",
                         help="keep the Aramaic words that have no Hebrew counterpart")
     parser.add_argument("--resamples", type=int, default=6, help="reruns for steadiness (default 6)")
@@ -454,7 +476,7 @@ def main() -> None:
     settings = {"testament": args.testament, "contexts": args.contexts, "size": args.size,
                 "step": args.step, "min_windows": args.min_windows, "strongs_only": args.strongs_only,
                 "resamples": args.resamples, "seed": args.seed, "made": time.strftime("%Y-%m-%d %H:%M"),
-                "layer": args.layer,
+                "layer": args.layer, "all_words": args.all_words,
                 "words": len(model.ids)}
 
     # Every window and its mix.

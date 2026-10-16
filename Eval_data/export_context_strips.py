@@ -45,16 +45,16 @@ import numpy as np
 EVAL_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(EVAL_DIR))
 
-from discover_contexts import ContextModel      # noqa: E402
+from discover_contexts import ContextModel, STEADY      # noqa: E402
 
 # How many contexts each layer and testament is split into: the same
 # numbers discover_contexts.py uses by default, so the names fit.
 CONTEXTS = {("content", "Old"): 20, ("content", "New"): 16,
             ("orientation", "Old"): 10, ("orientation", "New"): 8}
 
-# A context with steadiness below this is marked unsteady (as in the
-# contexts reports); the heat report says so beside its strip.
-STEADY = 0.8
+# A context with steadiness below STEADY (discover_contexts.py, the same
+# line the contexts reports draw) is marked unsteady; the heat report
+# says so beside its strip.
 
 
 class StripExporter:
