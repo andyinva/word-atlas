@@ -71,11 +71,51 @@ MAX_RANGE = 10
 MIN_EXPECTED = 5.0
 
 # The two kinds of lean, by the obs/exp of the book leaned to: at or above
-# CONFIRMED the readers link the two books too ("confirmed by the
-# readers"); below MATTER_LINE the lean is one of register (poetry to
+# CONFIRMED the collection links the two books too ("confirmed by"
+# OpenBible or Sefaria); below MATTER_LINE the lean is one of register (poetry to
 # poetry, vision to vision), not of matter.  Between the two: unclear.
 CONFIRMED = 1.5
 MATTER_LINE = 1.0
+
+# A lean whose whole 95% range for obs/exp lies between 1/AS_EXPECTED and
+# AS_EXPECTED is "as expected": the count is measured closely and it is
+# simply ordinary (Isaiah and Job, 1288 links against 1268 expected).
+AS_EXPECTED = 1.25
+
+
+def ratio_range(observed: int, expected: float) -> tuple:
+    """
+    The 95% range of obs/exp, taking the observed count as a Poisson count
+    (the exact interval, by the chi-square distribution).  Cross references
+    come in clusters (one verse often links a whole passage), so the true
+    range is somewhat wider than this; it is a guide to which counts are too
+    small to read, not a strict test.
+    """
+    from scipy.stats import chi2
+    low = chi2.ppf(0.025, 2 * observed) / 2 if observed > 0 else 0.0
+    high = chi2.ppf(0.975, 2 * observed + 2) / 2
+    return low / expected, high / expected
+
+
+def kind_of(ratio: float, low: float, high: float) -> str:
+    """Sort a lean by its obs/exp and the range around it."""
+    if ratio >= CONFIRMED and low > 1.0:
+        return "confirmed"
+    if high < MATTER_LINE:
+        return "register"
+    if low >= 1 / AS_EXPECTED and high <= AS_EXPECTED:
+        return "as expected"
+    if low > 1.0:
+        return "more"
+    return "cannot tell"
+
+
+def short_name(web_name: str) -> str:
+    """The collection's short name for the partner column: OpenBible, Sefaria."""
+    for short in ("OpenBible", "Sefaria"):
+        if web_name.startswith(short):
+            return short
+    return "the readers"
 
 
 class VerseIds:
@@ -255,18 +295,25 @@ def leans_to_test(table, web, nearest_book: np.ndarray, verse_ids_of_book: dict)
         # stand after them, unranked, so a short letter cannot top the list.
         measured = [o for o in ratio if expect[o] >= MIN_EXPECTED]
         order = sorted(measured, key=lambda o: -ratio[o])
+        # The second partner: the book with the most links above expected,
+        # the kinship of size (Leviticus for Ezekiel, 730 links), beside the
+        # best ratio, which a smaller book wins more easily (Obadiah).
+        excess = max(measured, key=lambda o: counts[(name, o)] - expect[o]) if measured else None
         row = {"book": name, "leans_to": lean, "of": len(order),
                "observed": counts[(name, lean)], "expected": round(expect[lean], 1),
                "obs_exp": round(ratio[lean], 2) if expect[lean] >= MIN_EXPECTED else None,
                "most_cross_referenced": order[0] if order else None,
                "most_obs_exp": round(ratio[order[0]], 2) if order else None,
-               "most_observed": counts[(name, order[0])] if order else None}
+               "most_observed": counts[(name, order[0])] if order else None,
+               "most_excess": excess,
+               "excess_links": round(counts[(name, excess)] - expect[excess]) if excess else None,
+               "excess_obs_exp": round(ratio[excess], 2) if excess else None}
         if lean in order:
             row["rank"] = order.index(lean) + 1
             ranks.append(row["rank"] / len(order))
-            r = ratio[lean]
-            row["kind"] = ("confirmed" if r >= CONFIRMED else
-                           "register" if r < MATTER_LINE else "unclear")
+            low, high = ratio_range(counts[(name, lean)], expect[lean])
+            row["range"] = [round(low, 2), round(high, 2)]
+            row["kind"] = kind_of(ratio[lean], low, high)
         else:
             row["rank"] = None
             row["kind"] = "too few"
@@ -296,7 +343,10 @@ def main() -> None:
 
     # The same windows and companions as isolation.py.
     data = WindowData()
-    table = WindowTable(data, args.testament, args.baseline, "g2z", None)
+    # A book with no group of its own (Revelation, catalogued with the
+    # prophets) is measured on its testament baseline rather than left out.
+    table = WindowTable(data, args.testament, args.baseline, "g2z", None,
+                        fallback="testament" if args.baseline == "group" else None)
     shape = Shape(table.X, 6.0)
     W = shape.whiten(table.X)
     _, idx = companions(table, W, args.k)
@@ -346,15 +396,21 @@ def main() -> None:
                      f"{'n/a' if median is None else f'{100 * median:.0f}%'} of the way down the list "
                      f"(chance: 50%; {lean['ranked']} books ranked)")
         k = lean["kinds"]
-        lines.append(f"  kinds: {k.get('confirmed', 0)} confirmed by the readers, "
-                     f"{k.get('register', 0)} of register not matter, {k.get('unclear', 0)} unclear, "
-                     f"{k.get('too few', 0)} too few links to tell")
-        groups = (("confirmed", f"Confirmed by the readers (obs/exp {CONFIRMED:g} or more): "
-                                "the readers link the two books too"),
-                  ("unclear", f"Unclear (obs/exp {MATTER_LINE:g} to {CONFIRMED:g})"),
-                  ("register", f"A lean of register, not of matter (obs/exp below {MATTER_LINE:g}): "
-                               "alike in manner; the readers' partner is named beside it"),
-                  ("too few", f"Too few links to tell (under {MIN_EXPECTED:g} expected)"))
+        who = short_name(web.name)
+        lines.append(f"  kinds: {k.get('confirmed', 0)} confirmed by {who}, "
+                     f"{k.get('more', 0)} more than expected, {k.get('as expected', 0)} as expected, "
+                     f"{k.get('register', 0)} of register not matter, {k.get('cannot tell', 0)} cannot "
+                     f"tell, {k.get('too few', 0)} too few links")
+        groups = (("confirmed", f"Confirmed by {who} (obs/exp {CONFIRMED:g} or more, and above 1 "
+                                "across its range): kinship of manner and of matter"),
+                  ("more", "More than expected, but under " f"{CONFIRMED:g} (above 1 across its range)"),
+                  ("as expected", f"As expected (the whole range within {1 / AS_EXPECTED:.2f} to "
+                                  f"{AS_EXPECTED:g}): measured closely, and ordinary"),
+                  ("register", f"A lean of register, not of matter (below 1 across its range): "
+                               f"alike in manner; {who}'s partners are named beside it"),
+                  ("cannot tell", "Cannot tell (the range spans 1 and is wide): too few links "
+                                  "to say either way"),
+                  ("too few", f"Too few links to rank (under {MIN_EXPECTED:g} expected)"))
         for kind, title in groups:
             members = [r for r in lean["books"] if r["kind"] == kind]
             if not members:
@@ -362,13 +418,21 @@ def main() -> None:
             lines.append(f"  {title}")
             for r in members:
                 rank = f"rank {r['rank']:>2} of {r['of']}" if r["rank"] else "unranked    "
-                ratio = f"{r['obs_exp']:5.2f}" if r["obs_exp"] is not None else "  -  "
-                partner = ""
-                if r["most_cross_referenced"] and r["most_cross_referenced"] != r["leans_to"]:
-                    partner = (f"   readers' partner: {r['most_cross_referenced']} "
-                               f"{r['most_obs_exp']:.2f} ({r['most_observed']} links)")
+                if r["obs_exp"] is not None:
+                    ratio = f"{r['obs_exp']:5.2f} ({r['range'][0]:.2f} to {r['range'][1]:.2f})"
+                else:
+                    ratio = "  -  " + " " * 15
                 lines.append(f"    {r['book']:<16} leans to {r['leans_to']:<16} {rank}  obs/exp {ratio}"
-                             f"  ({r['observed']} links, {r['expected']:g} expected){partner}")
+                             f"  {r['observed']} links, {r['expected']:g} expected")
+                partners = []
+                if r["most_cross_referenced"] and r["most_cross_referenced"] != r["leans_to"]:
+                    partners.append(f"by ratio {r['most_cross_referenced']} {r['most_obs_exp']:.2f} "
+                                    f"({r['most_observed']} links)")
+                if r["most_excess"] and r["most_excess"] not in (r["leans_to"], r["most_cross_referenced"]):
+                    partners.append(f"by size {r['most_excess']} {r['excess_obs_exp']:.2f} "
+                                    f"(+{r['excess_links']} links over expected)")
+                if partners:
+                    lines.append(f"{'':<22}{who}'s partner: " + "; ".join(partners))
         lines.append("")
     lines += ["HOW TO READ THIS",
               "  linked: the share of window-and-companion pairs joined by at least one cross reference.",
@@ -381,10 +445,15 @@ def main() -> None:
               "        other book receives. 1 = as expected; 2 = twice as many. A pair with fewer",
               f"        than {MIN_EXPECTED:g} links expected is not ranked: one link more or less would",
               "        swing its ratio wildly.",
+              "  range: the 95% range of obs/exp, counting the links as a Poisson count. Links come",
+              "        in clusters, so the true range is somewhat wider; read it as a guide.",
+              "  partner by ratio: the book with the highest obs/exp (small books win it easily;",
+              "        treat a partner on under a hundred links lightly). Partner by size: the book",
+              "        with the most links above expected, the kinship a commentary would name.",
               "  kinds: the companions are chosen by manner of writing (density, variety, rare words,",
-              "        feeling), the cross references by matter. A lean the readers confirm is kinship",
+              "        feeling), the cross references by matter. A lean the collection confirms is kinship",
               "        of both; a lean below 1 is likeness of manner only (Hosea's poetry beside Job's),",
-              "        and the readers' partner (Amos) is the kinship of matter."]
+              "        and the collection's partner (Amos) is the kinship of matter."]
     text = "\n".join(lines)
     print("\n" + text)
     args.out.mkdir(parents=True, exist_ok=True)

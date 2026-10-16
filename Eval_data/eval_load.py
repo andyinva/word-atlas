@@ -62,12 +62,14 @@ class WindowData:
         return self._cache[entry["book"]]
 
     def rows(self, testament: str | None = None, baseline: str = "testament",
-             key: str = "g2z", books: list | None = None) -> list[dict]:
+             key: str = "g2z", books: list | None = None,
+             fallback: str | None = None) -> list[dict]:
         """
         One dict per window, across many books, with one value per strip.
         key is "z", "g2z" or "raw" (raw ignores the baseline).  A book
-        that lacks the baseline (no "group" for a book alone in its group)
-        is skipped with a note.
+        that lacks the baseline (no "group" for a book alone in its group,
+        such as Revelation) is skipped with a note, or, with fallback (say
+        "testament"), measured on that baseline instead.
         """
         out = []
         for name in books or self.books(testament):
@@ -76,6 +78,10 @@ class WindowData:
                 values = d["raw"]
             elif baseline in d["baselines"]:
                 values = d["baselines"][baseline][key]
+            elif fallback and fallback in d["baselines"]:
+                print(f"Note: {name} has no '{baseline}' baseline; measured on its "
+                      f"'{fallback}' baseline instead.")
+                values = d["baselines"][fallback][key]
             else:
                 print(f"Note: {name} has no '{baseline}' baseline; skipped.")
                 continue

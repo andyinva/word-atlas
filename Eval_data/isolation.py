@@ -157,11 +157,13 @@ class WindowTable:
     """The windows of one testament as a numpy matrix, with where each sits."""
 
     def __init__(self, data: WindowData, testament: str, baseline: str, key: str,
-                 strips: list | None):
+                 strips: list | None, fallback: str | None = None):
         self.testament = testament
         self.baseline = baseline
         self.key = key
-        rows = data.rows(testament, baseline=baseline, key=key)
+        # fallback: the baseline for a book that lacks the chosen one
+        # (Revelation has no group of its own); None skips such a book.
+        rows = data.rows(testament, baseline=baseline, key=key, fallback=fallback)
         if not rows:
             sys.exit(f"No windows for testament '{testament}' with baseline '{baseline}'.")
         first = data.book(rows[0]["book"])
