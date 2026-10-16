@@ -91,6 +91,28 @@ THE NAMES AND NUMBERS STRIPS (--names)
     sabbath, the feast of booths, a month name). The rules are in
     atlas_pos.py.
 
+THE CONTEXT STRIPS (--contexts)
+    One more strip for each context the data found in the Eval_data
+    work (discover_contexts.py): the content contexts (what a passage is
+    about: Sacrificial Ritual, Royal Annals, Babylonian Court Tales) or
+    the orientation voices (who speaks to whom: Thou: Israel as One
+    Hearer, We: The Community Speaks), under the reader's own names.
+    A window's score is its share of the context: the average of its
+    verses' mixes, weighted by how many words each verse has, read from
+    Eval_data/results/context_strips.json.gz (made by
+    Eval_data/export_context_strips.py; --context-file names another).
+    Every testament has many contexts, and most are absent from any one
+    book, so only the contexts past the threshold in at least 2% of the
+    book's windows (--context-min) are drawn, the most prominent first;
+    --all-contexts draws them all.  The report adds a table of the leading context in each
+    chapter.
+        --contexts content       the content contexts (also the default
+                                 when --contexts is given alone)
+        --contexts orientation   the orientation voices
+        --contexts both          both, content first
+    A context share is not a word count, so on --scale g2 these strips
+    stay on z, like variety and hammer.
+
 SCALES (--scale)
     z           (default) distance from the ordinary average, in spreads.
                 Fits density, variety, rare, hammer and action, which form
@@ -142,9 +164,13 @@ Usage:
     python atlas_heat.py Ezekiel --out reports/heat_ezekiel.txt --svg reports/heat_ezekiel.svg
     python atlas_heat.py Ezekiel --names --norm group --scale g2 --svg reports/heat_ezekiel_names.svg
     python atlas_heat.py Daniel --names --norm group:Prophecy --scale g2
+    python atlas_heat.py Isaiah --contexts --svg reports/heat_isaiah_contexts.svg
+    python atlas_heat.py Jeremiah --contexts both --norm group
 """
 
 import argparse
+import gzip
+import json
 import sqlite3
 import bisect
 import math
@@ -185,6 +211,20 @@ NAME_MEASURES = ["nations", "persons", "home", "numbers"]
 # The verses marked under the names strips: a date, a feast word.
 MARKS = ["dates", "feasts"]
 
+# The context strips (--contexts), filled from the context file: the
+# label of every context strip drawn, in drawing order.  They are kept
+# apart from the other measures in the chapter table, which would grow
+# too wide, and have a table of their own.
+CONTEXT_MEASURES: list = []
+
+# Where export_context_strips.py writes each verse's mix of the contexts.
+CONTEXT_FILE = SCRIPT_DIR / "Eval_data" / "results" / "context_strips.json.gz"
+
+# A context strip is drawn when at least this share of the book's
+# windows (in percent) are past the threshold: enough for a passage of
+# its own, not a stray window or two (--context-min changes it).
+CONTEXT_MIN = 2.0
+
 # Headwords for words the KJV renders with the same English as another
 # word: zoon (the four living creatures) is "beast" in the KJV, like
 # therion (the beast from the sea), and the two must not look alike.
@@ -216,6 +256,8 @@ class Verse:
     english: list = field(default_factory=list) # the KJV words behind each unit, same order
     verbs: int = 0                   # content units that are verbs
     names: object = None             # the original text's counts (atlas_pos.VerseCounts), with --names
+    contexts: dict = field(default_factory=dict)  # context label -> share (0-1), with --contexts
+    context_weight: int = 0          # the verse's words in the context layer: its say in a window
 
     @property
     def ref(self) -> str:
@@ -338,6 +380,58 @@ class VerseLoader:
 
 
 # ===========================================================================
+# The contexts found in the Eval_data work (--contexts)
+# ===========================================================================
+class ContextStrips:
+    """
+    Each verse's mix of the contexts, as export_context_strips.py writes
+    it, hung on the loader's verses.  A layer of a testament is a list of
+    contexts (number, name, marking words, steadiness) and, for every
+    verse, its share of each context in thousandths and its word count.
+    """
+
+    def __init__(self, path: Path):
+        if not path.exists():
+            sys.exit(f"--contexts needs {path}.\nMake it with:  python3 Eval_data/export_context_strips.py")
+        with gzip.open(path, "rt", encoding="utf-8") as f:
+            self.data = json.load(f)
+        self.made = self.data.get("made", "?")
+
+    def attach(self, loader: "VerseLoader", testament: str, layers: list) -> list:
+        """
+        Put each verse's shares on it, for the layers asked for, and
+        return the contexts as (label, layer, entry) in file order.  A
+        label already used (by a measure or another context) gets the
+        layer's initial and number added, so every strip has its own key.
+        """
+        out, used = [], set(MEASURES)
+        for layer in layers:
+            block = self.data["layers"].get(f"{layer} {testament}")
+            if block is None:
+                sys.exit(f"No {layer} contexts for the {testament} Testament in the context file.")
+            labels = []
+            for entry in block["contexts"]:
+                label = entry["label"]
+                if label in used:
+                    label = f"{label} ({layer[0]}{entry['number']})"
+                used.add(label)
+                labels.append(label)
+                out.append((label, layer, entry))
+            for i, vid in enumerate(block["verse_id"]):
+                v = loader.verses.get(vid)
+                if v is None:
+                    continue
+                # Both layers share one weight per verse: the content
+                # layer's when present (it holds every word), else the
+                # orientation layer's.
+                if not v.context_weight or layer == "content":
+                    v.context_weight = block["weight"][i]
+                for label, shares in zip(labels, block["mix"]):
+                    v.contexts[label] = shares[i] / 1000.0
+        return out
+
+
+# ===========================================================================
 # A window of verses and its five scores
 # ===========================================================================
 @dataclass
@@ -371,8 +465,10 @@ class Scorer:
     def __init__(self, weight: dict, rare_limit: int, feelings: dict | None = None,
                  families: list | None = None, hammer_skip: set | None = None,
                  names: bool = False, lists: dict | None = None,
-                 rare_roots: set | None = None):
+                 rare_roots: set | None = None, contexts: list | None = None):
         self.weight = weight
+        # The labels of the context strips to score (--contexts).
+        self.contexts = contexts or []
         # The roots that count as rare (see rare_roots()); None = the old
         # rule, one limit on whole-Bible use for every word.
         self.rare_roots = rare_roots
@@ -433,6 +529,14 @@ class Scorer:
                 k = sum(x.lists.get(name, 0) for x in counted)
                 c[name] = (k, n_orig)
                 s[name] = k / n_orig if n_orig else 0.0
+
+        if self.contexts:
+            # A window's share of each context: its verses' shares,
+            # weighted by how many words of the layer each verse has.
+            total = sum(v.context_weight for v in window.verses)
+            for label in self.contexts:
+                s[label] = (sum(v.contexts.get(label, 0.0) * v.context_weight
+                                for v in window.verses) / total) if total else 0.0
 
         if self.feelings:
             hits = [self.feelings[u] for u in units if u in self.feelings]
@@ -869,14 +973,24 @@ class HeatReport:
                f"Rare: {a.rare_summary}.",
                f"Ordinary = {self.norms.label} ({self.norms.count:,} windows{self.norms.sampling}).",
                ""]
+        if getattr(a, "context_summary", ""):
+            out[-1:-1] = [f"Contexts: {a.context_summary}"]
 
         # Each measure's spots, hot first, in text order.
         for m in MEASURES:
             spots = find_spots(self.windows, m, a.threshold)
             hot = [s for s in spots if s.hot]
             cool = [s for s in spots if not s.hot]
-            out.append(f"({m})  {self.norms.ordinary_line(m)}")
-            for label, group in (("hot", hot), ("cool", cool)):
+            if m in CONTEXT_MEASURES:
+                # A context is absent from most text, so a cool spot is
+                # no finding: only where it rises is listed.
+                note = getattr(self.args, "context_notes", {}).get(m, "")
+                out.append(f"({m})  {self.norms.ordinary_line(m)}{note}")
+                pairs = (("hot", hot),)
+            else:
+                out.append(f"({m})  {self.norms.ordinary_line(m)}")
+                pairs = (("hot", hot), ("cool", cool))
+            for label, group in pairs:
                 if not group:
                     out.append(f"  {label}: none")
                     continue
@@ -899,6 +1013,8 @@ class HeatReport:
         if self.args.names:
             out.extend(self._marks())
         out.extend(self._chapter_table())
+        if CONTEXT_MEASURES:
+            out.extend(self._context_table())
         out.extend(["NOTES",
                     "  Scales (--scale): z = distance from ordinary in spreads; percentile =",
                     "  share of ordinary windows scoring lower; g2 = how surprising a word",
@@ -943,18 +1059,47 @@ class HeatReport:
         for w in self.windows:
             by_chapter[w.middle.chapter].append(w)
         # A column is nine wide, or wider when its name is longer.
-        width = {m: max(9, len(m) + 1) for m in MEASURES}
+        # The context strips have a table of their own (_context_table).
+        shown = [m for m in MEASURES if m not in CONTEXT_MEASURES]
+        width = {m: max(9, len(m) + 1) for m in shown}
         out = [f"CHAPTERS  ({self.norms.chapter_note})",
-               "  ch " + "".join(f"{m:>{width[m]}}" for m in MEASURES) + "   most hammered"]
+               "  ch " + "".join(f"{m:>{width[m]}}" for m in shown) + "   most hammered"]
         for ch in sorted(by_chapter):
             ws = by_chapter[ch]
-            cells = "".join(f"{self.norms.chapter_cell(ws, m).strip():>{width[m]}}" for m in MEASURES)
+            cells = "".join(f"{self.norms.chapter_cell(ws, m).strip():>{width[m]}}" for m in shown)
             words = Counter((w.hammer_word, w.hammer_english) for w in ws if w.hammer_word)
             top = ""
             if words:
                 root, english = words.most_common(1)[0][0]
                 top = f"'{english}' {root}"
             out.append(f"  {ch:>3}{cells}   {top}")
+        out.append("")
+        return out
+
+    def _context_table(self) -> list[str]:
+        """
+        The leading contexts of each chapter: the two context strips
+        drawn whose windows centered in the chapter stand highest above
+        ordinary, with their average z-like score.  A chapter where no
+        context stands a full spread above ordinary says so.
+        """
+        by_chapter = defaultdict(list)
+        for w in self.windows:
+            by_chapter[w.middle.chapter].append(w)
+        out = ["CONTEXTS BY CHAPTER  (the context strips drawn that stand highest in each chapter;",
+               "  average z-like score of the windows centered in it; contexts below +1 not named)",
+               "   ch  leading                                second"]
+        for ch in sorted(by_chapter):
+            ws = by_chapter[ch]
+            ranked = sorted(((statistics.fmean(w.z[m] for w in ws), m) for m in CONTEXT_MEASURES),
+                            reverse=True)
+            cells = [f"{m} {z:+.1f}" for z, m in ranked[:2] if z >= 1.0]
+            if not cells:
+                cells = ["(no context above +1)"]
+            line = f"  {ch:>3}  {cells[0]:<38}"
+            if len(cells) > 1:
+                line += f" {cells[1]}"
+            out.append(line.rstrip())
         out.append("")
         return out
 
@@ -993,7 +1138,8 @@ class StripChart:
 
     def render(self) -> str:
         n = len(self.windows)
-        left, plot_w = 90, 1100
+        # Room on the left for the longest strip name (context names run long).
+        left, plot_w = max(90, 16 + round(6.6 * max((len(m) for m in MEASURES), default=8))), 1100
         cell = plot_w / n
         strip_h, gap, top = 34, 8, 56
         mark_rows = MARKS if self.args.names else []
@@ -1012,10 +1158,16 @@ class StripChart:
 
         for row, m in enumerate(MEASURES):
             y = top + row * (strip_h + gap)
+            if CONTEXT_MEASURES and m == CONTEXT_MEASURES[0]:
+                # A thin rule above the first context strip sets the contexts apart.
+                parts.append(f'<line x1="{left}" y1="{y - gap / 2:.1f}" x2="{left + plot_w}" '
+                             f'y2="{y - gap / 2:.1f}" stroke="{self.MUTED}" stroke-width="0.6"/>')
             parts.append(f'<text x="{left - 8}" y="{y + strip_h / 2 + 4}" font-size="12" '
-                         f'text-anchor="end" fill="{self.INK}">{m}</text>')
+                         f'text-anchor="end" fill="{self.INK}">{escape(m)}</text>')
             for i, w in enumerate(self.windows):
                 tip = f"{self.book} {w.span}  ({m}) {w.shown[m]}"
+                if m in CONTEXT_MEASURES:
+                    tip += f"  share {100 * w.scores[m]:.0f}%"
                 if m == "hammer":
                     tip += (f"  word {w.hammer_word} '{w.hammer_english}'" if w.hammer_word
                             else "  no repeated word")
@@ -1103,6 +1255,56 @@ def group_books(args, loader: VerseLoader, book: str, books: list, label: str) -
     return chosen, f"the other {group} books ({own}; {len(chosen)} books, {book} left out)"
 
 
+def choose_contexts(args, windows: list, contexts: list, made: str) -> None:
+    """
+    Keep the context strips worth drawing for this book: those with a
+    window past the threshold (all of them with --all-contexts), the
+    most prominent first, by the share of the book's windows past the
+    threshold, then by the highest window.  The others leave MEASURES,
+    and the header names them.  Fills CONTEXT_MEASURES, args.context_notes
+    (steadiness, for the spot list) and args.context_summary.
+    """
+    t = args.threshold
+    ranked = []
+    for label, layer, entry in contexts:
+        past = sum(1 for w in windows if w.z[label] >= t) / max(1, len(windows))
+        top = max((w.z[label] for w in windows), default=0.0)
+        ranked.append((past, top, label, layer, entry))
+    ranked.sort(key=lambda r: (r[0], r[1]), reverse=True)
+    # Drawn: past the threshold in at least --context-min percent of the
+    # book's windows, and in at least one window (so a short book, where
+    # one window is many percent, still needs a real rise).
+    keep = [r for r in ranked if args.all_contexts or (r[0] > 0 and 100 * r[0] >= args.context_min)]
+    left = [r for r in ranked if r not in keep]
+    # MEASURES takes the kept contexts in their ranked order.
+    for r in ranked:
+        MEASURES.remove(r[2])
+    MEASURES.extend(r[2] for r in keep)
+    CONTEXT_MEASURES.extend(r[2] for r in keep)
+    args.context_notes = {}
+    for past, top, label, layer, entry in keep:
+        note = f"; {layer} context {entry['number']}"
+        if entry.get("name"):
+            note += f" ({entry['words']})"
+        share = f"{100 * past:.0f}" if 100 * past >= 1 else f"{100 * past:.1f}"
+        note += f"; past the threshold in {share}% of the book's windows"
+        if not entry.get("steady", True):
+            note += f"; unsteady (steadiness {entry['steadiness']:.2f}), read with care"
+        args.context_notes[label] = note
+    layers = sorted({layer for _, layer, _ in contexts}, key=["content", "orientation"].index)
+    summary = (f"{' and '.join(layers)} layer{'s' if len(layers) > 1 else ''}, "
+               f"{len(contexts)} contexts (context file made {made}); ")
+    if args.all_contexts:
+        summary += "all drawn (--all-contexts)."
+    else:
+        summary += (f"{len(keep)} rise past the threshold in at least {args.context_min:g}% "
+                    f"of this book's windows and are drawn, the most prominent first")
+        if left:
+            summary += "; not drawn (--all-contexts draws them): " + "; ".join(r[2] for r in left)
+        summary += "."
+    args.context_summary = summary
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Word Atlas hot and cool spots")
     parser.add_argument("book", help="a book name as atlas.db spells it, e.g. Ezekiel")
@@ -1129,6 +1331,18 @@ def main() -> None:
     parser.add_argument("--names", action="store_true",
                         help="add the nations, persons, home and numbers strips, read from the "
                              "original text's tags in lxx.db, with the date and feast marks")
+    parser.add_argument("--contexts", nargs="?", const="content", default=None,
+                        choices=["content", "orientation", "both"],
+                        help="add the context strips found in the Eval_data work: content "
+                             "(the default when given alone), orientation, or both")
+    parser.add_argument("--all-contexts", action="store_true",
+                        help="with --contexts, draw every context, not only those that rise "
+                             "past the threshold in the book")
+    parser.add_argument("--context-min", type=float, default=CONTEXT_MIN,
+                        help="draw a context when at least this percent of the book's windows "
+                             f"are past the threshold (default {CONTEXT_MIN:g})")
+    parser.add_argument("--context-file", type=Path, default=CONTEXT_FILE,
+                        help="each verse's mix of the contexts (Eval_data/export_context_strips.py)")
     parser.add_argument("--lxx", type=Path, default=SCRIPT_DIR / "lxx.db",
                         help="the tagged texts the --names strips are read from")
     parser.add_argument("--atlas", type=Path, default=SCRIPT_DIR / "atlas.db")
@@ -1186,13 +1400,22 @@ def main() -> None:
     if args.names:
         MEASURES.extend(NAME_MEASURES)
 
+    # The context strips: each verse's mix, read from the context file.
+    contexts = []
+    if args.contexts:
+        layers = ["content", "orientation"] if args.contexts == "both" else [args.contexts]
+        strips = ContextStrips(args.context_file)
+        contexts = strips.attach(loader, loader.testament[book], layers)
+        MEASURES.extend(label for label, _, _ in contexts)
+
     skip, args.skip_summary = most_common_roots(loader, loader.language_of(book), args.hammer_skip) \
         if args.hammer_skip else (set(), "only the voice-formula words skipped")
     if args.rare_by == "language":
         rare, args.rare_summary = rare_roots(loader, args.rare)
     else:
         rare, args.rare_summary = None, f"used {args.rare} times or fewer in the Bible (--rare-by bible)"
-    scorer = Scorer(loader.weight, args.rare, feelings, families, skip, args.names, lists, rare)
+    scorer = Scorer(loader.weight, args.rare, feelings, families, skip, args.names, lists, rare,
+                    [label for label, _, _ in contexts])
     windows = windows_of(loader.verses_of(book), args.window, 1, args.hammer_window)
     for w in windows:
         scorer.score(w)
@@ -1227,6 +1450,9 @@ def main() -> None:
         # and the average and spread come out the same.
         norms.sampling = f", one starting every {step} verses"
     norms.apply(windows)
+
+    if contexts:
+        choose_contexts(args, windows, contexts, strips.made)
 
     text = HeatReport(book, windows, norms, loader, args, feelings, lists).render()
     print(text)

@@ -619,6 +619,31 @@ def test_guards(atlas, only):
                 problems.append(f"no {wanted!r} in the report")
         report(name, not problems, "; ".join(problems[:3]))
 
+    # atlas_heat.py --contexts: the context strips come out under the
+    # reader's names, with their chapter table.  Skipped when the context
+    # file (Eval_data/export_context_strips.py) has not been made.
+    name = "guard: atlas_heat's context strips (--contexts both)"
+    if not only or only in name:
+        context_file = os.path.join(PROGRAM_DIR, "Eval_data", "results", "context_strips.json.gz")
+        if not os.path.exists(context_file):
+            report(name, True, "skipped: no Eval_data/results/context_strips.json.gz")
+        else:
+            result = subprocess.run([sys.executable, os.path.join(PROGRAM_DIR, "atlas_heat.py"),
+                                     "Daniel", "--contexts", "both"],
+                                    capture_output=True, text=True, cwd=PROGRAM_DIR)
+            text = result.stdout
+            problems = []
+            if result.returncode != 0:
+                problems.append(result.stderr.strip().splitlines()[-1] if result.stderr.strip() else "failed")
+            for wanted in ("Contexts: content and orientation layers", "CONTEXTS BY CHAPTER",
+                           "(density)"):
+                if wanted not in text:
+                    problems.append(f"no {wanted!r} in the report")
+            # Every context strip drawn sits in the spot list.
+            if "Contexts:" in text and text.count("context ") < 2:
+                problems.append("no context strip drawn")
+            report(name, not problems, "; ".join(problems[:3]))
+
     # pos_experiment.py (trial): the split of number words into numbers
     # and dates loses nothing.  For every book, the words the trial counts
     # under numbers and under dates (less the "one" words, which dates
