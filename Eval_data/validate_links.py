@@ -45,6 +45,7 @@ Usage:
 """
 
 import argparse
+from collections import Counter
 import json
 import sqlite3
 import sys
@@ -63,6 +64,18 @@ from isolation import WindowTable, Shape, companions         # noqa: E402
 # A cross reference to a range longer than this many verses is skipped:
 # "see the whole chapter" says little about any one verse.
 MAX_RANGE = 10
+
+# obs/exp is only ranked when at least this many links were expected: with
+# a fraction of a link expected, one or two links make a ratio of 15
+# (Philemon and 3 John) and none makes 0, which says nothing either way.
+MIN_EXPECTED = 5.0
+
+# The two kinds of lean, by the obs/exp of the book leaned to: at or above
+# CONFIRMED the readers link the two books too ("confirmed by the
+# readers"); below MATTER_LINE the lean is one of register (poetry to
+# poetry, vision to vision), not of matter.  Between the two: unclear.
+CONFIRMED = 1.5
+MATTER_LINE = 1.0
 
 
 class VerseIds:
@@ -232,22 +245,37 @@ def leans_to_test(table, web, nearest_book: np.ndarray, verse_ids_of_book: dict)
         # Expected links to book o: this book's links out, shared by o's
         # part of all the links that land outside this book.
         landing = total - in_links[name]
-        ratio = {}
+        ratio, expect = {}, {}
         for o in books:
             if o == name:
                 continue
-            expected = out_links[name] * in_links[o] / landing if landing else 0.0
-            ratio[o] = counts[(name, o)] / expected if expected else 0.0
-        order = sorted(ratio, key=lambda o: -ratio[o])
-        rank = order.index(lean) + 1
-        ranks.append(rank / len(order))
-        rows.append({"book": name, "leans_to": lean, "rank": rank, "of": len(order),
-                     "obs_exp": round(ratio[lean], 2),
-                     "most_cross_referenced": order[0],
-                     "most_obs_exp": round(ratio[order[0]], 2)})
+            expect[o] = out_links[name] * in_links[o] / landing if landing else 0.0
+            ratio[o] = counts[(name, o)] / expect[o] if expect[o] else 0.0
+        # Only the books with enough expected links are ranked; the others
+        # stand after them, unranked, so a short letter cannot top the list.
+        measured = [o for o in ratio if expect[o] >= MIN_EXPECTED]
+        order = sorted(measured, key=lambda o: -ratio[o])
+        row = {"book": name, "leans_to": lean, "of": len(order),
+               "observed": counts[(name, lean)], "expected": round(expect[lean], 1),
+               "obs_exp": round(ratio[lean], 2) if expect[lean] >= MIN_EXPECTED else None,
+               "most_cross_referenced": order[0] if order else None,
+               "most_obs_exp": round(ratio[order[0]], 2) if order else None,
+               "most_observed": counts[(name, order[0])] if order else None}
+        if lean in order:
+            row["rank"] = order.index(lean) + 1
+            ranks.append(row["rank"] / len(order))
+            r = ratio[lean]
+            row["kind"] = ("confirmed" if r >= CONFIRMED else
+                           "register" if r < MATTER_LINE else "unclear")
+        else:
+            row["rank"] = None
+            row["kind"] = "too few"
+        rows.append(row)
+    kinds = Counter(r["kind"] for r in rows)
     return {"books": rows,
             "median_rank_share": round(float(np.median(ranks)), 3) if ranks else None,
-            "top3": sum(1 for r in rows if r["rank"] <= 3), "count": len(rows)}
+            "top3": sum(1 for r in rows if r["rank"] is not None and r["rank"] <= 3),
+            "count": len(rows), "ranked": len(ranks), "kinds": dict(kinds)}
 
 
 def main() -> None:
@@ -312,13 +340,35 @@ def main() -> None:
             lines.append(f"  {label:<28} linked {100 * c['companion_rate']:5.1f}%   random "
                          f"{100 * c['random_rate']:5.1f}%   ratio {c['ratio']} "
                          f"(95% range {c['ratio_low']} to {c['ratio_high']})")
+        median = lean["median_rank_share"]
         lines.append(f"  leans to: {lean['top3']} of {lean['count']} books lean to one of their 3 most "
-                     f"cross-referenced books; median rank {100 * lean['median_rank_share']:.0f}% of the "
-                     f"way down the list (chance: 50%)")
-        for r in lean["books"]:
-            lines.append(f"    {r['book']:<16} leans to {r['leans_to']:<16} rank {r['rank']:>2} of {r['of']}"
-                         f"  obs/exp {r['obs_exp']:>5.2f}   (most cross-referenced: "
-                         f"{r['most_cross_referenced']}, {r['most_obs_exp']:.2f})")
+                     f"cross-referenced books; median rank "
+                     f"{'n/a' if median is None else f'{100 * median:.0f}%'} of the way down the list "
+                     f"(chance: 50%; {lean['ranked']} books ranked)")
+        k = lean["kinds"]
+        lines.append(f"  kinds: {k.get('confirmed', 0)} confirmed by the readers, "
+                     f"{k.get('register', 0)} of register not matter, {k.get('unclear', 0)} unclear, "
+                     f"{k.get('too few', 0)} too few links to tell")
+        groups = (("confirmed", f"Confirmed by the readers (obs/exp {CONFIRMED:g} or more): "
+                                "the readers link the two books too"),
+                  ("unclear", f"Unclear (obs/exp {MATTER_LINE:g} to {CONFIRMED:g})"),
+                  ("register", f"A lean of register, not of matter (obs/exp below {MATTER_LINE:g}): "
+                               "alike in manner; the readers' partner is named beside it"),
+                  ("too few", f"Too few links to tell (under {MIN_EXPECTED:g} expected)"))
+        for kind, title in groups:
+            members = [r for r in lean["books"] if r["kind"] == kind]
+            if not members:
+                continue
+            lines.append(f"  {title}")
+            for r in members:
+                rank = f"rank {r['rank']:>2} of {r['of']}" if r["rank"] else "unranked    "
+                ratio = f"{r['obs_exp']:5.2f}" if r["obs_exp"] is not None else "  -  "
+                partner = ""
+                if r["most_cross_referenced"] and r["most_cross_referenced"] != r["leans_to"]:
+                    partner = (f"   readers' partner: {r['most_cross_referenced']} "
+                               f"{r['most_obs_exp']:.2f} ({r['most_observed']} links)")
+                lines.append(f"    {r['book']:<16} leans to {r['leans_to']:<16} {rank}  obs/exp {ratio}"
+                             f"  ({r['observed']} links, {r['expected']:g} expected){partner}")
         lines.append("")
     lines += ["HOW TO READ THIS",
               "  linked: the share of window-and-companion pairs joined by at least one cross reference.",
@@ -328,7 +378,13 @@ def main() -> None:
               "        against the number expected (1 = the most cross-referenced).",
               "  obs/exp: the cross references found between the two books divided by the number",
               "        expected from how many links the book makes to other books and how many the",
-              "        other book receives. 1 = as expected; 2 = twice as many."]
+              "        other book receives. 1 = as expected; 2 = twice as many. A pair with fewer",
+              f"        than {MIN_EXPECTED:g} links expected is not ranked: one link more or less would",
+              "        swing its ratio wildly.",
+              "  kinds: the companions are chosen by manner of writing (density, variety, rare words,",
+              "        feeling), the cross references by matter. A lean the readers confirm is kinship",
+              "        of both; a lean below 1 is likeness of manner only (Hosea's poetry beside Job's),",
+              "        and the readers' partner (Amos) is the kinship of matter."]
     text = "\n".join(lines)
     print("\n" + text)
     args.out.mkdir(parents=True, exist_ok=True)
