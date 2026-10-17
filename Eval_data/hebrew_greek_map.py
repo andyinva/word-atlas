@@ -25,8 +25,13 @@ HOW IT IS LEARNED
 
 OUTPUT
     Eval_data/results/hebrew_greek_map.json.gz
-        {"made", "verses", "rounds", "map": {hebrew: [[greek, share], ...]}}
-        each Hebrew word's Greek renderings with a share of 0.02 or more.
+        {"made", "verses", "rounds", "map": {hebrew: [[greek, share], ...]},
+         "both_ways": {hebrew: {greek: [reverse share, verses]}}}
+        each Hebrew word's Greek renderings with a share of 0.02 or more;
+        and the map read the other way, with the verses that make each
+        pairing (see WordMap.both_ways).
+    Eval_data/results/hebrew_sense_map.json.gz
+        the same for each sense of a Hebrew word (see build_senses).
 
 Usage (from the word_atlas folder):
     python3 Eval_data/hebrew_greek_map.py
@@ -107,6 +112,36 @@ class WordMap:
             self.t = {k: v / total[k[1]] for k, v in count.items()}
             print(f"  round {r + 1} of {rounds}")
 
+    def both_ways(self) -> dict:
+        """
+        hebrew -> {greek: [reverse share, verses]}: for each Greek word, the
+        share of its occurrences that render the Hebrew word (enenlogein
+        renders barak, "bless", nearly every time it occurs, though barak is
+        mostly eulogein), and the verses in which the pairing is made (Kiyyun
+        to Rephan is made once, Amos 5:26: the Septuagint's own rendering,
+        not a habit).  Kept for pairings made in a verse at all.
+        """
+        count = defaultdict(float)
+        g_total = defaultdict(float)
+        support = defaultdict(int)
+        for heb, grk in self.pairs:
+            hs = list(dict.fromkeys(heb)) + [NULL]
+            for g in grk:
+                ps = [self.t.get((g, h), 0.0) for h in hs]
+                z = sum(ps) or 1.0
+                g_total[g] += 1
+                for h, p in zip(hs, ps):
+                    if h != NULL and p:
+                        count[(g, h)] += p / z
+                        if p / z >= SUPPORT_SHARE:
+                            support[(g, h)] += 1
+        out = defaultdict(dict)
+        for (g, h), c in count.items():
+            rev = c / g_total[g]
+            if support[(g, h)] and (rev >= KEEP_SHARE * 5 or self.t.get((g, h), 0.0) >= KEEP_SHARE):
+                out[h][g] = [round(rev, 3), support[(g, h)]]
+        return dict(out)
+
     def renderings(self) -> dict:
         """hebrew -> [[greek, share], ...], largest first, shares of KEEP_SHARE or more."""
         out = defaultdict(list)
@@ -139,7 +174,7 @@ def build(rounds: int, out: Path) -> dict:
     model = WordMap(pairs)
     model.train(rounds)
     data = {"made": datetime.now().strftime("%Y-%m-%d %H:%M"), "verses": len(pairs), "rounds": rounds,
-            "map": model.renderings()}
+            "map": model.renderings(), "both_ways": model.both_ways()}
     out.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(out, "wt", encoding="utf-8") as f:
         json.dump(data, f, separators=(",", ":"))
@@ -167,6 +202,9 @@ GLOSS_SKIP = {"a", "an", "the", "of", "to", "in", "on", "at", "by", "for", "from
 # The share of the Septuagint's renderings that NULL (no Hebrew word) is
 # given in the sense alignment: the root map does not keep it.
 NULL_SHARE = 0.01
+# A verse "makes" a pairing when the Greek word goes to the Hebrew word with
+# at least this much of its alignment there.
+SUPPORT_SHARE = 0.1
 
 
 def gloss_key(gloss: str) -> str:
@@ -185,7 +223,7 @@ def gloss_key(gloss: str) -> str:
 
 
 def hebrew_tokens(lxx_path: Path) -> dict:
-    """King James reference -> [(root, extended Strong's, gloss key)] of the verse's content words."""
+    """King James reference -> [(root, extended Strong's, gloss key, gloss)] of the verse's content words."""
     from atlas_pages import Atlas
     books = Atlas(str(ATLAS_DIR / "atlas.db")).books
     db = sqlite3.connect(lxx_path.resolve().as_uri() + "?mode=ro", uri=True)
@@ -199,7 +237,7 @@ def hebrew_tokens(lxx_path: Path) -> dict:
                 continue
             if root[1:].isdigit() and int(root[1:]) >= 9000:
                 continue
-            out[f"{books[eb - 1]} {ec}:{ev}"].append((root, strongs or root, gloss_key(gloss)))
+            out[f"{books[eb - 1]} {ec}:{ev}"].append((root, strongs or root, gloss_key(gloss), gloss or ""))
     finally:
         db.close()
     return out
@@ -239,14 +277,14 @@ def build_senses(out: Path = SENSE_FILE) -> dict:
         if vid is None or not hs:
             continue
         greek = [k for k, s in zip(texts.keys[vid], texts.stop[vid]) if not s]
-        senses = [(f"{r}|{key}", unit) for r, unit, key in hs]
+        senses = [(f"{r}|{key}", unit) for r, unit, key, _ in hs]
         for (s, unit) in senses:
             seen[s] += 1
             seen[unit] += 1
         for g in greek:
             # Each Greek word shared out over the verse's Hebrew words in
             # proportion to the root map, as the learning did
-            ps = [roots.get(r, {}).get(g, 0.0) for r, _, _ in hs]
+            ps = [roots.get(r, {}).get(g, 0.0) for r, _, _, _ in hs]
             z = sum(ps) + NULL_SHARE
             for (s, unit), p in zip(senses, ps):
                 if p:
@@ -269,6 +307,15 @@ def load_senses(path: Path = SENSE_FILE) -> tuple | None:
     with gzip.open(path, "rt", encoding="utf-8") as f:
         data = json.load(f)
     return data["map"], data["seen"]
+
+
+def load_both_ways(path: Path = MAP_FILE) -> dict | None:
+    """hebrew -> {greek: [reverse share, verses]}, or None when the map predates it."""
+    if not path.exists():
+        return None
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        data = json.load(f)
+    return data.get("both_ways")
 
 
 def load(path: Path = MAP_FILE) -> dict | None:

@@ -774,6 +774,195 @@ the pages reach through the catalogue; the 12 percent of its content
 words with no Strong's number, keyed by lemma; and Jeremiah 49's
 numbering, still to be set by hand.
 
+## The quotation readings (reviewer's notes, 2026-10-17)
+
+**Where it stands.** Two reports outside the dossier ask which text
+the New Testament quoted. quotation_readings.py judged through the
+King James English and its verdicts were often wrong (1 Peter 1:16
+against Leviticus 19:2, 2 Corinthians 13:1 against Deuteronomy 19:15
+called Septuagint readings where the two texts agree).
+hebrew_readings.py replaced it with a word map learned from the
+23,145 verses the Hebrew and the Septuagint share, and judges every
+content word of a quotation: in the Septuagint's verse, a usual
+rendering of a word in the Hebrew verse, or both. Its headline on
+358 quotations (251 all agree, 71 Septuagint, 16 Hebrew, 20 free)
+agrees in shape with Archer and Chirichigno, and its "against the
+English method" table shows 45 of the English method's Septuagint
+verdicts are now all agree. The famous cases came out unprompted
+(Zechariah 12:10 'pierced', Amos 9:12, Psalm 40:6, Deuteronomy 32:43,
+Isaiah 40:13, Psalm 2:9). The reviewer's read of 0.10.100's
+hebrew_readings.pdf asked for the following.
+
+**(a) A floor on the verdicts.** Many "Hebrew, not the Old Greek" rows
+rest on one common word (Proverbs 4:24 'good', Psalm 27:1 'light',
+2 Chronicles 15:7 'work', Revelation 21:3 'tent'), and many
+Septuagint rows likewise (Romans 12:2 'perfect', 1 Timothy 6:10
+'evil', 2 Corinthians 9:6 'sow'). A verdict should need at least two
+content words on its side, or one word plus a citation marker; rows
+below that go in a weak tier the headline does not count. The
+homonym cases the limits page names (Revelation 6:16 'wrath' against
+Hosea 10:7's 'twig'; Revelation 5:5 'tribe' against Genesis 49:10's
+'sceptre', the same Hebrew word) fall out under this floor.
+
+**(b) The word map read both ways.** The map stores, for each Hebrew
+word, the share of its occurrences each Greek word translates, so a
+rare rendering of a common Hebrew word falls under the threshold:
+Galatians 3:8's ἐνευλογέω is shown Septuagint-only though the
+Septuagint uses it for the Hebrew 'bless' in Genesis 12:3, 18:18,
+22:18, 26:4 and 28:14; 'Adam' in 1 Corinthians 15:22 and 1 Timothy
+2:14 is shown Septuagint-only because 'the man' is usually ἄνθρωπος.
+Store the reverse share too (for each Greek word, the share of its
+occurrences that render a given Hebrew word) and count a pairing
+that passes either direction, or that occurs in two shared verses.
+
+**(c) Leave the judged verse out of the map.** Acts 7:43 against Amos
+5:27 shows 'Rephan' in the shared column because the pairing Kiyyun
+to Rephan was learned from that one verse, so the Septuagint's own
+peculiar rendering counts as rendering the Hebrew. Learn the map
+leaving out the verse being judged, or require a pairing to occur in
+two verses before it counts. With that, Rephan becomes
+Septuagint-only, which is the right verdict.
+
+**(d) Wording against text.** "Septuagint reading" covers two things:
+quoting the Septuagint's wording where it fairly renders the Hebrew
+(ἐνευλογέω, 2 Corinthians 6:16's ἐμπεριπατέω, Romans 13:9's
+ψευδομαρτυρέω) and quoting it where it differs from the Hebrew in
+substance (Acts 15:17, Romans 11:34, Romans 10:18, Hebrews 1:6, Acts
+13:34, Romans 15:12). Only the second is a finding about texts. Print
+the Hebrew gloss beside every Septuagint-only word, as the Hebrew-only
+words already have, so a reader can split the two by eye; then try
+the split automatically (a Septuagint-only word whose Hebrew
+counterpart in the verse has a gloss of the same sense is wording;
+one with no counterpart, or a counterpart of another sense, is text)
+and give the two their own counts.
+
+**(e) The deuterocanon list.** Three things are mixed. Stock phrases
+('for ever and ever, amen' from 4 Maccabees 18:24 nine times, 'heaven
+and earth and the sea', 'your father and your mother', 'his wife and
+his children', 'the law and the prophets'): apply 4f's common-stock
+grade. Runs with a canonical source in a Hebrew-backed book (Matthew
+22:37 is Deuteronomy 6:5 before Tobit 13:6; Luke 24:44 is Daniel 9:13
+before Baruch 2:2; Romans 11:10 is Psalm 69:23 before Susanna 1:9;
+Hebrews 8:10 is Jeremiah 31:33 before Baruch 2:35; Hebrews 11:12 is
+Genesis 22:17; Romans 3:20 is Psalm 143:2): show a deuterocanonical
+pair only when no Hebrew-backed verse carries the same run.
+Versification gaps that are not deuterocanon at all ('1 Kings (Rahlfs
+5:14, no English verse mapped)' is 1 Kings 4:34; 'Psalms (Rahlfs
+62:1)' is the heading of Psalm 63): map them through TVTMS into the
+main tables. The Septuagint additions inside Hebrew books (Proverbs
+20:9a, Joshua 9:2b, Daniel 3:25) deserve their own small heading.
+And the list restarts its order at Hebrews 8:10 on page 23 with no
+heading between; the second list needs a title.
+
+**(f) A scholar-chosen population.** A pair becomes a quotation by
+sharing a run of five Greek words with the Septuagint, which is
+itself the Septuagint test, so a quotation that renders the Hebrew
+freshly cannot get in, and the 16 is a floor. Run the judging step
+over the Archer and Chirichigno 312 pairs (or Ellis's list) as a
+fixed population and report its verdicts beside the run-based ones;
+the difference is the size of the blind spot.
+
+**(g) One verse, two writers.** A table of every Old Testament verse
+that two or more New Testament books use with different verdicts
+(Deuteronomy 32:43 in Hebrews 1:6 and Revelation 19:2; Isaiah 25:8 in
+1 Corinthians 15:54 and Revelation 21:4; Leviticus 26:11 with Ezekiel
+37:27 in 2 Corinthians 6:16 and Revelation 21:3; Zechariah 12:10 in
+John 19:37, Revelation 1:7 and Matthew 24:30). The same verse was
+open to both writers, so this is where the question of choice can be
+answered; and a non-Old-Greek reading shared by two or more writers
+is probably the church's fixed form of the verse rather than either
+writer's choice, which the table would make visible.
+
+**(h) Two notes for the limits page.** Name Matthew 8:17 against
+Isaiah 53:4 as the standard example of a Hebrew-following quotation
+the map cannot see (Matthew renders the Hebrew with words the
+Septuagint never used, so it lands in 'free'). And note that 'the
+Almighty' (Revelation 4:8, 19:6, and nine times in the book) is the
+Greek Bible's own word for 'Lord of hosts' in the Twelve and for
+Shaddai in Job, synagogue diction rather than a Hebrew reading.
+
+**Done 2026-10-17 (hebrew_readings.py, hebrew_greek_map.py,
+revelation_readings.py).** (a) The floor: a Septuagint or Hebrew
+verdict needs two words on its side, or one and a citation marker in
+the verse or the two before it (Acts 15:15 for 15:17); the rest are a
+weak tier, listed and not counted (18 of the quotations). (b) and (c)
+The map read both ways, with the verses that make each pairing: a
+pairing counts when made in two verses, or in one with a clear
+majority; a Greek word that renders a Hebrew word 30% of its uses is a
+main rendering (Galatians 3:8 and 1 Corinthians 15:22 now all agree,
+Rephan now Septuagint-only); where the map has no data, a word glossed
+as a Hebrew word of the verse is in both, never a Hebrew reading
+(Immanuel). (d) Every differing word shows the Hebrew behind it, and
+the Septuagint readings are split into text (47) and wording (14),
+wording meaning the Septuagint pairs the two words elsewhere; the
+split is approximate where the map is thin (polites for 'neighbour').
+(g) "One verse, two writers": 37 Old Testament verses, verdicts above
+the floor only. (h) Both notes on the limits page; pantokrator and the
+adverbs of place now cannot decide a verdict. Also from the second
+Revelation review: Hebrew senses told apart by TAHOT's glosses (Hosea
+10:7, Genesis 49:10), Greek word families (biblos and biblion), the
+listed verse shown beside the scored one, mixed verdicts possible,
+Daniel labelled as Theodotion's. Quotations now: 248 agree, 61
+Septuagint, 15 Hebrew, 1 mixed, 14 free, 18 weak. Revelation:
+confirmed 2 Septuagint, 4 Hebrew, 1 mixed; one word 6 and 5.
+Still open here: (e) and (f).
+
+**What the counts showed (for the write-ups).** Revelation is the one
+book with more Hebrew readings than Septuagint (21 to 13), and its
+strong Hebrew cases (1:7, 3:7, 3:9, 7:17 and 21:4, 19:2, 21:3, 22:2)
+are prophetic vision material while its Septuagint readings sit in
+the hymns (Psalm 2:9 three times, the Song of Moses in 15:3 to 4). By
+Old Testament book, the Torah and Psalms go to the Septuagint and the
+Twelve, Daniel, Jeremiah and Malachi go to the Hebrew, which are the
+books whose Old Greek was revised toward the Hebrew earliest (Nahal
+Hever, Theodotion's Daniel). Written up in
+reports/Analysis/EARLY_VERSIONS_PLAIN.md.
+
+## Reviewer's open items from the dossier and links reviews (2026-10-17)
+
+**A chapter-against-chapter page across books.** The Ezekiel 7 with
+Matthew 24 comparison (the field and the city, 7:15 to 16 against
+24:16 to 18 and Luke 21:21) had to be done by hand from two book
+pages and the Compare page, because no page sets one chapter of one
+book against one chapter of another with the echo, Greek, listed,
+cited and translations columns together. The 4e miss there was
+πεδίον against ἀγρός and πέρας against τέλος, which a derivational or
+sense fold would catch.
+
+**Lower floors for 'cited' and 'listed' on small books.** The Twelve
+and the short letters get few or no witnesses at the present floors;
+a floor that scales with the book, as 1b's does, would give them
+rows.
+
+**Derivational families in the echo matcher.** Compound and simple
+forms of one root (ἐνευλογέω and εὐλογέω, ἐμπεριπατέω and περιπατέω,
+βίβλος and βιβλίον) do not match; a fold by root, or a stem table
+beside the equivalents table, would raise the Greek-confirmed count
+and remove a class of false 'departs'.
+
+**Normalise 'leans to' by book size.** In validate_links and
+cross_links the lean goes to the long books (Psalms, Isaiah) more
+than their share warrants; divide the companion count by the
+partner's window count before naming the lean, and keep the raw
+count beside it.
+
+**A New Testament baseline for Revelation in cross_links.** The
+cross-testament validation measures Revelation's crossing share
+(49%) against the Old Testament only; a within-New-Testament
+baseline would say whether Revelation's companions are unusual among
+the New Testament books or only unusual against the Old.
+
+**The divine name in the translation matcher.** Jehovah and Yahweh
+(and LORD where a translation prints the name) should fold to one
+token when the translations matcher compares wordings; the seam shows
+in the translation families, where translations that differ only in
+how they print the name fall into different families.
+
+**The union of the bridges for formula quotations.** Matthew's Micah
+5:2 and other formula quotations are missed when one bridge alone
+(English, Greek, cross references) is asked; taking the union of the
+bridges for a quotation marked by a formula would catch them.
+
 ## 1.0
 
 **A test script (done 0.10.63).** test_atlas.py: smoke test of every

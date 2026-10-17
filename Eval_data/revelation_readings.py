@@ -15,9 +15,14 @@ part, with the Greek of Revelation, the Septuagint and the Hebrew side by
 side and the deciding words named.
 
 STRENGTH
-    confirmed   two or more deciding words, or one deciding word with a
-                firm footing in the passage (CONFIRM_WITNESSED or more words
-                witnessed, or one fewer with CONFIRM_VOTES or more votes)
+    confirmed   two or more deciding words on the reading's side (a mixed
+                verse: one on each side), at the verse readers list
+    one word    one deciding word with a firm footing in the passage
+                (CONFIRM_WITNESSED or more words witnessed, or one fewer
+                with CONFIRM_VOTES or more votes): below hebrew_readings'
+                floor, so not counted there, but shown here because many of
+                Revelation's best known readings rest on one word
+                (Zechariah 12:10, "pierced")
     probable    the rest: one deciding word on a thinner footing, or any
                 reading found at a neighbour of the verse readers list
                 (the test may try the verses beside it; a reading found
@@ -70,6 +75,7 @@ BOOK = "Revelation"
 CONFIRM_WITNESSED = 4
 CONFIRM_VOTES = 30
 LABEL = {k: lab for k, lab, _ in VERDICTS}
+STRENGTHS = ("confirmed", "one word", "probable")
 
 
 class RevelationReadings:
@@ -93,7 +99,8 @@ class RevelationReadings:
             if r["verdict"] in ("septuagint", "masoretic", "mixed"):
                 firm = r["witnessed"] >= CONFIRM_WITNESSED or (
                     r["witnessed"] >= CONFIRM_WITNESSED - 1 and (r["votes"] or 0) >= CONFIRM_VOTES)
-                r["strength"] = "confirmed" if deciding >= 2 or firm else "probable"
+                side = {"septuagint": r["n_lxx"], "masoretic": r["n_heb"]}.get(r["verdict"], deciding)
+                r["strength"] = "confirmed" if side >= 2 else ("one word" if firm else "probable")
                 # Found at a neighbour of the listed verse, not the verse itself
                 # (Revelation 13:10: Jeremiah 15:2 is listed, the deciding
                 # word stands in 15:3): shown, never confirmed
@@ -177,7 +184,7 @@ class RevelationReport:
         """{verdict: {strength: (verses, passages)}}."""
         out = defaultdict(dict)
         for v in ("septuagint", "masoretic", "mixed"):
-            for s in ("confirmed", "probable"):
+            for s in STRENGTHS:
                 rs = [r for r in self.rows if r["verdict"] == v and r["strength"] == s]
                 passages = {r["there"].rsplit(":", 1)[0] + ":" + r["there"].rsplit(":", 1)[1] for r in rs}
                 out[v][s] = (len(rs), len(passages))
@@ -197,11 +204,10 @@ class RevelationReport:
         out = ["REVELATION: READINGS CONFIRMED FOR THE HEBREW OR THE SEPTUAGINT",
                f"{len(self.rows)} Revelation verses judged against an Old Testament verse "
                f"({c['agree']} agree with both texts).", "",
-               f"  {'':<28}{'confirmed':>22}{'probable':>22}",
-               f"  {'':<28}{'verses / passages':>22}{'verses / passages':>22}"]
+               f"  {'':<28}" + "".join(f"{s:>22}" for s in STRENGTHS),
+               f"  {'':<28}" + "".join(f"{'verses / passages':>22}" for _ in STRENGTHS)]
         for v in ("septuagint", "masoretic", "mixed"):
-            cv, pv = ty[v]["confirmed"], ty[v]["probable"]
-            out.append(f"  {LABEL[v]:<28}{cv[0]:>14} / {cv[1]:<6}{pv[0]:>14} / {pv[1]:<6}")
+            out.append(f"  {LABEL[v]:<28}" + "".join(f"{ty[v][s][0]:>14} / {ty[v][s][1]:<6}" for s in STRENGTHS))
         out += ["", "  Revelation never marks a citation (\"it is written\"), so the class \"free or another text\",",
                 "  which needs a marked citation, cannot occur here.  A reading found at a neighbour of the",
                 "  verse readers list is shown with the listed verse and counted as probable at most.",
@@ -235,12 +241,13 @@ class RevelationReport:
         c = Counter(r["verdict"] for r in self.rows)
         ty = self.tally()
         head_rows = "".join(
-            f"<tr><td>{escape(LABEL[v])}</td><td class='n'>{ty[v]['confirmed'][0]}</td><td class='n'>"
-            f"{ty[v]['confirmed'][1]}</td><td class='n'>{ty[v]['probable'][0]}</td><td class='n'>"
-            f"{ty[v]['probable'][1]}</td></tr>" for v in ("septuagint", "masoretic", "mixed"))
-        stats = (f"<div class='stat'><b>{ty['septuagint']['confirmed'][0]}</b><span>confirmed Septuagint readings"
-                 f"</span></div><div class='stat'><b>{ty['masoretic']['confirmed'][0]}</b><span>confirmed Hebrew "
-                 f"readings</span></div><div class='stat'><b>{c['agree']}</b><span>agree with both</span></div>"
+            f"<tr><td>{escape(LABEL[v])}</td>" + "".join(
+                f"<td class='n'>{ty[v][s][0]}</td><td class='n'>{ty[v][s][1]}</td>" for s in STRENGTHS) + "</tr>"
+            for v in ("septuagint", "masoretic", "mixed"))
+        stats = (f"<div class='stat'><b>{ty['septuagint']['confirmed'][0]} + {ty['septuagint']['one word'][0]}</b>"
+                 f"<span>Septuagint readings, confirmed + one word</span></div>"
+                 f"<div class='stat'><b>{ty['masoretic']['confirmed'][0]} + {ty['masoretic']['one word'][0]}</b>"
+                 f"<span>Hebrew readings, confirmed + one word</span></div><div class='stat'><b>{c['agree']}</b><span>agree with both</span></div>"
                  f"<div class='stat'><b>{c['mixed']}</b><span>mixed</span></div>")
 
         def cards(verdict):
@@ -292,12 +299,16 @@ a word with the Old Testament verse and not its referent (12:9's angels and Job 
 senses are told apart by TAHOT's English glosses. "Hebrew" means the Hebrew against the Septuagint's Greek, which may
 reflect a Greek revised toward the Hebrew, not the Hebrew itself.</div>
 <h2>The count</h2>
-<p>"Confirmed": two or more deciding words, or one with a firm footing ({CONFIRM_WITNESSED} or more words witnessed, or
-{CONFIRM_WITNESSED - 1} with {CONFIRM_VOTES} or more votes), found at the verse readers list. A reading found only at a
-neighbour of that verse is probable at most. "By passage" counts each Old Testament passage once, however often
+<p>"Confirmed": two or more deciding words on the reading's side (a mixed verse, one on each side), found at the verse
+readers list: the floor the whole-New-Testament report counts. "One word": a single deciding word with a firm footing
+({CONFIRM_WITNESSED} or more words witnessed, or {CONFIRM_WITNESSED - 1} with {CONFIRM_VOTES} or more votes). It is below
+that floor, so the whole-New-Testament count leaves it out, but many of Revelation's best known readings rest on one word
+(Zechariah 12:10, "pierced"; Psalm 2:9, "shepherd"), so they are shown here in their own column. A reading found only at
+a neighbour of the verse readers list is probable at most. "By passage" counts each Old Testament passage once, however often
 Revelation uses it. Revelation never marks a citation ("it is written"), so "free or another text", which needs one,
 cannot occur and is not counted.</p>
 <div class="wrap"><table><tr><th>reading</th><th>confirmed, by verse</th><th>confirmed, by passage</th>
+<th>one word, by verse</th><th>one word, by passage</th>
 <th>probable, by verse</th><th>probable, by passage</th></tr>{head_rows}</table></div>
 <p>"Hebrew" here means "the Hebrew against the Septuagint's Greek": Rahlfs' Old Greek for every book but Daniel, which is
 compared with Theodotion's Greek (the Daniel Revelation knows; the Old Greek is shown beside it). Revelation may have

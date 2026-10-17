@@ -123,6 +123,28 @@ def plain(word: str) -> str:
 # "rod", from verses like Micah 7:14 where shepherd and rod stand together,
 # and Psalm 2:9 then looked as if the Hebrew had "shepherd".)
 HEBREW_SHARE = 0.05
+# THE FLOOR.  A "Septuagint reading" or "Hebrew, not the Old Greek" needs
+# FLOOR_WORDS content words on its side, or one word and a citation marker;
+# a verdict below that is weak, shown in its own tier, not counted in the
+# headline (Proverbs 4:24 "good", Romans 12:2 "perfect").
+FLOOR_WORDS = 2
+# A marker in one of this many verses before counts for the floor: a
+# quotation runs on from its formula ("as it is written", Acts 15:15, before
+# 15:16 to 17; "spoken by the prophet, saying", Matthew 1:22, before 1:23).
+CITE_BEFORE = 2
+# A Septuagint-only word is a difference of wording when the Septuagint pairs
+# it with the Hebrew word behind it in PAIR_VERSES verses (with 0.02 of the
+# Hebrew word's renderings, or this much of the Greek word's uses), or the
+# two are glossed alike; otherwise a difference of text.
+WORDING_REVERSE = 0.1
+# THE MAP READ BOTH WAYS.  A pairing of a Hebrew and a Greek word counts
+# when the Septuagint makes it in PAIR_VERSES verses, or in one verse with
+# SINGLE_SHARE of the Hebrew word's renderings; and a Greek word that renders
+# the Hebrew word REVERSE_SHARE of the times the Greek word occurs counts as
+# a main rendering (see HebrewTest.renders).
+PAIR_VERSES = 2
+SINGLE_SHARE = 0.5
+REVERSE_SHARE = 0.3
 # THE SENSE CHECK.  A word is "by the Hebrew" only if it renders the sense the
 # Hebrew word has in this verse, not merely a word spelt the same.  The sense
 # is the Hebrew word's gloss in TAHOT (or its extended Strong's number) and
@@ -146,7 +168,7 @@ NEIGHBOUR_BY = 1
 # off, leaving a stem of STEM_MIN letters, is the same word as another with
 # the same stem (biblos and biblion, "book"; argyrion and argyrous; skene,
 # skenoma and skenoo, "tent", "dwelling", "to dwell").
-STEM_ENDINGS = ("ιδιον", "αριον", "ωμα", "ημα", "σις", "ευω", "ιζω", "οω", "εω", "αω",
+STEM_ENDINGS = ("ιδιον", "αριον", "ωμα", "ημα", "σις", "ευω", "ιζω", "αζω", "οω", "εω", "αω",
                 "ιον", "ιος", "εια", "ια", "ος", "ον", "ης", "ευς", "ους",
                 "α", "η", "ω", "ις", "υς")
 STEM_MIN = 4
@@ -154,6 +176,13 @@ STEM_MIN = 4
 # length, so a compound is not its first part (eidolothytos, "offered to
 # idols", is not eidolon, "idol").
 KIN_LENGTH = 0.75
+# The Greek Bible's own diction, which may stand in both texts but cannot
+# decide a verdict: pantokrator, "the Almighty", renders "Lord of hosts" in
+# the Twelve and Shaddai in Job, so its absence from one verse of the
+# Septuagint (Ezekiel 1:24) is no Hebrew reading in Revelation 4:8 or 19:6.
+# The adverbs of place ("thence", "hence") are left out the same way: Revelation
+# 22:2's "on either side of the river" is no reading of Genesis 3:22.
+DICTION = {"G3841", "G1564", "G1782"}
 # A pair is judged only when at least this many New Testament content
 # words are witnessed by one text or the other, and at least ANCHOR of
 # them are in both (the quotation's footing in both texts).
@@ -215,7 +244,11 @@ VERDICTS = [
      "follows the Hebrew where Rahlfs' Greek differs (perhaps through a revised Greek)"),
     ("mixed", "Mixed", "follows the Greek in one word and the Hebrew in another"),
     ("free", "Free or another text", "a marked citation whose words neither text accounts for"),
+    ("weak", "Weak (one word)", "one word on its side and no citation marker: listed, not counted"),
 ]
+# Short names for the verdicts in the narrow tables
+LABEL_SHORT = {"agree": "agree", "septuagint": "Septuagint", "masoretic": "Hebrew", "mixed": "mixed",
+               "free": "free", "weak": "weak"}
 
 # The speakers a citation names ("Moses saith", "David saith", "the Holy
 # Ghost saith", "Esaias saith"): with a verb of saying they mark a citation
@@ -278,10 +311,13 @@ class HebrewTest:
         HebrewTest.SAYS_WIDE = {plain(w) for w in SAYING_WIDE}
         self.texts = sorter.texts
         self.map = hebrew_greek_map.load()
-        if self.map is None:
+        self.both_ways = hebrew_greek_map.load_both_ways()
+        if self.map is None or self.both_ways is None:
             print("Building the Hebrew-Greek word map (once):")
             hebrew_greek_map.build(6, hebrew_greek_map.MAP_FILE)
+            hebrew_greek_map.build_senses()
             self.map = hebrew_greek_map.load()
+            self.both_ways = hebrew_greek_map.load_both_ways()
         self.hebrew = hebrew_greek_map.hebrew_verses(ATLAS_DIR / "lxx.db")
         # The senses: each Hebrew word of a verse with its gloss and extended
         # Strong's number, and what the Septuagint did with each sense
@@ -303,7 +339,7 @@ class HebrewTest:
             got = sm.get(s, {})
             return max([got.get(f, 0.0) for f in forms] +
                        [v for g, v in got.items() if g not in forms and self.kin(forms[0], [g])])
-        for r, unit, key in self.tokens.get(e, []):
+        for r, unit, key, _gloss in self.tokens.get(e, []):
             if r != root:
                 continue
             sense = f"{r}|{key}"
@@ -368,7 +404,7 @@ class HebrewTest:
             heb += self.hebrew.get(ref, [])
         lxx_centre = set(self.content(ot))
         heb_centre = set(self.hebrew.get(e, []))
-        common = self.common()
+        common = self.common() | DICTION
         both, lxx_only, heb_only, unmatched = [], [], [], []
         for k in self.content(nt):
             if k in FORMULA:
@@ -399,6 +435,13 @@ class HebrewTest:
                     v = self.family_share(r, f)
                     if v > centre_share:
                         centre_root, centre_share = r, v
+            # Where the map has no pairing to offer, a word of the Septuagint's
+            # verse whose own gloss names a Hebrew word of the verse is in
+            # both (Immanuel, Isaiah 7:14; phlox, "flame", for the Aramaic
+            # "flames" of Daniel 7:9, too rare for the map), but not one that
+            # names something else (Rephan for Kiyyun, Amos 5:26).  This can
+            # only make a word "in both", never a Hebrew reading.
+            gloss_both = share < HEBREW_SHARE and k in lxx and self.gloss_pair(h, k, e)
             by_hebrew = False
             if centre_share >= HEBREW_SHARE and k not in common and not (set(forms) & lxx_centre):
                 # The Septuagint must have rendered that Hebrew word some
@@ -412,12 +455,14 @@ class HebrewTest:
                 # Proverbs 3:12, where the Greek has "chasten"; the Greek
                 # has "rebuke" only in 3:11).  And it must render the sense
                 # the Hebrew word has here (see SENSE_MIN).
-                renders = self.map.get(centre_root, {})
+                renders = self.renders(centre_root)
                 usual = {g for g, v in renders.items() if v >= HEBREW_SHARE}
                 main = centre_share >= MAIN_SHARE or centre_share >= max(renders.values(), default=0.0)
                 by_hebrew = main and not (usual & lxx_centre) and self.sense_ok(forms, e, centre_root, h)
             if by_hebrew:
                 heb_only.append(k)
+            elif gloss_both:
+                both.append(k)
             elif k in lxx:
                 # A word of the Septuagint's quoted verse is decided there too:
                 # it is in both only if a Hebrew word of the same verse stands
@@ -442,11 +487,38 @@ class HebrewTest:
         r["quotation"] = bool(r["cites"] or (run >= RUN_QUOTE and run_content >= RUN_CONTENT))
         return r
 
+    def renders(self, root: str) -> dict:
+        """
+        A Hebrew word's renderings as the test counts them: {greek: share}.
+        The map's share, for a pairing made in PAIR_VERSES verses or more,
+        or in one verse with SINGLE_SHARE of the word's renderings (a
+        one-off spread over the verse's words is the Septuagint's own
+        reading, not a rendering: Kiyyun and Rephan, Amos 5:26); and a Greek
+        word that renders this Hebrew word REVERSE_SHARE of the times it
+        occurs, in PAIR_VERSES verses, counts as a main rendering however
+        seldom the Hebrew word is translated by it (enenlogein for barak,
+        "bless", Galatians 3:8; Adam for adam, 1 Corinthians 15:22).
+        """
+        cache = self.__dict__.setdefault("_renders", {})
+        if root not in cache:
+            t, bw = self.map.get(root, {}), self.both_ways.get(root, {})
+            out = {}
+            for g in set(t) | set(bw):
+                share = t.get(g, 0.0)
+                rev, verses = bw.get(g, (0.0, 0))
+                v = share if verses >= PAIR_VERSES or (verses == 1 and share >= SINGLE_SHARE) else 0.0
+                if verses >= PAIR_VERSES and rev >= REVERSE_SHARE:
+                    v = max(v, MAIN_SHARE)
+                if v:
+                    out[g] = v
+            cache[root] = out
+        return cache[root]
+
     def family_share(self, root: str, k) -> float:
         """The share of root's renderings that went to k or a word of its family (biblos, biblion)."""
         cache = self.__dict__.setdefault("_fs", {})
         if (root, k) not in cache:
-            renders = self.map.get(root, {})
+            renders = self.renders(root)
             v = renders.get(k, 0.0)
             for g, share in renders.items():
                 if share > v and g != k and self.kin(k, [g]):
@@ -614,11 +686,109 @@ class HebrewTest:
         else:
             verdict = "agree"
         word = lambda ks: ", ".join(t.lemma(k) for k in ks)       # noqa: E731
-        return {"here": h, "there": e, "verdict": verdict, "witnessed": n, "cites": cites,
+        # THE FLOOR: a Septuagint or Hebrew verdict on one word of its side,
+        # with no citation marker, is weak: shown, not counted in the headline
+        side = {"septuagint": len(lxx_only), "masoretic": len(heb_only)}.get(verdict)
+        weak = side is not None and side < FLOOR_WORDS and not (cites or self.cites_before(h))
+        # The Hebrew word behind each differing word, so a reader can tell a
+        # difference of wording from a difference of text
+        lxx_gloss, lxx_kind = self.lxx_glosses(h, e, lxx_only)
+        heb_gloss = self.heb_glosses(e, heb_only)
+        return {"here": h, "there": e, "verdict": verdict, "weak": weak, "witnessed": n, "cites": cites,
+                "septuagint_gloss": lxx_gloss, "lxx_kind": lxx_kind, "hebrew_gloss": heb_gloss,
                 "both": word(both), "septuagint_only": word(lxx_only), "hebrew_only": word(heb_only),
                 "n_both": len(both), "n_lxx": len(lxx_only), "n_heb": len(heb_only),
                 "unmatched": word(unmatched), "votes": votes, "run": run,
                 "_keys": (both, lxx_only, heb_only, unmatched)}
+
+    def cites_before(self, h: str) -> bool:
+        """Whether one of the CITE_BEFORE verses before h, in its chapter, marks a citation (Acts 15:15 for 15:17)."""
+        book, cv = h.rsplit(" ", 1)
+        c, v = cv.split(":")
+        for d in range(1, CITE_BEFORE + 1):
+            ref = f"{book} {c}:{int(v) - d}"
+            vid = self.texts.by_ref["GNT"].get(ref)
+            if vid is not None and self.cites(ref, vid):
+                return True
+        return False
+
+    def gloss_pair(self, h: str, k, e: str) -> bool:
+        """Whether a Hebrew word of verse e is glossed as New Testament word k of h is."""
+        a = self.nt_gloss.get(h, {}).get(k, "")
+        return bool(a) and any(self.same_sense(a, gloss, key) for r, unit, key, gloss in self.tokens.get(e, []))
+
+    def centre_first(self, e: str) -> list:
+        """The Hebrew words of verse e, then of the verses beside it."""
+        out = list(self.tokens.get(e, []))
+        for ref in self.spread(e):
+            if ref != e:
+                out += self.tokens.get(ref, [])
+        return out
+
+    def same_sense(self, a: str, gloss: str, b: str) -> bool:
+        """Whether a New Testament gloss key a names the Hebrew gloss (key b, full gloss)."""
+        if not a:
+            return False
+        keys = {hebrew_greek_map.gloss_key(w) for w in gloss.replace("[", " ").replace("]", " ").split()}
+        keys.add(b)
+        # One the beginning of the other counts too: a name TAHOT splits
+        # ("Immanu-" and "El", Isaiah 7:14)
+        return a in keys or any(min(len(a), len(x)) >= 4 and (a.startswith(x) or x.startswith(a))
+                                for x in keys if x)
+
+    def lxx_glosses(self, h: str, e: str, keys) -> tuple:
+        """
+        ("word (Hebrew 'gloss', root: wording|text); ...", "wording"|"text"|"") for
+        the Septuagint-only words.  The Hebrew counterpart is the word of the
+        verse the map pairs the Greek word with at all, however weakly.  A
+        counterpart of the same sense as the New Testament word's own gloss
+        makes a difference of wording (the Septuagint chose its word for the
+        same Hebrew); no counterpart, or one of another sense, a difference of
+        text (Psalm 2:9: poimainein, "shepherd", where the Hebrew has "break").
+        """
+        t = self.texts
+        parts, kinds = [], []
+        toks = self.centre_first(e)
+        for k in keys:
+            best, score = None, (False, 0.0)
+            for tok in toks:
+                # The map either way, the word or its family (empiripatein
+                # beside peripatein, for hithhalek, Leviticus 26:12).  A real
+                # pairing is one the Septuagint makes in PAIR_VERSES verses, a
+                # rare rendering but its own (polites for rea, "neighbour",
+                # Jeremiah 31:34); it is preferred to a stray one.
+                t_, bw = self.map.get(tok[0], {}), self.both_ways.get(tok[0], {})
+                for g in set(t_) | set(bw):
+                    if g == k or self.kin(k, [g]):
+                        rev, verses = bw.get(g, (0.0, 0))
+                        v = max(t_.get(g, 0.0), rev)
+                        real = verses >= PAIR_VERSES and (t_.get(g, 0.0) >= 0.02 or rev >= WORDING_REVERSE)
+                        if (real, v) > score:
+                            best, score = tok, (real, v)
+            if best is None:
+                parts.append(f"{t.lemma(k)} (no Hebrew word behind it: text)")
+                kinds.append("text")
+                continue
+            r, unit, key, gloss = best
+            same = self.same_sense(self.nt_gloss.get(h, {}).get(k, ""), gloss, key)
+            kind = "wording" if score[0] or same else "text"
+            parts.append(f"{t.lemma(k)} (Hebrew '{gloss}', {r}: {kind})")
+            kinds.append(kind)
+        kind = "text" if "text" in kinds else ("wording" if kinds else "")
+        return "; ".join(parts), kind
+
+    def heb_glosses(self, e: str, keys) -> str:
+        """'word = Hebrew 'gloss' (root); ...' for the words by the Hebrew."""
+        t = self.texts
+        parts = []
+        toks = self.tokens.get(e, [])
+        for k in keys:
+            best = max(toks, key=lambda tok: self.family_share(tok[0], k), default=None)
+            if best and self.family_share(best[0], k) >= HEBREW_SHARE:
+                parts.append(f"{t.lemma(k)} = Hebrew '{best[3]}' ({best[0]})")
+            else:
+                parts.append(t.lemma(k))
+        return "; ".join(parts)
 
     # --- the pairs ---------------------------------------------------------
     def listed(self, book: str) -> dict:
@@ -781,9 +951,44 @@ class HebrewReport:
         self.judged = [r for r in rows if r["verdict"] != "few"]
         self.english = english_rows or {}
 
+    @staticmethod
+    def kind(r) -> str:
+        """The row's class for the counts: its verdict, or "weak" below the floor (see FLOOR_WORDS)."""
+        return "weak" if r.get("weak") else r["verdict"]
+
     def totals(self, quotations_only: bool = False):
         rows = [r for r in self.judged if r.get("quotation")] if quotations_only else self.judged
-        return Counter(r["verdict"] for r in rows)
+        c = Counter(self.kind(r) for r in rows)
+        # The Septuagint readings split: a difference of wording, or of text
+        for r in rows:
+            if self.kind(r) == "septuagint":
+                c["septuagint_" + (r.get("lxx_kind") or "text")] += 1
+        return c
+
+    @staticmethod
+    def strong(c) -> int:
+        """The headline total: every class but the weak tier."""
+        return sum(c[k] for k, _, _ in VERDICTS if k != "weak")
+
+    def two_writers(self) -> list:
+        """
+        [(Old Testament verse, [(New Testament verse, class), ...])] for every
+        Old Testament verse two or more New Testament books use with different
+        verdicts above the floor: the same verse was open to both writers, so
+        this is where the question of choice can be asked.
+        """
+        by_verse = defaultdict(list)
+        for r in self.judged:
+            if not r.get("weak"):               # the weak tier cannot decide a choice
+                by_verse[r["there"]].append(r)
+        out = []
+        for ot, rs in by_verse.items():
+            books = {r["here"].rsplit(" ", 1)[0] for r in rs}
+            kinds = {r["verdict"] for r in rs}
+            if len(books) >= 2 and len(kinds) >= 2:
+                rs = sorted(rs, key=lambda r: self.atlas.ref_key(r["here"]))
+                out.append((ot, [(r["here"], self.kind(r)) for r in rs]))
+        return sorted(out, key=lambda x: self.atlas.ref_key(x[0]))
 
     LIMITS = ("Read these counts with the method's limits in mind.  The Septuagint is Rahlfs' Old Greek, except "
               "Daniel, where it is Theodotion's (the only Daniel keyed to the English verses in lxx.db): a 'Hebrew' "
@@ -793,13 +998,18 @@ class HebrewReport:
               "'tribe' and 'scepter'), which is only as good as the glosses.  The test weighs words, not which "
               "passage the writer had in mind: a reading rests on the verse readers link.  Small words "
               "(prepositions, number, person) are not weighed, so Romans 11:26's 'out of Zion' for 'to Zion' is "
-              "not seen.")
+              "not seen.  The standard example of a Hebrew-following quotation the map cannot see is Matthew 8:17 "
+              "against Isaiah 53:4 ('Himself took our infirmities, and bare our sicknesses'): Matthew renders the "
+              "Hebrew with words the Septuagint never used for it, so it lands among the free citations, not the "
+              "Hebrew readings.  And 'the Almighty' (pantokrator; Revelation 4:8, 19:6 and nine times in the book) "
+              "is the Greek Bible's own word for 'Lord of hosts' in the Twelve and for Shaddai in Job: synagogue "
+              "diction, not a Hebrew reading, even where the Septuagint's verse happens to lack it (Ezekiel 1:24).")
 
     def by_book(self, key):
         out = defaultdict(Counter)
         for r in self.judged:
             b = r["here"].rsplit(" ", 1)[0] if key == "here" else r["there"].rsplit(" ", 1)[0]
-            out[b][r["verdict"]] += 1
+            out[b][self.kind(r)] += 1
         return out
 
     def agreement(self):
@@ -808,23 +1018,33 @@ class HebrewReport:
         for r in self.judged:
             e = self.english.get((r["here"], r["there"]))
             if e:
-                table[e][r["verdict"]] += 1
+                table[e][self.kind(r)] += 1
         return table
 
     def text(self) -> str:
         t = self.totals()
-        n = sum(t.values())
+        n = self.strong(t)
         q = self.totals(True)
-        nq = sum(q.values())
+        nq = self.strong(q)
         out = ["WHICH TEXT DID THE NEW TESTAMENT QUOTE?  (word by word against the Hebrew)", "",
                f"QUOTATIONS  ({nq:,}: marked citations, or a run of {RUN_QUOTE} or more Greek words shared with the "
-               f"Septuagint, {RUN_CONTENT} of them content words)"]
-        for k, label, desc in VERDICTS:
-            out.append(f"  {label:<28} {q[k]:>5} ({100 * q[k] / max(nq, 1):.0f}%)   {desc}")
-        out += ["", f"ALL LISTED CROSS REFERENCES JUDGED  ({n:,} of {len(self.rows):,} tested; the rest have too few "
-                    f"words witnessed and are allusions)"]
-        for k, label, desc in VERDICTS:
-            out.append(f"  {label:<28} {t[k]:>5} ({100 * t[k] / max(n, 1):.0f}%)")
+               f"Septuagint, {RUN_CONTENT} of them content words; {q['weak']} weak rows apart)"]
+
+        def lines(c, total, desc_on):
+            got = []
+            for k, label, desc in VERDICTS:
+                pct = "" if k == "weak" else f"({100 * c[k] / max(total, 1):.0f}%)"
+                got.append(f"  {label:<28} {c[k]:>5} {pct:<6}  {desc if desc_on else ''}".rstrip())
+                if k == "septuagint":
+                    got.append(f"      {'of which text':<24} {c['septuagint_text']:>5}         "
+                               f"{'the Greek says something the Hebrew does not' if desc_on else ''}".rstrip())
+                    got.append(f"      {'of which wording':<24} {c['septuagint_wording']:>5}         "
+                               f"{'the Septuagint chose its word for the same Hebrew' if desc_on else ''}".rstrip())
+            return got
+        out += lines(q, nq, True)
+        out += ["", f"ALL LISTED CROSS REFERENCES JUDGED  ({n:,} of {len(self.rows):,} tested, {t['weak']} weak rows "
+                    f"apart; the rest have too few words witnessed and are allusions)"]
+        out += lines(t, n, False)
         import textwrap
         out += [""] + textwrap.wrap(self.LIMITS, 100, initial_indent="  ", subsequent_indent="  ")
         out += ["", "THE NAMED CASES"]
@@ -853,14 +1073,17 @@ class HebrewReport:
             for e in ("agree", "septuagint", "masoretic"):
                 if e in ag:
                     out.append(f"  {e:<14}" + "".join(f"{ag[e][k]:>12}" for k, _, _ in VERDICTS))
+        out += ["", "ONE VERSE, TWO WRITERS  (Old Testament verses two New Testament books use with different verdicts)"]
+        for ot, uses in self.two_writers():
+            out.append(f"  {ot:<24} " + "; ".join(f"{h} {LABEL_SHORT.get(k, k)}" for h, k in uses))
         for k, label, desc in VERDICTS[1:]:
             out += ["", f"{label.upper()}  ({desc})"]
-            for r in sorted((r for r in self.judged if r["verdict"] == k), key=lambda r: self.atlas.ref_key(r["here"])):
+            for r in sorted((r for r in self.judged if self.kind(r) == k), key=lambda r: self.atlas.ref_key(r["here"])):
                 diff = []
                 if r["septuagint_only"]:
-                    diff.append(f"Septuagint only: {r['septuagint_only']}")
+                    diff.append(f"Septuagint only: {r.get('septuagint_gloss') or r['septuagint_only']}")
                 if r["hebrew_only"]:
-                    diff.append(f"by the Hebrew: {r['hebrew_only']}")
+                    diff.append(f"by the Hebrew: {r.get('hebrew_gloss') or r['hebrew_only']}")
                 if k == "free":
                     diff.append(f"in neither: {r.get('unmatched', '')}")
                 out.append(f"  {r['here']:<20} {r['there']:<22} {'; '.join(diff)}")
@@ -872,7 +1095,7 @@ class HebrewReport:
     def html(self) -> str:
         from isolation import HtmlReport
         t = self.totals()
-        n = sum(t.values())
+        n = self.strong(t)
 
         def table(head, body, num_from=99):
             h = "".join(f"<th>{escape(x)}</th>" for x in head)
@@ -882,11 +1105,24 @@ class HebrewReport:
             return f"<div class='wrap'><table><tr>{h}</tr>{rows}</table></div>"
 
         q = self.totals(True)
-        nq = sum(q.values())
-        stats = "".join(f"<div class='stat'><b>{q[k]:,}</b><span>{escape(lab)}</span></div>" for k, lab, _ in VERDICTS)
-        quote_rows = "".join(f"<tr><td>{escape(lab)}</td><td class='n'>{q[k]}</td><td class='n'>"
-                             f"{100 * q[k] / max(nq, 1):.0f}%</td><td class='n'>{t[k]}</td><td class='n'>"
-                             f"{100 * t[k] / max(n, 1):.0f}%</td></tr>" for k, lab, _ in VERDICTS)
+        nq = self.strong(q)
+        stats = "".join(f"<div class='stat'><b>{q[k]:,}</b><span>{escape(lab)}</span></div>" for k, lab, _ in VERDICTS
+                        if k != "weak")
+
+        def qrow(label, k, pct=True, cls=""):
+            qp = f"{100 * q[k] / max(nq, 1):.0f}%" if pct else ""
+            tp = f"{100 * t[k] / max(n, 1):.0f}%" if pct else ""
+            return (f"<tr{cls}><td>{escape(label)}</td><td class='n'>{q[k]}</td><td class='n'>{qp}</td>"
+                    f"<td class='n'>{t[k]}</td><td class='n'>{tp}</td></tr>")
+        quote_rows = ""
+        for k, lab, _ in VERDICTS:
+            quote_rows += qrow(lab + (" (not counted)" if k == "weak" else ""), k, k != "weak")
+            if k == "septuagint":
+                quote_rows += qrow("\u2003of which a difference of text", "septuagint_text")
+                quote_rows += qrow("\u2003of which a difference of wording", "septuagint_wording")
+        two = table(["Old Testament verse", "New Testament uses and verdicts"],
+                    [[ot, "; ".join(f"{h}: {LABEL_SHORT.get(k, k)}" for h, k in uses)]
+                     for ot, uses in self.two_writers()])
         named = table(["New Testament", "Old Testament", "expected", "found", "Septuagint only", "by the Hebrew only",
                        "in both / shared"],
                       [[c["here"], c["there"], c["expected"], c.get("found", ""), c.get("septuagint_only", ""),
@@ -903,13 +1139,14 @@ class HebrewReport:
                            if e in ag], 1) if ag else "<p>(no pairs in common)</p>"
 
         def pairs(k):
-            rows = sorted((r for r in self.judged if r["verdict"] == k), key=lambda r: self.atlas.ref_key(r["here"]))
+            rows = sorted((r for r in self.judged if self.kind(r) == k), key=lambda r: self.atlas.ref_key(r["here"]))
             if k == "free":
                 return table(["New Testament", "Old Testament", "words in neither text", "in both", "votes"],
                              [[r["here"], r["there"], r.get("unmatched", ""), r["both"], r["votes"]] for r in rows], 4)
-            return table(["New Testament", "Old Testament", "Septuagint only", "by the Hebrew only", "in both",
-                          "citation", "votes"],
-                         [[r["here"], r["there"], r["septuagint_only"], r["hebrew_only"], r["both"],
+            return table(["New Testament", "Old Testament", "Septuagint only (the Hebrew behind it)",
+                          "by the Hebrew only (the Hebrew it renders)", "in both", "citation", "votes"],
+                         [[r["here"], r["there"], r.get("septuagint_gloss") or r["septuagint_only"],
+                           r.get("hebrew_gloss") or r["hebrew_only"], r["both"],
                            "yes" if r.get("cites") else "", r["votes"]] for r in rows], 6)
         cite_rows = []
         for name, bks in self.GROUPS:
@@ -934,6 +1171,11 @@ content words. The second column counts every listed cross reference with enough
 included; allusions lean to the Hebrew because a writer alluding in his own Greek lands on the usual rendering.</p>
 <div class="wrap"><table><tr><th>verdict</th><th>quotations</th><th>share</th><th>all judged cross references</th>
 <th>share</th></tr>{quote_rows}</table></div>
+<p>A Septuagint or Hebrew verdict needs {FLOOR_WORDS} or more words on its side, or one word and a citation marker;
+below that it is weak, listed in its own section and not counted in the shares. A Septuagint reading is a difference
+of <i>text</i> when one of its Septuagint-only words has no Hebrew word behind it, or one of another sense (Psalm 2:9,
+"shepherd" where the Hebrew has "break"); otherwise it is a difference of <i>wording</i>, the Septuagint's own word
+for the same Hebrew, which says nothing about the text the writer read. Only the first is a finding about texts.</p>
 <p>Of all judged cross references, {100 * t['agree'] / max(n, 1):.0f}% agree with both texts in every witnessed word,
 {100 * t['septuagint'] / max(n, 1):.0f}% follow the Septuagint where the Hebrew differs,
 {100 * t['masoretic'] / max(n, 1):.0f}% follow the Hebrew where Rahlfs' Greek differs,
@@ -965,7 +1207,14 @@ agree with the Septuagint, not a separate class.</p>
 judged. Where they agree, the two methods confirm each other; where the English said "Septuagint" and this test says
 "all agree", the King James translators had only worded the same Hebrew differently.</p>
 {agreement}
+<h2>One verse, two writers</h2>
+<p>Every Old Testament verse that two or more New Testament books use with different verdicts. The same verse was open
+to both writers, so this is where the question of choice can be asked; and a reading other than the Old Greek shared by
+two or more writers is probably the church's fixed form of the verse rather than either writer's choice.</p>
+{two}
 <h2>Septuagint readings</h2>
+<p>Each Septuagint-only word is shown with the Hebrew word the map pairs it with in the verse, and whether the
+difference is one of text or of wording.</p>
 {pairs('septuagint')}
 <h2>Hebrew, not the Old Greek</h2>
 <p>The New Testament has a word that renders the Hebrew where Rahlfs' Greek has something else. Read "not the Septuagint
@@ -975,6 +1224,10 @@ victory" is Theodotion's Isaiah 25:8.</p>
 {pairs('masoretic')}
 <h2>Mixed</h2>
 {pairs('mixed')}
+<h2>Weak: one word on its side, no citation marker</h2>
+<p>Not counted in the shares above. Many rest on one common word (a reader linking "good" or "light"); some are real
+readings too short for the test to confirm.</p>
+{pairs('weak')}
 <h2>Free or another text</h2>
 <p>A marked citation with fewer than {MIN_WITNESSED} words witnessed by either text, {FREE_UNMATCHED} or more words
 neither accounts for, and a source readers list with {SHORT_VOTES} or more votes: a free rendering, a combination of passages, or a quotation of another text (a Targum, a lost
@@ -1003,10 +1256,14 @@ Greek": the revisions brought the Greek nearer the Hebrew.</dd>
 <dt>Explicit citation</dt><dd>A verse holding "it is written", "scripture", "fulfilled" or "spoken", or a verb of saying
 with a named speaker (Moses, David, Isaiah, Jeremiah, Hosea, Elijah, the Spirit); in Hebrews, a verb of saying alone.</dd>
 <dt>The limit of the method</dt><dd>The map knows only the Septuagint translators' choices. A New Testament writer
-rendering the Hebrew with a word the Septuagint never used for it is not seen as following the Hebrew. And a Hebrew
-homonym is one number in the tagging: qetsef is "wrath" and "a twig" (Hosea 10:7, where the Septuagint rightly has
-"twig"), so a New Testament "wrath" beside it looks like a reading of the Hebrew when it is no reading of that verse at
-all. Every "by the Hebrew" word is shown with the Hebrew word's gloss so such cases can be seen.</dd>
+rendering the Hebrew with a word the Septuagint never used for it is not seen as following the Hebrew (Matthew 8:17).
+Hebrew homonyms and senses are told apart by TAHOT's glosses (qetsef "wrath" and "a twig", Hosea 10:7), which is only
+as good as the glosses. Every differing word is shown with the Hebrew word's gloss so such cases can be seen.</dd>
+<dt>The map read both ways</dt><dd>A pairing counts when the Septuagint makes it in {PAIR_VERSES} or more verses, or in
+one verse with a clear majority of the Hebrew word's renderings, so a one-off reading of the Septuagint's own (Rephan for
+Kiyyun, Amos 5:26) is not taken for a rendering; and a Greek word that renders a Hebrew word {int(REVERSE_SHARE * 100)}%
+of the times it occurs counts as its rendering however seldom the Hebrew word is translated by it (enenlogein for
+"bless", Galatians 3:8).</dd>
 </dl>"""
         return (f"<!doctype html><html lang='en'><head><meta charset='utf-8'>"
                 f"<meta name='viewport' content='width=device-width, initial-scale=1'>"
