@@ -18,13 +18,24 @@ STRENGTH
     confirmed   two or more deciding words, or one deciding word with a
                 firm footing in the passage (CONFIRM_WITNESSED or more words
                 witnessed, or one fewer with CONFIRM_VOTES or more votes)
-    probable    the rest: one deciding word on a thinner footing
+    probable    the rest: one deciding word on a thinner footing, or any
+                reading found at a neighbour of the verse readers list
+                (the test may try the verses beside it; a reading found
+                there is shown with the listed verse, and never confirmed)
 
 COUNTED TWO WAYS
     by verse    each Revelation verse that makes the reading
     by passage  each Old Testament passage read that way, however often
                 Revelation uses it (Psalm 2:9 behind 2:27, 12:5 and 19:15 is
                 one Septuagint reading used three times)
+
+WHAT CHANGED AFTER THE SECOND REVIEW
+    Hebrew homonyms and senses are told apart (Hosea 10:7's "twig" is not
+    "wrath"; Genesis 49:10's "scepter" is not "tribe"); Greek word families
+    count as one word (biblos and biblion, so the three Daniel "book"
+    readings fall away); a reading found at a neighbour of the listed verse
+    is never confirmed; a verse can be mixed (3:19); and Daniel is compared
+    with Theodotion's Greek, the Old Greek shown beside it.
 
 The Septuagint-only books (Wisdom, Sirach, Tobit, the Maccabees) have no
 Hebrew to set against, so Revelation's allusions to them are reported
@@ -83,6 +94,12 @@ class RevelationReadings:
                 firm = r["witnessed"] >= CONFIRM_WITNESSED or (
                     r["witnessed"] >= CONFIRM_WITNESSED - 1 and (r["votes"] or 0) >= CONFIRM_VOTES)
                 r["strength"] = "confirmed" if deciding >= 2 or firm else "probable"
+                # Found at a neighbour of the listed verse, not the verse itself
+                # (Revelation 13:10: Jeremiah 15:2 is listed, the deciding
+                # word stands in 15:3): shown, never confirmed
+                r["neighbour"] = r["there"] not in r.get("listed_all", [r["there"]])
+                if r["neighbour"]:
+                    r["strength"] = "probable"
             out.append(r)
         return sorted(out, key=lambda r: self.sorter.atlas.ref_key(r["here"]))
 
@@ -116,7 +133,7 @@ class RevelationReadings:
             key = next((k for k in set(self.t.keys[self.t.by_ref["GNT"][self._rev]]) if self.t.lemma(k) == lemma), None)
             best, share = None, 0.0
             for r in heb_roots:
-                s = self.test.map.get(r, {}).get(key, 0.0)
+                s = self.test.family_share(r, key) if key else 0.0
                 if s > share:
                     best, share = r, s
             if best and share >= HEBREW_SHARE:
@@ -132,9 +149,18 @@ class RevelationReadings:
             self._rev = r["here"]
             r["greek_nt"] = self.greek("GNT", r["here"])
             r["greek_lxx"] = self.greek("LXX", r["there"])
+            if r["there"].startswith("Daniel "):
+                r["greek_og"] = self.daniel_og(r["there"])
             heb, glosses = self.hebrew(r["there"])
             r["hebrew_text"] = heb
             r["hebrew_behind"] = self.hebrew_behind(r["hebrew_only"], r["there"], glosses)
+
+    def daniel_og(self, ref: str) -> str:
+        """The Old Greek of a Daniel verse (the Septuagint column shows Theodotion's)."""
+        c, v = (int(x) for x in ref.rsplit(" ", 1)[1].split(":"))
+        row = self.lxx_db.execute("SELECT text FROM verses WHERE code = 'DanOG' AND chapter = ? AND verse = ?",
+                                  (c, v)).fetchone()
+        return row[0] if row else ""
 
     def deutero(self) -> list:
         path = EVAL_DIR / "results" / "deutero_check.json"
@@ -176,8 +202,11 @@ class RevelationReport:
         for v in ("septuagint", "masoretic", "mixed"):
             cv, pv = ty[v]["confirmed"], ty[v]["probable"]
             out.append(f"  {LABEL[v]:<28}{cv[0]:>14} / {cv[1]:<6}{pv[0]:>14} / {pv[1]:<6}")
-        out.append(f"  {LABEL['free']:<28}{c['free']:>14}")
-        for v in ("septuagint", "masoretic", "mixed", "free"):
+        out += ["", "  Revelation never marks a citation (\"it is written\"), so the class \"free or another text\",",
+                "  which needs a marked citation, cannot occur here.  A reading found at a neighbour of the",
+                "  verse readers list is shown with the listed verse and counted as probable at most.",
+                "  Daniel is compared with Theodotion's Greek; the Old Greek is shown beside it."]
+        for v in ("septuagint", "masoretic", "mixed"):
             out += ["", LABEL[v].upper()]
             for r in (r for r in self.rows if r["verdict"] == v):
                 words = []
@@ -187,9 +216,12 @@ class RevelationReport:
                     words.append(f"by the Hebrew: {r['hebrew_behind']}")
                 if v == "free":
                     words.append(f"in neither: {r.get('unmatched', '')}")
-                out.append(f"  {r['here']:<18} {r['there']:<20} {r['strength']:<10} {'; '.join(words)}")
+                where = r["there"] + (f" (listed {r['listed']})" if r.get("neighbour") else "")
+                out.append(f"  {r['here']:<18} {where:<20} {r['strength']:<10} {'; '.join(words)}")
                 out.append(f"      Revelation: {r.get('greek_nt', '')}")
                 out.append(f"      Septuagint: {r.get('greek_lxx', '')}")
+                if r.get("greek_og"):
+                    out.append(f"      Old Greek:  {r['greek_og']}")
                 out.append(f"      Hebrew:     {r.get('hebrew_text', '')}")
         if self.deutero:
             out += ["", "ALLUSIONS TO THE SEPTUAGINT-ONLY BOOKS  (no Hebrew to set against)"]
@@ -209,7 +241,7 @@ class RevelationReport:
         stats = (f"<div class='stat'><b>{ty['septuagint']['confirmed'][0]}</b><span>confirmed Septuagint readings"
                  f"</span></div><div class='stat'><b>{ty['masoretic']['confirmed'][0]}</b><span>confirmed Hebrew "
                  f"readings</span></div><div class='stat'><b>{c['agree']}</b><span>agree with both</span></div>"
-                 f"<div class='stat'><b>{c['free']}</b><span>free or another text</span></div>")
+                 f"<div class='stat'><b>{c['mixed']}</b><span>mixed</span></div>")
 
         def cards(verdict):
             parts = []
@@ -219,15 +251,18 @@ class RevelationReport:
                     deciding.append(f"<b>Septuagint only:</b> {escape(r['septuagint_only'])}")
                 if r.get("hebrew_behind"):
                     deciding.append(f"<b>by the Hebrew:</b> {escape(r['hebrew_behind'])}")
-                if verdict == "free":
-                    deciding.append(f"<b>in neither text:</b> {escape(r.get('unmatched', ''))}")
+                where = escape(r["there"])
+                if r.get("neighbour"):
+                    where += f" <span class='tag'>(readers list {escape(r['listed'])}; the words decide at its neighbour)</span>"
+                og = (f"<tr><th>Old Greek</th><td lang='grc'>{escape(r['greek_og'])}</td></tr>"
+                      if r.get("greek_og") else "")
                 parts.append(
-                    f"<div class='card'><h3>{escape(r['here'])} &nbsp;&middot;&nbsp; {escape(r['there'])} "
+                    f"<div class='card'><h3>{escape(r['here'])} &nbsp;&middot;&nbsp; {where} "
                     f"<span class='tag'>{escape(r['strength'])}</span></h3>"
                     f"<p>{' &nbsp; '.join(deciding)} &nbsp; <span class='muted'>in both: {escape(r['both'])}; "
                     f"votes {r['votes']}</span></p>"
                     f"<table><tr><th>Revelation</th><td lang='grc'>{escape(r.get('greek_nt', ''))}</td></tr>"
-                    f"<tr><th>Septuagint</th><td lang='grc'>{escape(r.get('greek_lxx', ''))}</td></tr>"
+                    f"<tr><th>{'Theodotion' if og else 'Septuagint'}</th><td lang='grc'>{escape(r.get('greek_lxx', ''))}</td></tr>{og}"
                     f"<tr><th>Hebrew</th><td lang='he' dir='rtl'>{escape(r.get('hebrew_text', ''))}</td></tr></table>"
                     f"</div>")
             return "".join(parts) or "<p>(none)</p>"
@@ -240,7 +275,7 @@ class RevelationReport:
 .card { border: 1px solid var(--grid); border-radius: 8px; padding: 10px 14px; margin: 12px 0; break-inside: avoid; }
 .card h3 { margin: 0 0 4px; font-size: 15px; } .card table { font-size: 14px; }
 .card th { width: 110px; position: static; } .tag { font-size: 12px; font-weight: 400; color: var(--muted); }
-.muted { color: var(--muted); } td[lang='he'] { font-size: 16px; text-align: right; }
+.muted { color: var(--muted); } .note { border-left: 4px solid var(--grid); padding: 6px 12px; margin: 12px 0; } td[lang='he'] { font-size: 16px; text-align: right; }
 """
         body = f"""
 <h1>Revelation: which text does it follow?</h1>
@@ -250,17 +285,27 @@ share). Revelation never says "it is written": it weaves the prophets' words int
 readings, not marked citations. Where the two texts part, the deciding words are named and the three texts are set
 side by side.</p>
 <div class="stats">{stats}</div>
+<div class="note"><b>Read first.</b> The test weighs words, not which passage the writer had in mind: each reading rests
+on a verse readers link, and a few links are weak allusions (Revelation 19:13's blood-dipped garment is Isaiah 63:1-3
+more than 9:5, which readers link; 21:4's tears are Isaiah 25:8, also found, more than 30:19). A deciding word can share
+a word with the Old Testament verse and not its referent (12:9's angels and Job 1:6's sons of God). Hebrew homonyms and
+senses are told apart by TAHOT's English glosses. "Hebrew" means the Hebrew against the Septuagint's Greek, which may
+reflect a Greek revised toward the Hebrew, not the Hebrew itself.</div>
 <h2>The count</h2>
 <p>"Confirmed": two or more deciding words, or one with a firm footing ({CONFIRM_WITNESSED} or more words witnessed, or
-{CONFIRM_WITNESSED - 1} with {CONFIRM_VOTES} or more votes). "By passage" counts each Old Testament passage once, however often Revelation uses it.</p>
+{CONFIRM_WITNESSED - 1} with {CONFIRM_VOTES} or more votes), found at the verse readers list. A reading found only at a
+neighbour of that verse is probable at most. "By passage" counts each Old Testament passage once, however often
+Revelation uses it. Revelation never marks a citation ("it is written"), so "free or another text", which needs one,
+cannot occur and is not counted.</p>
 <div class="wrap"><table><tr><th>reading</th><th>confirmed, by verse</th><th>confirmed, by passage</th>
 <th>probable, by verse</th><th>probable, by passage</th></tr>{head_rows}</table></div>
-<p>"Hebrew" here means "the Hebrew against Rahlfs' Old Greek": Revelation may have used a Greek revised toward the
-Hebrew (Theodotion's Zechariah has "pierced", as Revelation 1:7 does).</p>
+<p>"Hebrew" here means "the Hebrew against the Septuagint's Greek": Rahlfs' Old Greek for every book but Daniel, which is
+compared with Theodotion's Greek (the Daniel Revelation knows; the Old Greek is shown beside it). Revelation may have
+used a Greek revised toward the Hebrew (Theodotion's Zechariah has "pierced", as Revelation 1:7 does).</p>
 <h2>Septuagint readings</h2>{cards('septuagint')}
 <h2>Hebrew readings (not the Old Greek)</h2>{cards('masoretic')}
-<h2>Mixed</h2>{cards('mixed')}
-<h2>Free or another text</h2>{cards('free')}
+<h2>Mixed</h2>
+<p>The Greek in one word and the Hebrew in another, in the same verse.</p>{cards('mixed')}
 <h2>Agreeing with both texts</h2>
 <div class="wrap"><table><tr><th>Revelation</th><th>Old Testament</th><th>words in both</th><th>votes</th></tr>{agree_rows}</table></div>
 <h2>Allusions to the Septuagint-only books</h2>
@@ -275,7 +320,9 @@ verse.</dd>
 <dt>By the Hebrew</dt><dd>A word of Revelation that the Septuagint's verse lacks, and that is the Septuagint
 translators' usual rendering of a word in the Hebrew verse (named, with its English gloss).</dd>
 <dt>In both</dt><dd>A word that stands in the Septuagint and renders the Hebrew: the texts agree there.</dd>
-<dt>Free or another text</dt><dd>A reading whose words neither text accounts for.</dd>
+<dt>Mixed</dt><dd>A verse with a Septuagint-only word and a word by the Hebrew.</dd>
+<dt>Sense</dt><dd>A word is "by the Hebrew" only if it renders the sense the Hebrew word has in that verse, judged by
+TAHOT's English gloss: the Septuagint translators must render that sense with it elsewhere.</dd>
 <dt>Votes</dt><dd>Readers' votes for the cross reference on OpenBible.info, the best between verses within three of each
 side.</dd>
 </dl>"""

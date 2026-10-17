@@ -33,6 +33,23 @@ questions:
     The Old Testament side is read with a verse either side (SPREAD), since
     a quotation may run across verses, and the commonest Septuagint words
     (lord, God, say, give) may stand in both but cannot decide a verdict.
+    A differing word is decided at the quoted verse itself, on both sides
+    alike: a word in the verse beside does not make it a word of both
+    (Revelation 3:19 against Proverbs 3:12 is mixed: "rebuke" is the
+    Hebrew of 3:12, "chasten" its Greek).
+
+    SENSES AND FAMILIES
+    A word is "by the Hebrew" only if it renders the sense the Hebrew word
+    has in that verse (see SENSE_MIN): TAHOT's gloss tells qetseph "wrath"
+    from qetseph "twig" and shebet "tribe" from shebet "scepter", and the
+    Septuagint must render that sense with the word elsewhere.  Greek words
+    of one family count as one word on every side (biblos and biblion,
+    "book"; skene and skenoo, "tent" and "to dwell"; see STEM_ENDINGS).
+
+    WHICH VERSE
+    The verse readers list is tested with the verses beside it; a neighbour
+    replaces it only with more words witnessed, and every row keeps the
+    listed verse ("listed") beside the verse that scored ("there").
 
 THE VERDICTS
     All agree            every witnessed word is in both
@@ -61,7 +78,8 @@ WHAT IT CANNOT SEE
     The map is the Septuagint translators' habits.  A New Testament writer
     rendering the Hebrew in a word the Septuagint never used for it is not
     seen as "by the Hebrew".  The Septuagint here is Rahlfs' text (the Old
-    Greek, Theodotion's Daniel); where the New Testament agrees with a
+    Greek; for Daniel, Theodotion's, the only Daniel lxx.db keys to the
+    English verses); where the New Testament agrees with a
     revised Greek (Theodotion's or Aquila's Zechariah, which have "pierced")
     against the Old Greek, the test calls it a Masoretic reading, which in
     a sense it is: the revisions were made to bring the Greek nearer the
@@ -105,6 +123,37 @@ def plain(word: str) -> str:
 # "rod", from verses like Micah 7:14 where shepherd and rod stand together,
 # and Psalm 2:9 then looked as if the Hebrew had "shepherd".)
 HEBREW_SHARE = 0.05
+# THE SENSE CHECK.  A word is "by the Hebrew" only if it renders the sense the
+# Hebrew word has in this verse, not merely a word spelt the same.  The sense
+# is the Hebrew word's gloss in TAHOT (or its extended Strong's number) and
+# must have been seen SENSE_MIN times in the Old Testament (qetseph "twig",
+# Hosea 10:7, occurs once and is never rendered orge, "wrath").  The Greek
+# word must render that sense at HEBREW_SHARE, and at least SENSE_RATIO of
+# the share it has over all the root's uses.
+SENSE_MIN = 3
+SENSE_RATIO = 0.33
+# ...and the New Testament word's own gloss must not name another sense of
+# the Hebrew word that the Greek word renders SENSE_OTHER times as often
+# (phyle, "tribe", renders shebet "tribe" at 0.81 and shebet "scepter" at
+# 0.29, so Revelation 5:5's tribe is not Genesis 49:10's scepter; skene,
+# "tabernacle", renders mishkan "tabernacle" at 0.88 and mishkan "dwelling"
+# with its family at 0.43, two glosses of one sense, Leviticus 26:11).
+SENSE_OTHER = 2.5
+# A neighbour of the listed verse is tested in its place only when it has
+# this many more of the New Testament verse's words witnessed.
+NEIGHBOUR_BY = 1
+# Greek word families by ending: a lemma with one of these endings taken
+# off, leaving a stem of STEM_MIN letters, is the same word as another with
+# the same stem (biblos and biblion, "book"; argyrion and argyrous; skene,
+# skenoma and skenoo, "tent", "dwelling", "to dwell").
+STEM_ENDINGS = ("ιδιον", "αριον", "ωμα", "ημα", "σις", "ευω", "ιζω", "οω", "εω", "αω",
+                "ιον", "ιος", "εια", "ια", "ος", "ον", "ης", "ευς", "ους",
+                "α", "η", "ω", "ις", "υς")
+STEM_MIN = 4
+# Word families by a shared beginning count only between words of like
+# length, so a compound is not its first part (eidolothytos, "offered to
+# idols", is not eidolon, "idol").
+KIN_LENGTH = 0.75
 # A pair is judged only when at least this many New Testament content
 # words are witnessed by one text or the other, and at least ANCHOR of
 # them are in both (the quotation's footing in both texts).
@@ -174,6 +223,8 @@ VERDICTS = [
 # quotations, "he saith" alone marks one.
 SPEAKERS = {"G3475", "G1138", "G2268", "G2408", "G5617", "G2243", "G1158", "G2493"}
 SAYING = {"λέγει", "λέγων", "εἴρηκεν", "φησίν", "λέγοντος"}
+# A speaker counts only within this many words before the saying verb.
+SPEAKER_BEFORE = 6
 # "The Holy Ghost saith": the Spirit counts as a speaker only with "holy".
 HOLY_SPIRIT = {"G4151", "G40"}
 # A marked citation is "free or from another text" when fewer than
@@ -232,6 +283,50 @@ class HebrewTest:
             hebrew_greek_map.build(6, hebrew_greek_map.MAP_FILE)
             self.map = hebrew_greek_map.load()
         self.hebrew = hebrew_greek_map.hebrew_verses(ATLAS_DIR / "lxx.db")
+        # The senses: each Hebrew word of a verse with its gloss and extended
+        # Strong's number, and what the Septuagint did with each sense
+        self.tokens = hebrew_greek_map.hebrew_tokens(ATLAS_DIR / "lxx.db")
+        senses = hebrew_greek_map.load_senses()
+        if senses is None:
+            print("Building the Hebrew sense map (once):")
+            hebrew_greek_map.build_senses()
+            senses = hebrew_greek_map.load_senses()
+        self.sense_map, self.sense_seen = senses
+        # The New Testament words' own English glosses, to tell a sense apart
+        self.nt_gloss = hebrew_greek_map.greek_glosses(ATLAS_DIR / "lxx.db")
+
+    def sense_ok(self, forms, e: str, root: str, h: str = "") -> bool:
+        """Whether a Greek word (forms) renders the sense root has in Old Testament verse e (see SENSE_MIN)."""
+        sm, seen = self.sense_map, self.sense_seen
+        def share(s):
+            # The sense's share for the word or a word of its family
+            got = sm.get(s, {})
+            return max([got.get(f, 0.0) for f in forms] +
+                       [v for g, v in got.items() if g not in forms and self.kin(forms[0], [g])])
+        for r, unit, key in self.tokens.get(e, []):
+            if r != root:
+                continue
+            sense = f"{r}|{key}"
+            if seen.get(sense, 0) < SENSE_MIN:
+                # A gloss too rare to judge: the extended Strong's number
+                # (wrath H7110A, twig H7110B)
+                sense = unit
+            if seen.get(sense, 0) < SENSE_MIN:
+                continue                      # a sense too rare to say what the Septuagint does with it
+            mine = share(sense)
+            overall = max((self.family_share(r, f) for f in forms), default=0.0)
+            if mine < HEBREW_SHARE or mine < SENSE_RATIO * overall:
+                continue
+            # The New Testament word's own gloss names another sense of this
+            # Hebrew word, one the Greek word renders twice as often: it is
+            # that sense, not this one (phyle, "tribe", Revelation 5:5,
+            # against shebet "scepter", Genesis 49:10)
+            other = self.nt_gloss.get(h, {}).get(forms[0], "")
+            if other and other != key and seen.get(f"{r}|{other}", 0) >= SENSE_MIN \
+                    and share(f"{r}|{other}") >= SENSE_OTHER * mine:
+                continue
+            return True
+        return False
 
     def content(self, vid) -> list:
         """A verse's distinct content keys, in order."""
@@ -294,25 +389,50 @@ class HebrewTest:
             best_root, share = None, 0.0
             for r in heb:
                 for f in forms:
-                    v = self.map.get(r, {}).get(f, 0.0)
+                    v = self.family_share(r, f)
                     if v > share:
                         best_root, share = r, v
-            if k in lxx:
-                if share >= HEBREW_SHARE:
-                    both.append(k)
-                elif k not in common and k in lxx_centre:
-                    lxx_only.append(k)
-            elif share >= HEBREW_SHARE and best_root in heb_centre and k not in common:
+            # The same, among the quoted verse's own Hebrew words only
+            centre_root, centre_share = None, 0.0
+            for r in heb_centre:
+                for f in forms:
+                    v = self.family_share(r, f)
+                    if v > centre_share:
+                        centre_root, centre_share = r, v
+            by_hebrew = False
+            if centre_share >= HEBREW_SHARE and k not in common and not (set(forms) & lxx_centre):
                 # The Septuagint must have rendered that Hebrew word some
                 # other way, or left it out: none of its usual renderings
                 # stands in the Septuagint's verse.  The common words
                 # (all, God, Lord, see, have, come) cannot decide: tried,
                 # they made a third of all quotations "Masoretic" by chance.
-                renders = self.map.get(best_root, {})
+                # Decided at the quoted verse, as a Septuagint-only word is:
+                # the word in the Septuagint's verse beside does not make it
+                # a word of both (Revelation 3:19 "rebuke", the Hebrew of
+                # Proverbs 3:12, where the Greek has "chasten"; the Greek
+                # has "rebuke" only in 3:11).  And it must render the sense
+                # the Hebrew word has here (see SENSE_MIN).
+                renders = self.map.get(centre_root, {})
                 usual = {g for g, v in renders.items() if v >= HEBREW_SHARE}
-                main = share >= MAIN_SHARE or share >= max(renders.values(), default=0.0)
-                if main and not (usual & lxx_centre):
-                    heb_only.append(k)
+                main = centre_share >= MAIN_SHARE or centre_share >= max(renders.values(), default=0.0)
+                by_hebrew = main and not (usual & lxx_centre) and self.sense_ok(forms, e, centre_root, h)
+            if by_hebrew:
+                heb_only.append(k)
+            elif k in lxx:
+                # A word of the Septuagint's quoted verse is decided there too:
+                # it is in both only if a Hebrew word of the same verse stands
+                # behind it (Revelation 3:19 "chasten", the Greek of Proverbs
+                # 3:12, where the Hebrew has "reprove"; the Hebrew has
+                # "chastening" only in 3:11).  A word only in the verse beside
+                # may be found with any Hebrew word of the spread.
+                # (The common words keep the whole spread: they cannot decide,
+                # but they anchor a quotation whose Hebrew is a verse away,
+                # Hebrews 1:6 and the long Greek of Deuteronomy 32:43.)
+                at_centre = bool(set(forms) & lxx_centre) and k not in common
+                if (centre_share if at_centre else share) >= HEBREW_SHARE:
+                    both.append(k)
+                elif k not in common and at_centre:
+                    lxx_only.append(k)
             elif share < HEBREW_SHARE and k not in common:
                 # A word neither text accounts for
                 unmatched.append(k)
@@ -322,19 +442,45 @@ class HebrewTest:
         r["quotation"] = bool(r["cites"] or (run >= RUN_QUOTE and run_content >= RUN_CONTENT))
         return r
 
+    def family_share(self, root: str, k) -> float:
+        """The share of root's renderings that went to k or a word of its family (biblos, biblion)."""
+        cache = self.__dict__.setdefault("_fs", {})
+        if (root, k) not in cache:
+            renders = self.map.get(root, {})
+            v = renders.get(k, 0.0)
+            for g, share in renders.items():
+                if share > v and g != k and self.kin(k, [g]):
+                    v = share
+            cache[(root, k)] = v
+        return cache[(root, k)]
+
     def kin(self, k, keys) -> str | None:
         """A key of the same word family as k among keys (see FAMILY), or None."""
         la = plain(self.texts.lemma(k) or "")
-        if len(la) < 5:
-            return None
+        sa = self.stem(la)
         for g in keys:
             lb = plain(self.texts.lemma(g) or "")
+            # One stem once the endings are off (biblos, biblion)
+            if sa and sa == self.stem(lb):
+                return g
+            # A shared beginning, between words of like length (argyria, argyrous)
+            if len(la) < 5:
+                continue
             n = 0
             while n < min(len(la), len(lb)) and la[n] == lb[n]:
                 n += 1
-            if n >= 5 and n >= 0.7 * min(len(la), len(lb)):
+            if n >= 5 and n >= 0.7 * min(len(la), len(lb)) \
+                    and min(len(la), len(lb)) >= KIN_LENGTH * max(len(la), len(lb)):
                 return g
         return None
+
+    @staticmethod
+    def stem(lemma: str) -> str:
+        """A lemma (accents off) with its ending taken off (see STEM_ENDINGS), or '' when too short."""
+        for end in STEM_ENDINGS:
+            if lemma.endswith(end) and len(lemma) - len(end) >= STEM_MIN:
+                return lemma[: -len(end)]
+        return ""
 
     def greek_run(self, nt, ot) -> tuple:
         """(length, content words) of the longest run of Greek the two verses share, articles stepped over."""
@@ -366,8 +512,15 @@ class HebrewTest:
             return True
         if (SCRIPTURE in keys or PROPHESY in keys) and words & self.SAYS_WIDE:
             return True
-        if words & self.SAYS and (SPEAKERS & keys or HOLY_SPIRIT <= keys or h.startswith("Hebrews ")):
+        if words & self.SAYS and (HOLY_SPIRIT <= keys or h.startswith("Hebrews ")):
             return True
+        # A named speaker (Moses, David, Isaiah) within SPEAKER_BEFORE words
+        # before the saying verb: "David saith" (Romans 11:9), not a verse
+        # that names David and has someone else speak (Revelation 5:5)
+        ks = t.keys[nt]
+        for i, w in enumerate(surf):
+            if w in self.SAYS and SPEAKERS & set(ks[max(0, i - SPEAKER_BEFORE):i]):
+                return True
         return False
 
     @staticmethod
@@ -377,7 +530,9 @@ class HebrewTest:
         both texts is a neighbour, not a second reading (2 Corinthians 13:1 quotes
         Deuteronomy 19:15, where the texts agree; its listing beside 17:6,
         which lacks "mouth" in Greek, is no Hebrew reading).  The best source
-        has the most words witnessed, then the most in both, then votes.
+        has the most words witnessed, then the most in both, then votes; a
+        source readers list more strongly than it is never demoted
+        (Revelation 3:19 keeps Proverbs 3:12, 33 votes, beside Job 5:17, 23).
         """
         judged = ("agree", "septuagint", "masoretic", "mixed")
         by_verse = defaultdict(list)
@@ -391,7 +546,7 @@ class HebrewTest:
             accounted = set(best["both"].split(", ")) if best["both"] else set()
             for r in rs:
                 if r is best or r["verdict"] == best["verdict"] or r["verdict"] == "agree" \
-                        or r["witnessed"] > best["witnessed"]:
+                        or r["witnessed"] > best["witnessed"] or (r["votes"] or 0) > (best["votes"] or 0):
                     continue
                 # Only when the best source has the weaker one's deciding
                 # words in both texts: then those words were never a reading
@@ -509,14 +664,28 @@ class HebrewTest:
                         results.append((r, verses.get(ref, 0)))
             best = None
             if results:
-                top = max(r["witnessed"] for r, v in results)
-                near = [(r, v) for r, v in results if r["witnessed"] >= top - 1]
-                best = max(near, key=lambda rv: (rv[0]["witnessed"], rv[1] > 0, rv[1], rv[0]["n_both"]))[0]
+                # The verse readers listed is kept unless a neighbour has
+                # clearly more of the New Testament verse's words, NEIGHBOUR_BY
+                # more (Revelation 6:16 alludes to Hosea 10:8, "say to the
+                # mountains, Cover us", not to 10:7 beside it)
+                key = lambda rv: (rv[0]["witnessed"], rv[1], rv[0]["n_both"])   # noqa: E731
+                listed_rs = [rv for rv in results if rv[1] > 0]
+                any_best = max(results, key=key)
+                best = any_best[0]
+                if listed_rs:
+                    lb = max(listed_rs, key=key)
+                    if any_best[1] == 0 and any_best[0]["witnessed"] < lb[0]["witnessed"] + NEIGHBOUR_BY:
+                        best = lb[0]
                 # A listed range is one quotation: the differing words found
                 # with each listed verse as the centre are pooled (Acts 15:17
                 # against Amos 9:11-12: "seek" is decided at 9:12)
                 listed = [r for r, v in results if v > 0 and r["verdict"] != "few"] or [best]
-                if len(listed) > 1:
+                if len(listed) == 1 and best["verdict"] == "few" and listed[0]["verdict"] != "few":
+                    # The one listed verse that can be judged, when the verse
+                    # with most words cannot (Revelation 3:19: Proverbs 3:11
+                    # has both words in both texts, 3:12 decides them)
+                    best = listed[0]
+                elif len(listed) > 1:
                     b_, l_, h_, u_ = [], [], [], []
                     for r in listed:
                         kb, kl, kh, ku = r["_keys"]
@@ -529,6 +698,9 @@ class HebrewTest:
                     if merged["verdict"] != "few":
                         best = merged
                 best["votes"] = max(verses.values())
+                # The verse readers listed most, shown beside the verse that scored
+                best["listed"] = max(verses, key=lambda ref: verses[ref])
+                best["listed_all"] = sorted(verses)
             if best:
                 best.pop("_keys", None)
                 best["book"] = book
@@ -613,11 +785,15 @@ class HebrewReport:
         rows = [r for r in self.judged if r.get("quotation")] if quotations_only else self.judged
         return Counter(r["verdict"] for r in rows)
 
-    LIMITS = ("Read these counts with the method's limits in mind.  The Septuagint is Rahlfs' Old Greek: a 'Hebrew' "
+    LIMITS = ("Read these counts with the method's limits in mind.  The Septuagint is Rahlfs' Old Greek, except "
+              "Daniel, where it is Theodotion's (the only Daniel keyed to the English verses in lxx.db): a 'Hebrew' "
               "reading may be a Greek revised toward the Hebrew (Theodotion's 'pierced').  The word map knows only "
-              "the Septuagint translators' choices, so a fresh rendering in other words is not seen as Hebrew.  A "
-              "Hebrew homonym is one number in the tagging ('wrath' and 'a twig').  Small words (prepositions, "
-              "number, person) are not weighed, so Romans 11:26's 'out of Zion' for 'to Zion' is not seen.")
+              "the Septuagint translators' choices, so a fresh rendering in other words is not seen as Hebrew.  "
+              "Hebrew homonyms and senses are told apart by TAHOT's glosses (qetseph 'wrath' and 'a twig'; shebet "
+              "'tribe' and 'scepter'), which is only as good as the glosses.  The test weighs words, not which "
+              "passage the writer had in mind: a reading rests on the verse readers link.  Small words "
+              "(prepositions, number, person) are not weighed, so Romans 11:26's 'out of Zion' for 'to Zion' is "
+              "not seen.")
 
     def by_book(self, key):
         out = defaultdict(Counter)
