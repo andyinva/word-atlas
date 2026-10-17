@@ -71,6 +71,7 @@ class RevelationReadings:
 
     def rows(self) -> list:
         rows = self.test.sort_book(BOOK)
+        HebrewTest.settle_sources(rows)
         HebrewTest.settle_free(rows)
         out = []
         for r in rows:

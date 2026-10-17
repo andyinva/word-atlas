@@ -129,12 +129,18 @@ FORMULA = {"G2531", "G1125", "G4137", "G4396", "G2443", "G3704", "G5618", "G1124
 # "fulfilled", "spoken"): a verse holding one may be judged on a single
 # decisive word (John 19:37, "another scripture saith, They shall look on
 # him whom they pierced").
-CITATION = {"G1124", "G4483"}
+CITATION = {"G4483"}
+# The participle "written" makes a citation only after "that which" or "as"
+# ("that which is written", Luke 20:17; "according to that which is
+# written", 2 Corinthians 4:13), not in "a name written" (Revelation 19:12)
+# or "the things which are written therein" (Revelation 1:3).
+WRITTEN = {"γεγραμμένον", "γεγραμμένα", "γεγραμμένος", "γεγραμμένη", "γεγραμμένοις"}
+WRITTEN_AFTER = {"τὸ", "τὰ", "κατὰ", "καθὼς", "ὡς", "τοῦ", "τῷ", "ὁ", "ἡ"}  # "ὁ λόγος ὁ γεγραμμένος", 1 Cor 15:54
 # The forms of "write" and "fulfil" that make a citation formula ("it is
 # written", "that it might be fulfilled"), not the verbs in every sense
 # ("filled with all unrighteousness", Romans 1:29; "Write", Revelation 14:13).
-FORMULA_FORMS = {"γέγραπται", "γεγραμμένον", "γεγραμμένα", "γεγραμμένος", "γεγραμμένη", "γεγραμμένοις",
-                 "ἐγράφη", "πληρωθῇ", "ἐπληρώθη", "πεπλήρωται", "πληρωθῆναι", "πληρωθῶσιν", "πληρωθήσονται"}
+FORMULA_FORMS = {"γέγραπται",
+                 "πληρωθῇ", "ἐπληρώθη", "πεπλήρωται", "πληρωθῆναι", "πληρωθῶσιν", "πληρωθήσονται"}
 # The Old Testament side is read with this many verses either side of the
 # verse (Revelation 1:7 draws on Zechariah 12:10 to 12:12).
 SPREAD = 1
@@ -175,6 +181,27 @@ HOLY_SPIRIT = {"G4151", "G40"}
 # content words match neither the Septuagint nor any rendering of the
 # Hebrew verse, and readers list the source with SHORT_VOTES or more.
 FREE_UNMATCHED = 3
+# Readers' votes a free citation's source needs: enough to keep a verse that
+# only mentions scripture out, low enough for Matthew 2:23 (14 votes).
+FREE_VOTES = 14
+# "The scripture" (graphe) marks a citation only beside a verb of saying or
+# fulfilling ("the scripture saith", James 4:5; "as the scripture hath said",
+# John 7:38), not in "search the scriptures" (John 5:39).  "Prophesied,
+# saying" (Jude 1:14, the quotation of Enoch) marks one too.
+SCRIPTURE = "G1124"
+PROPHESY = "G4395"
+SAYING_WIDE = {"λέγει", "λέγων", "εἴρηκεν", "φησίν", "λέγοντος", "εἶπεν", "λέγουσα"}
+# A quotation is the population the headline counts: a marked citation, or
+# a run of Greek shared with the Septuagint of RUN_QUOTE words or more,
+# RUN_CONTENT of them content words (articles stepped over).  The other
+# listed cross references are reported apart, as allusions to explore.
+RUN_QUOTE = 5
+RUN_CONTENT = 3
+# A short formula with a run of RUN_SHORT or more Greek words in common with
+# the Septuagint is judged "all agree" when no word differs, though fewer
+# than MIN_WITNESSED content words are witnessed ("be ye holy, for I am
+# holy", 1 Peter 1:16 and Leviticus 11:44: one content word, a run of five).
+RUN_SHORT = 4
 
 # The cases the reader named (Andrew Hopkins), checked in the report.
 NAMED_CASES = [
@@ -197,6 +224,7 @@ class HebrewTest:
         self.min_votes = min_votes          # votes a listed link needs to be tested (--votes)
         HebrewTest.FORMS = {plain(w) for w in FORMULA_FORMS}
         HebrewTest.SAYS = {plain(w) for w in SAYING}
+        HebrewTest.SAYS_WIDE = {plain(w) for w in SAYING_WIDE}
         self.texts = sorter.texts
         self.map = hebrew_greek_map.load()
         if self.map is None:
@@ -250,12 +278,25 @@ class HebrewTest:
         for k in self.content(nt):
             if k in FORMULA:
                 continue
-            # The Hebrew word this Greek word renders best, and how often
+            # A word of the same family in the Septuagint counts as the word
+            # (argyria and argyrous, "silver", Matthew 27:9; tympanizein and
+            # tympanon): one Strong's number each, one word to a reader
+            forms = [k]
+            if k not in lxx:
+                kin = self.kin(k, lxx)
+                if kin:
+                    lxx.add(k)
+                    forms.append(kin)
+                    if kin in lxx_centre:
+                        lxx_centre.add(k)
+            # The Hebrew word this Greek word (or its kin in the Septuagint)
+            # renders best, and how often
             best_root, share = None, 0.0
             for r in heb:
-                v = self.map.get(r, {}).get(k, 0.0)
-                if v > share:
-                    best_root, share = r, v
+                for f in forms:
+                    v = self.map.get(r, {}).get(f, 0.0)
+                    if v > share:
+                        best_root, share = r, v
             if k in lxx:
                 if share >= HEBREW_SHARE:
                     both.append(k)
@@ -275,12 +316,42 @@ class HebrewTest:
             elif share < HEBREW_SHARE and k not in common:
                 # A word neither text accounts for
                 unmatched.append(k)
-        return self.verdict(h, e, both, lxx_only, heb_only, self.cites(h, nt), unmatched)
+        run, run_content = self.greek_run(nt, ot)
+        r = self.verdict(h, e, both, lxx_only, heb_only, self.cites(h, nt), unmatched, run)
+        r["run"] = run
+        r["quotation"] = bool(r["cites"] or (run >= RUN_QUOTE and run_content >= RUN_CONTENT))
+        return r
+
+    def kin(self, k, keys) -> str | None:
+        """A key of the same word family as k among keys (see FAMILY), or None."""
+        la = plain(self.texts.lemma(k) or "")
+        if len(la) < 5:
+            return None
+        for g in keys:
+            lb = plain(self.texts.lemma(g) or "")
+            n = 0
+            while n < min(len(la), len(lb)) and la[n] == lb[n]:
+                n += 1
+            if n >= 5 and n >= 0.7 * min(len(la), len(lb)):
+                return g
+        return None
+
+    def greek_run(self, nt, ot) -> tuple:
+        """(length, content words) of the longest run of Greek the two verses share, articles stepped over."""
+        S, t = self.s.S, self.texts
+        a2, a_pos, a_st = S.without_articles(t.keys[nt], t.stop[nt])
+        b2, _, _ = S.without_articles(t.keys[ot])
+        n, start, _ = S.longest_common_run(a2, b2, a_st)
+        if not n:
+            return 0, 0
+        content = sum(1 for i in range(start, start + n) if not t.stop[nt][a_pos[i]])
+        return n, content
 
     # The formula forms with accents stripped (the texts spell the accents
     # with more than one set of Unicode characters)
     FORMS = None
     SAYS = None
+    SAYS_WIDE = None
 
     def cites(self, h: str, nt) -> bool:
         """Whether the New Testament verse marks a citation (see CITATION and SPEAKERS)."""
@@ -288,9 +359,50 @@ class HebrewTest:
         keys, words = set(t.keys[nt]), {plain(w) for w in t.surface[nt]}
         if CITATION & keys or self.FORMS & words:
             return True
+        surf = [plain(w) for w in t.surface[nt]]
+        written = {plain(w) for w in WRITTEN}
+        after = {plain(w) for w in WRITTEN_AFTER}
+        if any(w in written and i and surf[i - 1] in after for i, w in enumerate(surf)):
+            return True
+        if (SCRIPTURE in keys or PROPHESY in keys) and words & self.SAYS_WIDE:
+            return True
         if words & self.SAYS and (SPEAKERS & keys or HOLY_SPIRIT <= keys or h.startswith("Hebrews ")):
             return True
         return False
+
+    @staticmethod
+    def settle_sources(rows: list) -> None:
+        """
+        A weaker listed source whose deciding words the best source has in
+        both texts is a neighbour, not a second reading (2 Corinthians 13:1 quotes
+        Deuteronomy 19:15, where the texts agree; its listing beside 17:6,
+        which lacks "mouth" in Greek, is no Hebrew reading).  The best source
+        has the most words witnessed, then the most in both, then votes.
+        """
+        judged = ("agree", "septuagint", "masoretic", "mixed")
+        by_verse = defaultdict(list)
+        for r in rows:
+            if r["verdict"] in judged:
+                by_verse[r["here"]].append(r)
+        for rs in by_verse.values():
+            if len(rs) < 2:
+                continue
+            best = max(rs, key=lambda r: (r["witnessed"], r["n_both"], r["votes"] or 0))
+            accounted = set(best["both"].split(", ")) if best["both"] else set()
+            for r in rs:
+                if r is best or r["verdict"] == best["verdict"] or r["verdict"] == "agree" \
+                        or r["witnessed"] > best["witnessed"]:
+                    continue
+                # Only when the best source has the weaker one's deciding
+                # words in both texts: then those words were never a reading
+                # (2 Corinthians 13:1: "mouth" stands in Deuteronomy 19:15's
+                # Greek).  A composite quotation keeps its second source
+                # (Revelation 1:7: Daniel 7:13's clouds and Zechariah 12:10's
+                # "pierced", which Daniel does not account for).
+                deciding = {w for w in (r["septuagint_only"] + ", " + r["hebrew_only"]).split(", ") if w}
+                if deciding and deciding <= accounted:
+                    r["verdict"] = "few"
+                    r["weaker_source"] = best["there"]
 
     @staticmethod
     def settle_free(rows: list) -> None:
@@ -315,7 +427,7 @@ class HebrewTest:
             else:
                 r["verdict"] = "few"
 
-    def verdict(self, h, e, both, lxx_only, heb_only, cites, unmatched=()) -> dict:
+    def verdict(self, h, e, both, lxx_only, heb_only, cites, unmatched=(), run=0) -> dict:
         """The verdict on a pair from its words (see THE VERDICTS)."""
         t = self.texts
         both = list(dict.fromkeys(both))
@@ -329,12 +441,15 @@ class HebrewTest:
         short_ok = differs and votes >= SHORT_VOTES and (n >= 2 or cites)
         unmatched = [k for k in dict.fromkeys(unmatched) if k not in both and k not in lxx_only
                      and k not in heb_only]
-        if (n < MIN_WITNESSED or len(both) < ANCHOR) and not short_ok:
+        formula_ok = run >= RUN_SHORT and not differs and both and (cites or votes >= SHORT_VOTES)
+        if formula_ok and (n < MIN_WITNESSED or len(both) < ANCHOR):
+            # A short formula carried by a run of Greek in common, no word
+            # differing: the texts agree (1 Peter 1:16, "be ye holy")
+            verdict = "agree"
+        elif (n < MIN_WITNESSED or len(both) < ANCHOR) and not short_ok:
             # A marked citation whose words neither text accounts for is a
             # finding, not an allusion: free, or from another text
-            # (and readers list the source strongly: a verse that only
-            # mentions scripture, "search the scriptures", is no citation)
-            verdict = "free" if cites and len(unmatched) >= FREE_UNMATCHED and votes >= SHORT_VOTES else "few"
+            verdict = "free" if cites and len(unmatched) >= FREE_UNMATCHED and votes >= FREE_VOTES else "few"
         elif lxx_only and heb_only:
             verdict = "mixed"
         elif lxx_only:
@@ -347,7 +462,7 @@ class HebrewTest:
         return {"here": h, "there": e, "verdict": verdict, "witnessed": n, "cites": cites,
                 "both": word(both), "septuagint_only": word(lxx_only), "hebrew_only": word(heb_only),
                 "n_both": len(both), "n_lxx": len(lxx_only), "n_heb": len(heb_only),
-                "unmatched": word(unmatched), "votes": votes,
+                "unmatched": word(unmatched), "votes": votes, "run": run,
                 "_keys": (both, lxx_only, heb_only, unmatched)}
 
     # --- the pairs ---------------------------------------------------------
@@ -409,7 +524,8 @@ class HebrewTest:
                         l_ += kl
                         h_ += kh
                         u_ += ku
-                    merged = self.verdict(h, best["there"], b_, l_, h_, best["cites"], u_)
+                    merged = self.verdict(h, best["there"], b_, l_, h_, best["cites"], u_, best.get("run", 0))
+                    merged["run"], merged["quotation"] = best.get("run", 0), best.get("quotation", False)
                     if merged["verdict"] != "few":
                         best = merged
                 best["votes"] = max(verses.values())
@@ -493,8 +609,15 @@ class HebrewReport:
         self.judged = [r for r in rows if r["verdict"] != "few"]
         self.english = english_rows or {}
 
-    def totals(self):
-        return Counter(r["verdict"] for r in self.judged)
+    def totals(self, quotations_only: bool = False):
+        rows = [r for r in self.judged if r.get("quotation")] if quotations_only else self.judged
+        return Counter(r["verdict"] for r in rows)
+
+    LIMITS = ("Read these counts with the method's limits in mind.  The Septuagint is Rahlfs' Old Greek: a 'Hebrew' "
+              "reading may be a Greek revised toward the Hebrew (Theodotion's 'pierced').  The word map knows only "
+              "the Septuagint translators' choices, so a fresh rendering in other words is not seen as Hebrew.  A "
+              "Hebrew homonym is one number in the tagging ('wrath' and 'a twig').  Small words (prepositions, "
+              "number, person) are not weighed, so Romans 11:26's 'out of Zion' for 'to Zion' is not seen.")
 
     def by_book(self, key):
         out = defaultdict(Counter)
@@ -515,11 +638,19 @@ class HebrewReport:
     def text(self) -> str:
         t = self.totals()
         n = sum(t.values())
-        out = ["WHICH TEXT DID THE NEW TESTAMENT QUOTE?  (word by word against the Hebrew)",
-               f"{len(self.rows):,} listed pairs tested; {n:,} with {MIN_WITNESSED} or more words witnessed "
-               f"(the rest are allusions, not judged).", ""]
+        q = self.totals(True)
+        nq = sum(q.values())
+        out = ["WHICH TEXT DID THE NEW TESTAMENT QUOTE?  (word by word against the Hebrew)", "",
+               f"QUOTATIONS  ({nq:,}: marked citations, or a run of {RUN_QUOTE} or more Greek words shared with the "
+               f"Septuagint, {RUN_CONTENT} of them content words)"]
         for k, label, desc in VERDICTS:
-            out.append(f"  {label:<20} {t[k]:>5} ({100 * t[k] / max(n, 1):.0f}%)   {desc}")
+            out.append(f"  {label:<28} {q[k]:>5} ({100 * q[k] / max(nq, 1):.0f}%)   {desc}")
+        out += ["", f"ALL LISTED CROSS REFERENCES JUDGED  ({n:,} of {len(self.rows):,} tested; the rest have too few "
+                    f"words witnessed and are allusions)"]
+        for k, label, desc in VERDICTS:
+            out.append(f"  {label:<28} {t[k]:>5} ({100 * t[k] / max(n, 1):.0f}%)")
+        import textwrap
+        out += [""] + textwrap.wrap(self.LIMITS, 100, initial_indent="  ", subsequent_indent="  ")
         out += ["", "THE NAMED CASES"]
         for c in self.named:
             out.append(f"  {c['here']:<18} {c['there']:<26} found: {c.get('found', '-')}")
@@ -574,7 +705,12 @@ class HebrewReport:
                 for i, c in enumerate(row)) + "</tr>" for row in body)
             return f"<div class='wrap'><table><tr>{h}</tr>{rows}</table></div>"
 
-        stats = "".join(f"<div class='stat'><b>{t[k]:,}</b><span>{escape(lab)}</span></div>" for k, lab, _ in VERDICTS)
+        q = self.totals(True)
+        nq = sum(q.values())
+        stats = "".join(f"<div class='stat'><b>{q[k]:,}</b><span>{escape(lab)}</span></div>" for k, lab, _ in VERDICTS)
+        quote_rows = "".join(f"<tr><td>{escape(lab)}</td><td class='n'>{q[k]}</td><td class='n'>"
+                             f"{100 * q[k] / max(nq, 1):.0f}%</td><td class='n'>{t[k]}</td><td class='n'>"
+                             f"{100 * t[k] / max(n, 1):.0f}%</td></tr>" for k, lab, _ in VERDICTS)
         named = table(["New Testament", "Old Testament", "expected", "found", "Septuagint only", "by the Hebrew only",
                        "in both / shared"],
                       [[c["here"], c["there"], c["expected"], c.get("found", ""), c.get("septuagint_only", ""),
@@ -614,7 +750,15 @@ from the {len(self.hebrew_note)} verses the Hebrew and the Septuagint share. {le
 were tested; {n:,} have {MIN_WITNESSED} or more words witnessed by one text or the other and are judged; the rest are
 allusions.</p>
 <div class="stats">{stats}</div>
-<p>Of the judged quotations, {100 * t['agree'] / max(n, 1):.0f}% agree with both texts in every witnessed word,
+<p><b>Read first.</b> {escape(self.LIMITS)}</p>
+<h2>Quotations, and the wider cross references</h2>
+<p>The headline counts quotations only: {nq:,} pairs that are a marked citation ("it is written", "the scripture
+saith", "Moses saith"), or share a run of {RUN_QUOTE} or more Greek words with the Septuagint, {RUN_CONTENT} of them
+content words. The second column counts every listed cross reference with enough words to judge, allusions
+included; allusions lean to the Hebrew because a writer alluding in his own Greek lands on the usual rendering.</p>
+<div class="wrap"><table><tr><th>verdict</th><th>quotations</th><th>share</th><th>all judged cross references</th>
+<th>share</th></tr>{quote_rows}</table></div>
+<p>Of all judged cross references, {100 * t['agree'] / max(n, 1):.0f}% agree with both texts in every witnessed word,
 {100 * t['septuagint'] / max(n, 1):.0f}% follow the Septuagint where the Hebrew differs,
 {100 * t['masoretic'] / max(n, 1):.0f}% follow the Hebrew where Rahlfs' Greek differs,
 {100 * t['mixed'] / max(n, 1):.0f}% follow each in a different word, and {t['free']} marked citations match neither
@@ -710,6 +854,7 @@ def main() -> None:
             c = Counter(r["verdict"] for r in got)
             print(f"  {book:<16} " + "  ".join(f"{k} {c[k]}" for k in ("agree", "septuagint", "masoretic", "mixed", "few")))
             rows += got
+    HebrewTest.settle_sources(rows)
     HebrewTest.settle_free(rows)
     apocrypha = test.septuagint_only()
     named = test.named_cases()
