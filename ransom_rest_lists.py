@@ -11,6 +11,9 @@ or stored on their own with this file:
     python3 ransom_rest_lists.py            # add the two lists and the passage
     python3 ransom_rest_lists.py --remove   # take them out again
 
+It also stores two named passages, "Genesis 15" and "Genesis 17", for the
+queries document's section 8 (the two covenants and their readers).
+
 This file only adds rows to metadata.db's word_lists and passages tables;
 it never deletes the lists atlas_feelings.py owns.  After storing, the
 strips are drawn by atlas_heat.py with --families, beside the four lists
@@ -132,6 +135,7 @@ STATIONS = [
     (2, 40, 34, 40, 38),    # the glory fills the tabernacle
     (3, 5, 14, 5, 19),      # the trespass offering
     (4, 3, 40, 3, 51),      # the redemption silver to Aaron
+    (4, 8, 5, 8, 22),       # the Levites waved, "that there be no plague" (added 2026-10-18)
     (4, 10, 33, 10, 36),    # the ark seeks a resting place
     (5, 12, 8, 12, 11),     # the rest and the inheritance
     (8, 1, 1, 1, 22),       # Ruth: Naomi's blessing of rest
@@ -161,6 +165,32 @@ STATIONS = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Two more named passages, for section 8 of the queries document: the
+# covenant between the pieces against the covenant of circumcision, each
+# opened as its own Passage page to see who reads it.
+# ---------------------------------------------------------------------------
+
+EXTRA_PASSAGES = [
+    ("Genesis 15", "The covenant between the pieces: the fire passing between at night, the exodus foretold "
+                   "(queries document, section 8)", [(1, 15, 1, 15, 21)]),
+    ("Genesis 17", "The covenant of circumcision: Abram renamed, the cut in the flesh, the son promised "
+                   "(queries document, section 8)", [(1, 17, 1, 17, 27)]),
+]
+
+
+def store_passage(conn, name: str, description: str, ranges: list) -> None:
+    """Replace one named passage and its ranges."""
+    row = conn.execute("SELECT passage_id FROM passages WHERE name = ?", (name,)).fetchone()
+    if row:
+        conn.execute("DELETE FROM passage_ranges WHERE passage_id = ?", (row[0],))
+        conn.execute("DELETE FROM passages WHERE passage_id = ?", (row[0],))
+    cur = conn.execute("INSERT INTO passages (name, description, source_note) VALUES (?, ?, ?)",
+                       (name, description, PASSAGE_SOURCE))
+    conn.executemany("INSERT INTO passage_ranges VALUES (?, ?, ?, ?, ?, ?)",
+                     [(cur.lastrowid, *r) for r in ranges])
+
+
 def store(metadata_path: Path, remove: bool = False) -> None:
     """Add (or remove) the two lists and the passage in metadata.db."""
     conn = sqlite3.connect(metadata_path)
@@ -172,10 +202,11 @@ def store(metadata_path: Path, remove: bool = False) -> None:
         if remove:
             for name in WORD_LISTS:
                 conn.execute("DELETE FROM word_lists WHERE list = ?", (name,))
-            row = conn.execute("SELECT passage_id FROM passages WHERE name = ?", (PASSAGE_NAME,)).fetchone()
-            if row:
-                conn.execute("DELETE FROM passage_ranges WHERE passage_id = ?", (row[0],))
-                conn.execute("DELETE FROM passages WHERE passage_id = ?", (row[0],))
+            for name in [PASSAGE_NAME] + [p[0] for p in EXTRA_PASSAGES]:
+                row = conn.execute("SELECT passage_id FROM passages WHERE name = ?", (name,)).fetchone()
+                if row:
+                    conn.execute("DELETE FROM passage_ranges WHERE passage_id = ?", (row[0],))
+                    conn.execute("DELETE FROM passages WHERE passage_id = ?", (row[0],))
             print("Removed the ransom and rest lists and the passage.")
             return
         # The lists: replace our own rows only.
@@ -193,8 +224,12 @@ def store(metadata_path: Path, remove: bool = False) -> None:
         pid = cur.lastrowid
         conn.executemany("INSERT INTO passage_ranges VALUES (?, ?, ?, ?, ?, ?)",
                          [(pid, *r) for r in STATIONS])
+        # The two covenant passages of section 8
+        for name, description, ranges in EXTRA_PASSAGES:
+            store_passage(conn, name, description, ranges)
     counts = ", ".join(f"{n} {len(w)}" for n, w in WORD_LISTS.items())
-    print(f"Stored lists ({counts}) and passage '{PASSAGE_NAME}' ({len(STATIONS)} ranges) in {metadata_path}.")
+    print(f"Stored lists ({counts}) and passage '{PASSAGE_NAME}' ({len(STATIONS)} ranges), with "
+          f"{', '.join(repr(p[0]) for p in EXTRA_PASSAGES)}, in {metadata_path}.")
 
 
 def main() -> None:

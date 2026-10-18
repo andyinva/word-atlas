@@ -1103,6 +1103,27 @@ rule for paqad) are in the write-up, not applied. Seen on the page:
 it labels H727 "coffin", the rarest spelling, though the passage
 spells it "ark" 63 times.
 
+**Done later 2026-10-18: the queries document's new entries.** Its
+section 7 addition ('touch' and 'sprinkle'), section 8 (Genesis 15
+against Genesis 17) and section 9 (the Levites; the camp and the
+chariot) were run and written up in
+reports/Analysis/ABRAM_ABRAHAM_SECTIONS_8_9.md. ransom_rest_lists.py
+now also stores the named passages "Genesis 15" and "Genesis 17", and
+adds Numbers 8:5-22 to "Ransom and rest" (44 ranges). With 'touch' in
+the ransom list, Genesis 12 lights (z 2.59) and the ransom strip has
+10 hits of 13; RANSOM_AND_REST_STRIPS.md was regenerated. Section 8
+comes out as the paper expects: Genesis 15 is read with the exodus
+(Exodus 12 to 14, 226 rabbinic co-citations; the Mekhilta six times)
+and by the New Testament's faith verses (James 2:23, Galatians 3:6,
+Romans 4:3), Genesis 17 with the rite and the heart (Leviticus 12:3,
+Joshua 5, Jeremiah 9, Deuteronomy 10:16; Pirkei de-Rabbi Eliezer 29
+with Leviticus 16 or 23); the New Testament reads Genesis 17 for the
+covenant formula more than for circumcision. Section 9's camp and
+chariot claim is not in the shared phrasing (Numbers meets Ezekiel 40
+to 48, not 1 and 10), except Numbers 7:89 against Ezekiel 2:2 and 10:5,
+the voice from the mercy seat; Revelation 7 against Numbers 1 is. The
+word, Passage and Compare pages the sections name are in reports/.
+
 ## Reviewer's open items from the dossier and links reviews (2026-10-17)
 
 **A chapter-against-chapter page across books.** The Ezekiel 7 with
