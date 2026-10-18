@@ -905,18 +905,203 @@ listed verse shown beside the scored one, mixed verdicts possible,
 Daniel labelled as Theodotion's. Quotations now: 248 agree, 61
 Septuagint, 15 Hebrew, 1 mixed, 14 free, 18 weak. Revelation:
 confirmed 2 Septuagint, 4 Hebrew, 1 mixed; one word 6 and 5.
-Still open here: (e) and (f).
+Later the same day, from the reviewer's read of those two reports: a
+proper name cannot stand behind a common Greek word, nor a common
+Hebrew word behind a Greek name, and a rare Greek word with only a
+stray pairing is "unaligned", counted as neither text nor wording
+(Hebrews 5:6 and 7:21 taxis, Hebrews 11:5, Matthew 24:21 and Mark
+13:19 hoios, Revelation 1:16 distomos); TAHOT's split glosses joined
+("re-" and "-lease" is "release", Isaiah 61:1); a Hebrew word glossed
+as the New Testament word is its counterpart first. Septuagint
+readings among the quotations: 37 text, 15 wording, 9 unaligned. (e)
+done in part: a deuterocanonical run is left out when a Hebrew-backed
+verse carries it or a linked one holds all its content words (Matthew
+22:37, Hebrews 8:10 gone); the language's common stock and phrases
+many verses share are one list ("for ever and ever, amen" one row for
+12 verses; 333 stock rows, 40 printed); additions and unnumbered
+verses inside Hebrew books have their own heading; the list has
+strength bands. The list is 61 rows. Still open: mapping the
+unnumbered verses through TVTMS into the main tables. In
+revelation_readings: Septuagint-only words carry the text, wording or
+unaligned tag, and wording-only rows are listed apart, not counted
+(Deuteronomy 32:4's alethinos and hosios now fall there: worth a
+second look, since the first review called them strong); Daniel rows
+say "Theodotion reading"; each Revelation verse counted once at its
+strongest tier (21:3 once), with a note that hebrew_readings counts
+pairs. Still open here: (f), and TVTMS for the unnumbered verses.
+(This paragraph was restored by the reviewer on 2026-10-17 after the
+file on disk was found to have lost it; it is the assistant's own
+record, copied back word for word.)
 
-**What the counts showed (for the write-ups).** Revelation is the one
-book with more Hebrew readings than Septuagint (21 to 13), and its
-strong Hebrew cases (1:7, 3:7, 3:9, 7:17 and 21:4, 19:2, 21:3, 22:2)
-are prophetic vision material while its Septuagint readings sit in
-the hymns (Psalm 2:9 three times, the Song of Moses in 15:3 to 4). By
-Old Testament book, the Torah and Psalms go to the Septuagint and the
-Twelve, Daniel, Jeremiah and Malachi go to the Hebrew, which are the
-books whose Old Greek was revised toward the Hebrew earliest (Nahal
-Hever, Theodotion's Daniel). Written up in
-reports/Analysis/EARLY_VERSIONS_PLAIN.md.
+**What the counts showed (for the write-ups; corrected 2026-10-17
+after the floor).** Revelation is the one book with more Hebrew
+readings than Septuagint: 5 to 2 by the strict count, 9 to 8 with the
+one-word tier, down from 21 to 13 before the floor. The strong Hebrew
+cases (1:7, 3:7, 7:17 and 21:4, 19:2, 21:3, 22:2) are prophetic vision
+material; 3:9, listed as Hebrew in the first read, agrees with both
+texts at Isaiah 49:23 and was the wrong verse. The Septuagint
+readings sit in the hymns (Psalm 2:9 three times; the Song of Moses
+in 15:3 to 4, now wording rather than text, which is right, and the
+hymn point stands on Psalm 2:9 alone). The by-book trend of the first
+read (the Twelve, Daniel and Jeremiah to the Hebrew) dissolved under
+the floor; only Zechariah (1 to 4) and Ezekiel (0 to 3) still lean to
+the Hebrew, and the write-up says so. Written up in
+reports/Analysis/EARLY_VERSIONS_PLAIN.md and
+reports/Analysis/REVELATION_IN_WORD_ATLAS.md.
+
+## Runs and scatters in Revelation (reviewer's notes, 2026-10-17)
+
+**The distinction.** Revelation uses its sources two ways. A run keeps
+a stretch of the source, several words together in the source's
+order (2:23 is Jeremiah 17:10 nearly word for word; 10:9 to 10 carries
+Ezekiel 3:1 to 3 in order; 1:14 has eight words of Daniel 7:9). A
+scatter drops two or three words of a source into a sentence of
+John's ("the key of David", "the second death", "every eye shall see
+him"). The natural reading is that a run is written with the source
+open and a scatter from memory, but memory holds long runs of songs
+and a man with a scroll can take one word, so the report should name
+what the text does (run, scatter, block) and leave "copied" and
+"remembered" to the reader. A third kind is kept apart from both:
+phrases shared with many verses at once ("a great voice", "heaven
+and earth and the sea"), the common stock the deuterocanon list
+already folds.
+
+**(a) Run length.** The Revelation report counts shared words as a
+bag. Beside that count give the longest run of them standing in the
+same order in both texts, with the one-word gaps 4e already bridges.
+A longest run of four or more content words is a run; three or more
+shared words with no run over two is a scatter. Apply the
+common-stock fold first so stock phrases are not scatters.
+
+**(b) Order.** For each source book, list the Revelation verses that
+use it in Revelation's order with the source chapter beside each;
+count how many consecutive uses rise with the source (reading
+through) and how many jump (recalling). Vanhoye's Ezekiel sequence
+(Ezekiel 1 in Revelation 4, 2 to 3 in 10, 9 in 7, 26 to 27 in 18, 38
+to 39 in 19 to 20, 40 to 48 in 21 to 22) and Jeremiah 50 to 51 in
+Revelation 18 are the expected in-order sources; Daniel 7 (chapters
+1, 13, 20) and Zechariah 4 (1, 5, 11) the expected out-of-order
+anchors.
+
+**(c) Clustering.** A chapter of Revelation that uses one chapter of
+a source three or more times is a block; a block of runs in order is
+the strongest sign the source was open. The six Ezekiel blocks should
+come out of (a) to (c) without being told where they are; if they do,
+the test is calibrated.
+
+**(d) The hypothesis to test: visions against voices.** A first sort
+of the current report's 231 agreeing pairs by chapter and shared-word
+count puts every pair of five or more words in a set-piece vision
+(chapters 1, 4, 5, 10, 13, 20: Daniel 7, Ezekiel 1 and 3 and 10,
+Isaiah 6, Zechariah 3 and 4) and finds no run at all in the letters,
+the hymns of 7 and 19, or the new Jerusalem of 21 (twenty-one pairs,
+thirteen of them single Isaiah 60 to 65 phrases). The one exception
+is the song of 15:3 to 4 (five runs, nine words of Psalm 86), a hymn
+made of hymns. So: when the book shows, it reads a prophet in a
+block; when heaven speaks or sings, it uses scattered phrases. The
+run-length test should confirm or break this; a chapter table
+(chapter, pairs, runs, scatters, leading source, mode: letter, vision,
+hymn, speech) is the output wanted.
+
+**(e) Cross-check with 7d.** The one seam the function words find in
+Revelation is the letters (1 to 3) against the visions (thou, I, ye
+high; Delta 0.78 against the rest, the three vision parts within the
+halves yardstick of each other). That is the same line, speaking
+against seeing, drawn by another measure; the chapter table in (d)
+could carry 7d's Delta per part so the two sit together.
+
+**(f) Beyond Revelation.** The same three measures apply to any book
+that uses another without citing it: Matthew's and Luke's use of Mark
+(blocks in order), Chronicles' use of Samuel and Kings, Jude in
+2 Peter, and the Gospel of John's use of the Psalms. Once calibrated
+on Revelation and Ezekiel, run them on the Synoptic pairs, where the
+answer is known, as a second calibration.
+
+## Ransom and rest: two strips and a passage for the Abraham paper (2026-10-17)
+
+**What.** reports/Analysis/ABRAM_ABRAHAM_ATLAS_QUERIES.md lists the
+pages the paper "Abram and Abraham" wants. Its thread (Sarah taken
+and returned under a covering, the ark taken and returned with its
+offering, the ransom silver and the sockets, the cave and the
+threshing floor bought after being offered, the barren women visited,
+rest in the house of the husband and the house of rest for the ark,
+the freewill and whole offering, Moriah) is a word list as much as a
+reading, and ransom_rest_lists.py in the project folder holds it in
+atlas_feelings.py's WORD_LISTS form: two lists, "ransom" (37 roots:
+silver, kaphar and its nouns, padah and ga'al, restitution, trespass,
+plague, barren, covering) and "rest" (33 roots: nuach and its nouns,
+visited, married with Baal the god excluded, the freewill and burnt
+offering, whole and perfect, covenant, circumcision, inheritance,
+Shaddai, Moriah, ark, foundation), and one named passage, "Ransom and
+rest", of 43 ranges, the stations of the thread from Genesis 12 to
+Revelation 21. `python3 ransom_rest_lists.py` adds them to metadata.db
+beside the four lists there; `--remove` takes them out. Tested on a
+copy of metadata.db 2026-10-17 (add, read back, remove).
+
+**(a) Run the strips.** atlas_heat.py --families on Genesis, Exodus,
+Numbers, Ruth, 1 and 2 Samuel, 1 Chronicles, Isaiah, Jeremiah, Hosea
+and Revelation, with the two new strips beside the content strips.
+The test: "ransom" should run hot at Genesis 12 and 20, Exodus 30 and
+38, Leviticus 5, Numbers 3 and 18, 1 Samuel 5 to 6, 2 Samuel 24,
+Jeremiah 32 and Hosea 3; "rest" at Genesis 17, 21 to 23, Exodus 25
+and 35 to 36, Numbers 10, Deuteronomy 12, Ruth, 1 Samuel 1 to 2, 2
+Samuel 6 to 7, 1 Kings 8, 1 Chronicles 21 to 29, Psalm 132, Isaiah 54
+and 62. Windows the strips light that are not on that list are the
+paper's discoveries (expected: Leviticus 25, Numbers 35, Psalm 49,
+Isaiah 43:3, Job 33:24, Zechariah 11, Hosea 13:14, Mark 10:45, Acts
+1:18 to 19). Report both the hits and the misses.
+
+**(b) The Passage page.** Open "Ransom and rest" as a Passage page:
+its signature words against the rest of the testament are the check
+on the lists (a root the page finds key that the lists lack belongs
+in them; a list root the page does not find is a weak link), and its
+echo table and "who reads whom" give the paper its cross-references.
+
+**(c) The stations table.** The events of the thread (offered, then
+bought; struck while held; returned with a payment; rest) are not
+countable and belong in a hand-made table in the paper: one row per
+station with who held the holy thing, what struck the holder, what
+was paid and to whom, what was covered, where rest came, and the
+strip words present in that chapter. The last column can be filled
+from the Passage page's chapter tables.
+
+**(d) Two cautions on the lists.** H3724 kofer is also 'pitch',
+'camphire' and 'village' (five stray uses); H6485 paqad is also
+'number', 'appoint' and 'punish' (one root, so kept, but a hot window
+in Numbers 1 is the census, not a visitation); H5081 nadib is also
+'prince'. If a strip lights for those senses, split the root out and
+note it. The Greek side is thin by design (the New Testament has few
+of these events); read the Greek strips as confirmation, not as a
+test.
+
+**Done 2026-10-18: (a) and (b), and the last column of (c).** Written
+up in reports/Analysis/RANSOM_AND_REST_STRIPS.md, with the strip
+charts reports/heat_<book>_ransom_rest.svg for Genesis, Exodus,
+Leviticus, Numbers, Ruth, 1 and 2 Samuel and 1 Chronicles, and the
+Passage page reports/passage_ransom_and_rest.txt. atlas_heat.py has a
+new `--lists` option (`--families --lists ransom,rest`, or `all`):
+before it, only the four lists named in LIST_NAMES were drawn, so the
+two new lists would have been stored and never seen. Results: ransom
+9 hits, 1 near, 3 misses of 13 predicted chapters (misses Genesis 20,
+2 Samuel 24, Hosea 3: David's and Hosea's buying is qanah and karah,
+in neither list); rest 16 hits, 3 near, 10 misses of 29 (Ruth, Hannah,
+Genesis 23 and the registers of 1 Chronicles 24 to 27 miss; Ruth 3 to
+4 is instead the fifth-hottest ransom window, through the kinsman);
+8 of the 9 expected discoveries light (Acts 1 misses: Acts says
+"reward", and Matthew 26 to 27, Judas's silver, is the second-hottest
+ransom window). Second senses light the strips more than the cautions
+said: nega' as leprosy (Leviticus 13 to 14), paqad as census (Numbers
+1 to 4 and 26, and Exodus 30 and 38 inside the stations), ba'al as an
+ox's owner (Exodus 21 to 22), Shaddai as Job's diction, arown as
+Joseph's coffin, agorazo as ordinary buying. The Passage page finds
+the stations carried by silver, shekels, bought (qanah, miqnah), the
+kinsman's redeem, the trespass offering and the threshing floor, and
+the kaphar family weak there: the ransom words and the ransom stories
+meet in a few places, not throughout. Proposed list changes (qanah,
+miqnah, karah and shekels into ransom; nega' split; a census gloss
+rule for paqad) are in the write-up, not applied. Seen on the page:
+it labels H727 "coffin", the rarest spelling, though the passage
+spells it "ark" 63 times.
 
 ## Reviewer's open items from the dossier and links reviews (2026-10-17)
 
@@ -951,17 +1136,6 @@ cross-testament validation measures Revelation's crossing share
 (49%) against the Old Testament only; a within-New-Testament
 baseline would say whether Revelation's companions are unusual among
 the New Testament books or only unusual against the Old.
-
-**The divine name in the translation matcher.** Jehovah and Yahweh
-(and LORD where a translation prints the name) should fold to one
-token when the translations matcher compares wordings; the seam shows
-in the translation families, where translations that differ only in
-how they print the name fall into different families.
-
-**The union of the bridges for formula quotations.** Matthew's Micah
-5:2 and other formula quotations are missed when one bridge alone
-(English, Greek, cross references) is asked; taking the union of the
-bridges for a quotation marked by a formula would catch them.
 
 ## 1.0
 

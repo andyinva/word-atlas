@@ -59,6 +59,9 @@ THE FIVE MEASURES
                 one per word list of metadata.db (atlas_feelings.py
                 lists): character, mercy and truth, and
                 for a New Testament book fruit and flesh (Galatians 5).
+                --lists picks the word-list strips instead: a comma-
+                separated list of names, or "all" for every list stored
+                (the paper lists of ransom_rest_lists.py among them).
                 The word lists are counted from the original text in
                 lxx.db, like the names strips, so that the source's
                 gloss can tell a word's two meanings apart (the majesty
@@ -161,6 +164,7 @@ Usage:
     python atlas_heat.py Revelation --hammer-window 30
     python atlas_heat.py Revelation --norm book --families --scale percentile
     python atlas_heat.py Revelation --families --scale g2
+    python atlas_heat.py Genesis --families --lists ransom,rest --svg reports/heat_genesis_ransom_rest.svg
     python atlas_heat.py Ezekiel --out reports/heat_ezekiel.txt --svg reports/heat_ezekiel.svg
     python atlas_heat.py Ezekiel --names --norm group --scale g2 --svg reports/heat_ezekiel_names.svg
     python atlas_heat.py Daniel --names --norm group:Prophecy --scale g2
@@ -1333,6 +1337,9 @@ def main() -> None:
                         help="measure hammer over this many verses around each window (e.g. 30)")
     parser.add_argument("--families", action="store_true",
                         help="add one strip per feeling-word family (needs the feeling list)")
+    parser.add_argument("--lists", default=None,
+                        help="with --families: the word-list strips to draw, comma-separated "
+                             "(default: " + ", ".join(LIST_NAMES) + "; 'all' for every stored list)")
     parser.add_argument("--names", action="store_true",
                         help="add the nations, persons, home and numbers strips, read from the "
                              "original text's tags in lxx.db, with the date and feast marks")
@@ -1384,8 +1391,17 @@ def main() -> None:
     if args.families:
         letter = "H" if loader.language_of(book) == "Hebrew" else "G"
         stored = load_word_lists(args.metadata)
-        lists = {name: roots for name, roots in stored.items()
-                 if name in LIST_NAMES and any(r.startswith(letter) for r in roots)}
+        # --lists names the strips to draw (default the four of LIST_NAMES;
+        # "all" for every list stored, the paper lists of ransom_rest_lists.py
+        # among them)
+        wanted = list(stored) if args.lists == "all" else \
+            [n.strip() for n in args.lists.split(",")] if args.lists else LIST_NAMES
+        unknown = [n for n in wanted if n not in stored]
+        if stored and unknown:
+            print(f"Note: no word list named {', '.join(unknown)} in metadata.db "
+                  f"(stored: {', '.join(stored)}).\n")
+        lists = {name: stored[name] for name in wanted
+                 if name in stored and any(r.startswith(letter) for r in stored[name])}
         if not stored:
             print("Note: no word lists in metadata.db yet (python3 atlas_feelings.py lists), "
                   "so no character, mercy and truth, fruit or flesh strips.\n")
