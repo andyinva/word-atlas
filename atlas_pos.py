@@ -192,6 +192,10 @@ GLOSS_RULES = {
     "H6485": ((), ("enroll", "muster")),    # visit, not the census (Numbers 1 to 4 and 26:
                                             # 'enrolled [men]', 'he mustered'; the rest list)
     "H3739": ((), ("feast",)),              # buy, not 'he gave a feast' (2 Kings 6:23; the ransom list)
+    "H3724": ((), ("pitch", "henna", "village")),   # ransom, not pitch (Gen 6:14), henna (Song 1:14,
+                                            # 4:13) or the villages (1 Sam 6:18; the ransom list)
+    "H4135": ((), ("fended", "wither", "cut off")),  # circumcise, not 'I fended off' (Ps 118:10-12),
+                                            # 'it withers' (Ps 90:6), 'let them be cut off' (Ps 58:7)
 }
 
 # Senses no gloss tells apart, told by the chapter they stand in: a root

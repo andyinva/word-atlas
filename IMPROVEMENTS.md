@@ -1151,6 +1151,30 @@ Jeremiah 12 and Job 41 (buying). Still not applied: discounting
 Shaddai in Job, and goren and terumah for "rest". test_atlas.py 46 of
 46. RANSOM_AND_REST_STRIPS.md regenerated.
 
+**From the reviewer's read of the regenerated strips (2026-10-18).**
+Two gloss rules added in atlas_pos.py: kofer H3724 does not count when
+glossed "pitch", "henna" or "village" (1 Samuel 6:18 had shown as
+"ransom" in the stations table), and mul H4135 does not count when
+glossed "fended off", "withers" or "cut off" (Psalm 118:10-12, a rest
+window at z 5.4, now gone; Psalm 90:6; Psalm 58:7). The hit and miss
+counts are unchanged; the write-up now gives windows as well as
+chapters, since a window across a chapter line is credited to both:
+ransom 11 hits in 10 windows, rest 16 hits in 12 windows. Left to the
+paper: Numbers 16:46-48 (Aaron between the dead and the living) and
+Genesis 44 (Judah in Benjamin's place) as stations, if the Levite
+section takes them as ransoms in person; discounting Shaddai in Job;
+goren and terumah for "rest". test_atlas.py 46 of 46.
+
+**Two stations added (2026-10-18).** Numbers 16:41-50 (Aaron between
+the dead and the living, the plague stayed) and Genesis 42:25-44:34
+(Joseph's silver in the sacks, Judah offering himself for Benjamin)
+joined "Ransom and rest" as ransoms in person (48 ranges; 796 verses,
+22,436 words, 54 chapters). Their rows in the stations table: Genesis
+42:25-44:34 'silver' 19, the most of any station; Numbers 16:41-50
+'plague' 5, 'atonement' 2. The Passage page now ranks 'sacks' H572
+fourth among its signature words. The strips are unchanged (they do
+not read the passage).
+
 ## Reviewer's open items from the dossier and links reviews (2026-10-17)
 
 **A chapter-against-chapter page across books.** The Ezekiel 7 with

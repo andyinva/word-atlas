@@ -134,6 +134,7 @@ STATIONS = [
     (1, 22, 1, 22, 19),     # Moriah
     (1, 23, 1, 23, 20),     # the cave bought
     (1, 26, 1, 26, 11),     # Rebekah in Abimelech's house
+    (1, 42, 25, 44, 34),    # Joseph's silver in the sacks; Judah offers himself for Benjamin (added 2026-10-18)
     (2, 25, 1, 25, 9),      # the willing offering for the tabernacle
     (2, 30, 11, 30, 16),    # the atonement money
     (2, 35, 4, 35, 29),     # the willing offering brought
@@ -143,6 +144,7 @@ STATIONS = [
     (3, 5, 14, 5, 19),      # the trespass offering
     (4, 3, 40, 3, 51),      # the redemption silver to Aaron
     (4, 8, 5, 8, 22),       # the Levites waved, "that there be no plague" (added 2026-10-18)
+    (4, 16, 41, 16, 50),    # Aaron between the dead and the living; the plague stayed (added 2026-10-18)
     (4, 31, 48, 31, 54),    # the captains' ransom after numbering the men of war (added 2026-10-18)
     (4, 10, 33, 10, 36),    # the ark seeks a resting place
     (5, 10, 1, 10, 9),      # Levi's inheritance given with the second tables (added 2026-10-18)
