@@ -343,6 +343,31 @@ class Atlas:
                     best[root] = (surface, n)
             self._scope_forms.append({r: sp for r, (sp, n) in best.items()})
 
+    def use_scope_verses(self, verse_ids, book=None):
+        """
+        Make form() prefer the commonest spellings of a set of verses (a
+        passage), then of one book.  A passage across books takes its own
+        spelling, not its first book's: H727 is "ark" 63 times in "Ransom
+        and rest" but "coffin" in Genesis, its first book, where Joseph's
+        coffin is the one use.
+        """
+        self.use_scope(book)
+        best = {}
+        ids = list(verse_ids)
+        for i in range(0, len(ids), 900):            # SQLite's limit on bound values
+            chunk = ids[i:i + 900]
+            marks = ",".join("?" * len(chunk))
+            for root, surface, n in self.db.execute(
+                    f"SELECT root, surface, COUNT(*) FROM tokens WHERE verse_id IN ({marks}) AND is_stop = 0 "
+                    "GROUP BY root, surface", chunk):
+                key = (root, surface)
+                best[key] = best.get(key, 0) + n
+        forms = {}
+        for (root, surface), n in best.items():
+            if root not in forms or n > forms[root][1]:
+                forms[root] = (surface, n)
+        self._scope_forms.insert(0, {r: sp for r, (sp, n) in forms.items()})
+
     def lexicon_entry(self, root):
         """(original word, KJV glosses, Strong's definition) for a number, or None."""
         return self.lexicon.get(root)
@@ -599,11 +624,23 @@ class Atlas:
                 return f"local rendering: '{form}' ({n_here} of the Bible's {n_all}, {what})"
         return None
 
-    def spellings(self, root, limit=6, book=None, chapter=None):
+    def spellings(self, root, limit=6, book=None, chapter=None, verse_ids=None):
         """How the text spells a root, commonest first: [(surface, count)],
-        across the Bible or within one book or chapter."""
+        across the Bible, within one book or chapter, or within a set of
+        verses (a passage)."""
         # Absorbed words ("thus" folded into H559, "burnt" into H5930) are
         # stop tokens carrying the root and are not spellings of it
+        if verse_ids is not None:
+            counts = Counter()
+            ids = list(verse_ids)
+            for i in range(0, len(ids), 900):        # SQLite's limit on bound values
+                chunk = ids[i:i + 900]
+                marks = ",".join("?" * len(chunk))
+                for surface, n in self.db.execute(
+                        f"SELECT surface, COUNT(*) FROM tokens WHERE root = ? AND is_stop = 0 "
+                        f"AND verse_id IN ({marks}) GROUP BY surface", [root] + chunk):
+                    counts[surface] += n
+            return counts.most_common(limit)
         if book is None:
             return [(r[0], r[1]) for r in self.db.execute(
                 "SELECT surface, COUNT(*) FROM tokens WHERE root = ? AND is_stop = 0 GROUP BY surface "
@@ -1895,7 +1932,7 @@ def richness_section(atlas, report, title, book, peers, group):
     richness_cache_save(atlas)
 
 
-def lexicon_section(atlas, report, title, roots, book=None, chapter=None, scope_label="Bible"):
+def lexicon_section(atlas, report, title, roots, book=None, chapter=None, scope_label="Bible", verse_ids=None):
     """
     The Hebrew or Greek behind a signature words table: each root with
     its original word from Strong's dictionary, the KJV glosses, and
@@ -1918,7 +1955,8 @@ def lexicon_section(atlas, report, title, roots, book=None, chapter=None, scope_
     for root in numbered:
         word, kjv_def, strongs_def = atlas.lexicon_entry(root)
         glosses = clean_gloss(kjv_def or strongs_def)
-        here = ", ".join(f"{sp} {n}" for sp, n in atlas.spellings(root, limit=5, book=book, chapter=chapter))
+        here = ", ".join(f"{sp} {n}" for sp, n in atlas.spellings(root, limit=5, book=book, chapter=chapter,
+                                                                    verse_ids=verse_ids))
         bible = ", ".join(f"{sp} {n}" for sp, n in atlas.spellings(root, limit=5))
         sec.add([atlas.form(root), word, glosses, here, bible], link={"word": root})
 
@@ -3381,8 +3419,9 @@ def passage_page(atlas, name):
             end = f"{c2}" if v2 >= 999 else f"{c2}:{v2}"
             spans.append(f"{book} {c1}:{v1}-{end}")
     label = f"Passage: {key}"
-    atlas.use_scope(books[0])
     ids = [v["verse_id"] for v in verses]
+    # The passage's own commonest spelling of each root, then its first book's
+    atlas.use_scope_verses(ids, books[0])
     refs_of = {v["verse_id"]: v["reference"] for v in verses}
     n_scope = sum(len(v["word_string"].split()) for v in verses)
     chapters = sorted({(v["book"], v["chapter"]) for v in verses}, key=lambda bc: (atlas.books.index(bc[0]), bc[1]))
@@ -3398,7 +3437,7 @@ def passage_page(atlas, name):
 
     top = verses_signature_section(atlas, report, f"1. Signature words [{label}]", verses, label, books,
                                    n_scope, len(chapters), "passage")
-    lexicon_section(atlas, report, f"1. Signature words [{label}]", top, books[0], None, "passage")
+    lexicon_section(atlas, report, f"1. Signature words [{label}]", top, books[0], None, "passage", verse_ids=ids)
 
     signature_formulas_section(atlas, report, f"2. Signature formulas [{label}]", verses, books[0], n_scope)
     if len(books) > 1:

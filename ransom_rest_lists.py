@@ -60,11 +60,18 @@ WORD_LISTS = {
         "H6299": "redeem", "H6306": "redemption", "H6302": "redemption (Num 3:49)", "H6304": "redemption",
         "H1350": "redeem (kinsman)", "H1353": "redemption (right of)",
         "G59": "buy", "G1805": "redeem (buy out)",
+        # buy and the price: the 'offered, then bought' step (the cave, the threshing floor,
+        # the field, Hosea's wife), added 2026-10-18 from the strips' first run
+        "H7069": "buy (acquire)",     # qanah: also 'get', 'possessor' (Gen 4:1, 14:19)
+        "H4736": "purchase",          # miqnah: 'bought', 'purchase', 'price' (Gen 17:12, 23:18, Jer 32:11)
+        "H3739": "buy (bargain)",     # karah: Hosea 3:2 'I bought her', Deut 2:6; not 'gave a feast' (GLOSS_RULES)
+        "H8255": "shekel",
         # restitution and trespass
         "H7999": "make restitution",   # shalam: also 'repay', 'perform', 'finish'; the Exodus 22 sense leads
         "H817": "trespass (offering)", "H816": "trespass", "H819": "guiltiness",
         # plague, and the verb touch that shares its root (Gen 12:17 'plagued', 20:6 'touch',
         # Ex 12:22 'strike' the posts with blood, Num 4:15, Ps 105:15)
+        # nega' (H5061) does not count in a chapter of leprosy (atlas_pos.CHAPTER_RULES: Lev 13, 14; Deut 24)
         "H5061": "plague (stroke)", "H5063": "plague", "H4046": "plague", "H5062": "smite (plague)",
         "H5060": "touch (plague, strike)",
         "G4127": "plague", "G680": "touch",
@@ -79,7 +86,7 @@ WORD_LISTS = {
         "H5117": "rest", "H4496": "rest (resting place)", "H4494": "rest",
         "G2663": "rest", "G2664": "rest (give)", "G372": "rest",
         # visited
-        "H6485": "visit",            # also 'number', 'appoint', 'punish': the sense is one root, the count is honest
+        "H6485": "visit",            # not the census: 'enrolled', 'mustered' do not count (atlas_pos.GLOSS_RULES)
         "G1980": "visit",
         # married: the verb and the noun husband; H1168 Baal the god is NOT here
         "H1166": "marry (be husband)", "H1167": "husband (owner)",
@@ -136,7 +143,9 @@ STATIONS = [
     (3, 5, 14, 5, 19),      # the trespass offering
     (4, 3, 40, 3, 51),      # the redemption silver to Aaron
     (4, 8, 5, 8, 22),       # the Levites waved, "that there be no plague" (added 2026-10-18)
+    (4, 31, 48, 31, 54),    # the captains' ransom after numbering the men of war (added 2026-10-18)
     (4, 10, 33, 10, 36),    # the ark seeks a resting place
+    (5, 10, 1, 10, 9),      # Levi's inheritance given with the second tables (added 2026-10-18)
     (5, 12, 8, 12, 11),     # the rest and the inheritance
     (8, 1, 1, 1, 22),       # Ruth: Naomi's blessing of rest
     (8, 3, 1, 3, 1),        # rest sought for Ruth

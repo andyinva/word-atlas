@@ -1124,6 +1124,33 @@ to 48, not 1 and 10), except Numbers 7:89 against Ezekiel 2:2 and 10:5,
 the voice from the mercy seat; Revelation 7 against Numbers 1 is. The
 word, Passage and Compare pages the sections name are in reports/.
 
+**Done later still, 2026-10-18: the strips' proposals applied, and
+what changed.** In ransom_rest_lists.py the buying words qanah H7069,
+miqnah H4736, karah H3739 and shekel H8255 joined "ransom" (43 roots);
+Numbers 31:48-54 (the captains' ransom) and Deuteronomy 10:1-9 (Levi's
+inheritance with the second tables) joined the passage (46 ranges).
+In atlas_pos.py a new CHAPTER_RULES keeps nega' H5061 from counting in
+a chapter that speaks of leprosy (tsara'at H6883: Leviticus 13 and 14,
+Deuteronomy 24), since TAHOT glosses it "plague" in both senses; and
+GLOSS_RULES now keeps paqad H6485 from counting when glossed
+"enrolled" or "mustered" (the census), and karah H3739 when glossed
+"gave a feast". In atlas_pages.py the Passage page takes a root's
+commonest spelling in the passage itself, not in its first book, and
+its words-behind table counts the passage's own spellings: H727 reads
+"ark" (68), not "coffin". The strips were rerun with `--lists
+ransom,rest` over the same 22 books as before. What changed: ransom
+11 hits of 13 (was 10; 2 Samuel 24 now lights, z 3.50, on "buy" 4;
+Jeremiah 32 rises from 2.75 to 9.21), misses Genesis 20 and Hosea 3
+(karah is one verse); rest unchanged at 16 hits, with 1 Chronicles 27
+moving from miss to near (4 near, 9 misses); of the expected
+discoveries Zechariah 11 now lights (z 2.09) and Job 33 drops just
+under the line (1.86). Windows gone: the leprosy windows of Leviticus
+12 to 14 and the census windows of Numbers 1, 3, 4 and 26. New:
+Leviticus 16 (atonement), Genesis 17 (servants bought with money),
+Jeremiah 12 and Job 41 (buying). Still not applied: discounting
+Shaddai in Job, and goren and terumah for "rest". test_atlas.py 46 of
+46. RANSOM_AND_REST_STRIPS.md regenerated.
+
 ## Reviewer's open items from the dossier and links reviews (2026-10-17)
 
 **A chapter-against-chapter page across books.** The Ezekiel 7 with

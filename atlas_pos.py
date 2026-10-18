@@ -189,6 +189,19 @@ GLOSS_RULES = {
     "H7356": ((), ("womb",)),               # compassion, not the womb
     "H3887": ((), ("interpret",)),          # scorner, not interpreter
     "G4102": (("faithful",), ()),           # faithfulness the fruit, not belief
+    "H6485": ((), ("enroll", "muster")),    # visit, not the census (Numbers 1 to 4 and 26:
+                                            # 'enrolled [men]', 'he mustered'; the rest list)
+    "H3739": ((), ("feast",)),              # buy, not 'he gave a feast' (2 Kings 6:23; the ransom list)
+}
+
+# Senses no gloss tells apart, told by the chapter they stand in: a root
+# does not count under a word list in a chapter that also holds the marker
+# root.  nega' (H5061) is glossed 'plague' in Genesis 12 and in Leviticus
+# 13 and 14 alike, but in a chapter that speaks of leprosy (tsara'at,
+# H6883: Leviticus 13 and 14, Deuteronomy 24) it is the plague of leprosy,
+# a mark on the skin, not a stroke on the holder (the ransom list).
+CHAPTER_RULES = {
+    "H5061": "H6883",
 }
 
 
@@ -453,8 +466,15 @@ class NameReader:
         self.corpus = corpus
         self.lists = lists or {}    # list name -> {Strong's number: plain word} or a set of numbers
         self.by_ref = {}            # (book number, chapter, verse) -> VerseCounts
+        self.chapter = None         # (book number, chapter) of the verse being counted
         db = sqlite3.connect(Path(db_path).resolve().as_uri() + "?mode=ro", uri=True)
         try:
+            # The chapters holding each marker root of CHAPTER_RULES
+            self.marked = {}
+            for marker in set(CHAPTER_RULES.values()):
+                self.marked[marker] = {(b, c) for b, c in db.execute(
+                    "SELECT DISTINCT v.eng_book, v.eng_chapter FROM tokens t JOIN verses v USING (verse_id) "
+                    "WHERE v.corpus = ? AND t.root = ?", (corpus, marker))}
             if not PosColumns.has_columns(db) or PosColumns.unfilled(db, corpus):
                 sys.exit("lxx.db has no filled pos column for the " + corpus + " text. "
                          "Run:  python3 atlas_pos.py")
@@ -469,6 +489,7 @@ class NameReader:
                         self.count_verse(current, words)
                     source_verse, words = verse_id, []
                     current = self.by_ref.setdefault((book, chapter, verse), VerseCounts())
+                    self.chapter = (book, chapter)
                 words.append((root, pos, kind, gloss))
             if words:
                 self.count_verse(current, words)
@@ -539,11 +560,16 @@ class NameReader:
             if root in FEAST_WORDS and gloss_allows(root, gloss):
                 counts.feasts.append(FEAST_WORDS[root])
             for name, roots in self.lists.items():
-                if root in roots and gloss_allows(root, gloss):
+                if root in roots and gloss_allows(root, gloss) and self.chapter_allows(root):
                     counts.lists[name] = counts.lists.get(name, 0) + 1
                     plain = roots[root] if isinstance(roots, dict) else None
                     counts.words.setdefault(name, []).append(
                         plain or (self.name_piece(gloss) or root).lower())
+
+    def chapter_allows(self, root):
+        """Whether CHAPTER_RULES lets this root count in the chapter being read."""
+        marker = CHAPTER_RULES.get(root)
+        return marker is None or self.chapter not in self.marked.get(marker, set())
 
     @staticmethod
     def name_piece(gloss):
