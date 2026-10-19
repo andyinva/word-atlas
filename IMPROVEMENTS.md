@@ -1175,6 +1175,87 @@ joined "Ransom and rest" as ransoms in person (48 ranges; 796 verses,
 fourth among its signature words. The strips are unchanged (they do
 not read the passage).
 
+**The write-up can be rebuilt (2026-10-18).**
+`python3 Eval_data/ransom_rest_report.py` runs the two strips over the
+22 books, scores them against the predicted chapters and expected
+discoveries, writes the Passage page, counts the strip words of every
+station, and rewrites reports/Analysis/RANSOM_AND_REST_STRIPS.md, with a
+"Since the last run" section saying which results and windows moved
+(each run is kept in Eval_data/results/ransom_rest_spots.json, the one
+before in ransom_rest_spots_previous.json). `--svg` also draws the
+eight strip charts; `--skip-run` rewrites the write-up from the last
+run. The reading notes are hand-written in Eval_data/ransom_rest_notes.md
+and go into the write-up word for word under "Reading notes"; every
+table is counted afresh. Run `python3 ransom_rest_lists.py` first after
+any change to the lists or stations.
+
+**goren and terumah added (2026-10-18).** goren H1637, the threshing
+floor, joined "rest" (34 roots), and terumah H8641, the heave offering,
+joined "ransom" (44 roots: the half-shekel is a terumah in Exodus
+30:13-15, and so is the captains' gold in Numbers 31:52; TAHOT glosses
+it "contribution"). Shaddai stays as it is, with a line in the reading
+notes that its 31 uses in Job are to be discounted and Jacob's in
+Genesis 43:14 counts; the notes also have the three station formulas
+of the Passage page ("she is my sister", "the lad", "an offering").
+What the two roots moved, from ransom_rest_report.py's "Since the last
+run": rest 17 hits in 13 windows (was 16 in 12), with Ruth 3 now a hit
+on the threshing floor (z 2.98, Ruth 2:20-3:10); new rest windows at 2
+Samuel 24:15-25 (z 3.4) and Hosea 8:7-9:3 (z 2.2); ransom unchanged at
+11 hits in 10 windows, but terumah raises Exodus 30 from z 8.8 to 10.4
+and Exodus 35 from 2.5 to 4.3. Six weak windows (z 2.0 to 2.1) fell under
+the line as the ordinary rate rose: Exodus 12:18-28 and 31:7-16, Job
+19, Psalms 44, 73 and 129 to 130.
+
+## Structure trial: morphology, cola, inclusio and chiasm (2026-10-19)
+
+**What.** A trial on Joel and Amos, before anything touches atlas.db.
+Report: reports/Analysis/STRUCTURE_TRIAL_JOEL_AMOS.md.
+
+**(a) Morphology columns (done, trial).**
+`python3 Eval_data/morph_accents_import.py` spells out the morphology
+codes already in tokens.morph into seven columns of lxx.db beside pos:
+stem (Hebrew and Aramaic binyan), voice (Greek), tense (Hebrew form or
+Greek tense), mood, person, gender, number. TAHOT and GNT only; the
+Septuagint is left alone. `--check` counts without writing. Run it
+again after any `python3 build_tahot.py` or `build_gnt.py`, which
+rebuild the tokens.
+
+**(b) Accents and half-verses (done, trial).** build_tahot.py strips
+the cantillation marks; the TAHOT source files keep them. The same
+script reads data/tahot again and fills a new table verse_cola: for
+every verse the word with the atnach, the ole of the ole we-yored in
+Job, Psalms and Proverbs, and split_word, the last word of the first
+half-verse (ole, else atnach, else the tipcha or revia mugrash of a
+short verse). The poetry flag comes from a layout table in the script
+(POETRY_LAYOUT), not from the accents; it covers the poetic books and
+Joel and Amos and should be checked against a printed BHS. Open: 153
+Psalm rows and 46 Job rows have no divider found (mostly titles; the
+dechi of the three books is not yet read).
+
+**(c) Eval_data/structure_experiment.py (written).** Three parts for a
+named book or passage: verbs by chapter (imperatives, cohortative and
+jussive, first person, second singular against plural); the two cola
+of each poetic verse (shared lexeme, part-of-speech likeness, against a
+baseline of halves from different verses); inclusio and chiasm,
+scored against 1000 verse shuffles. `--tests` runs the frames part on
+the published cases.
+
+**(d) Result: the published structures are not found.** Amos 5:1-17
+(de Waard): 2 of 4 pairs, centre 5:5-6 not 5:8, p 0.91. Genesis
+6:10-9:19 (Wenham): 3 of 14 pairs (the outer frame: the sons, the
+flood to destroy all flesh, the covenant), centre 8:11 not 8:1, p
+0.60. As asked, the trial stopped there: Joel and Amos as whole books
+have not been run. Two causes: the inner pairs are bound by root and
+form, not by one Strong's number; and the verse shuffle favours the
+shuffled orders, because real texts repeat words in neighbouring
+verses (mean pair weight 4.4 near against 1.1 far in Amos 5).
+
+**(e) Next, for a decision.** A null that keeps local cohesion (block
+shuffles, or pairs at least three verses apart); a root table so that
+tsedaqah and tsaddiq match; form (a participle opening the verse) as a
+second pair weight; half-verses as units. Then rerun --tests with the
+rules fixed in advance, and only then Joel and Amos.
+
 ## Reviewer's open items from the dossier and links reviews (2026-10-17)
 
 **A chapter-against-chapter page across books.** The Ezekiel 7 with
