@@ -36,6 +36,17 @@ rows, "ch None", 1d's run supply) and one footer added (1b's Aramaic
 baseline). Rerun the dossiers after the next change that touches a
 table.
 
+**Check the poetry flag against a printed BHS (standing).**
+atlas_morph.py's POETRY_LAYOUT decides which verses count as poetry
+for the half-verse table (verse_cola.poetic) and so for section 7p of
+the book page. It covers Psalms, Proverbs, Song and Lamentations
+throughout, Job without its prose frame and 32:1-5, Joel without 1:1
+and 3:4-8, and Amos without 1:1, 7:1-17 and 8:1-2, all from memory of
+the BHS layout. Check each range page by page against a printed BHS,
+and add the other prophets the same way, book by book, as they are
+read. Until a book is added its 7p says "Not measured". (From the
+structure trial, 2026-10-19.)
+
 **The manual's own review (next).** Read one part of the manual against
 the program with a book open and note where a table's description does
 not match the screen. The manual has not had this yet.
@@ -1209,20 +1220,35 @@ the line as the ordinary rate rose: Exodus 12:18-28 and 31:7-16, Job
 ## Structure trial: morphology, cola, inclusio and chiasm (2026-10-19)
 
 **What.** A trial on Joel and Amos, before anything touches atlas.db.
-Report: reports/Analysis/STRUCTURE_TRIAL_JOEL_AMOS.md.
+Reports: reports/Analysis/STRUCTURE_TRIAL_JOEL_AMOS.md (first test),
+reports/Analysis/STRUCTURE_TRIAL_V2.md (second test) and
+reports/Analysis/STRUCTURE_TRIAL_FINAL.md (third test; the finished
+note, revised after the reviewer's reading). **Trial closed
+2026-10-19.** The reviewer's reading:
+- Psalm 8 is found in substance and fails only on the rotation null's
+  floor (1/18). Inclusio needs an instrument of its own.
+- Babel was mis-chosen as an easy case, since its structure is partly
+  sound-play. Its useful finding is that the Strong's families must
+  not pool a root with far more frequent children.
+- The flood passed the book-level window null in the third test
+  (0.043, both bounds) and came close in the second (0.055 and 0.066),
+  centre at 8:2. The rotation null is unsuited to framed passages.
+- Amos 5 stays open: three of de Waard's pairs are in the words, the
+  fourth is a pair of form.
 
-**(a) Morphology columns (done, trial).**
-`python3 Eval_data/morph_accents_import.py` spells out the morphology
-codes already in tokens.morph into seven columns of lxx.db beside pos:
-stem (Hebrew and Aramaic binyan), voice (Greek), tense (Hebrew form or
+**(a) Morphology columns (done; in the build since 2026-10-19).**
+atlas_morph.py (which replaces the trial script
+Eval_data/morph_accents_import.py) spells out the morphology codes
+already in tokens.morph into seven columns of lxx.db beside pos: stem
+(Hebrew and Aramaic binyan), voice (Greek), tense (Hebrew form or
 Greek tense), mood, person, gender, number. TAHOT and GNT only; the
-Septuagint is left alone. `--check` counts without writing. Run it
-again after any `python3 build_tahot.py` or `build_gnt.py`, which
-rebuild the tokens.
+Septuagint is left alone. build_tahot.py and build_gnt.py run it at
+the end of their run, after atlas_pos.py; `python3 atlas_morph.py`
+runs it alone, `--check` counts without writing.
 
-**(b) Accents and half-verses (done, trial).** build_tahot.py strips
-the cantillation marks; the TAHOT source files keep them. The same
-script reads data/tahot again and fills a new table verse_cola: for
+**(b) Accents and half-verses (done; in the build).** build_tahot.py
+strips the cantillation marks; the TAHOT source files keep them.
+atlas_morph.py reads data/tahot again and fills a new table verse_cola: for
 every verse the word with the atnach, the ole of the ole we-yored in
 Job, Psalms and Proverbs, and split_word, the last word of the first
 half-verse (ole, else atnach, else the tipcha or revia mugrash of a
@@ -1232,6 +1258,22 @@ Joel and Amos and should be checked against a printed BHS. Open: 153
 Psalm rows and 46 Job rows have no divider found (mostly titles; the
 dechi of the three books is not yet read).
 
+**(b2) Check the poetry flag against a printed BHS (to do; now on the standing list at the top).**
+POETRY_LAYOUT in atlas_morph.py marks Psalms, Proverbs, Song and
+Lamentations as poetry throughout, Job without 1:1-2:13, 32:1-5 and
+42:7-17, Joel without 1:1 and 3:4-8, and Amos without 1:1, 7:1-17 and
+8:1-2. Each range is from memory of the usual BHS layout; check them
+page by page, and add the other prophets the same way when they are
+wanted.
+
+**(b3) Root families (done; in the build).** atlas_morph.py also fills
+root_families in lxx.db: every Strong's number with the number its
+"from H..." links in atlas.db's lexicon lead to (read only), so that
+tsedaqah H6666 and tsaddiq H6662 are both tsadaq H6663. 14,059
+numbers, 4,984 linked, 9,092 families. Names keep their own number.
+These are Strong's etymologies (YHWH is filed under hayah). This is
+the derivational-families item below, done for the Hebrew and Greek
+texts of lxx.db; the echo matcher does not use it yet.
 **(c) Eval_data/structure_experiment.py (written).** Three parts for a
 named book or passage: verbs by chapter (imperatives, cohortative and
 jussive, first person, second singular against plural); the two cola
@@ -1250,11 +1292,113 @@ form, not by one Strong's number; and the verse shuffle favours the
 shuffled orders, because real texts repeat words in neighbouring
 verses (mean pair weight 4.4 near against 1.1 far in Amos 5).
 
-**(e) Next, for a decision.** A null that keeps local cohesion (block
-shuffles, or pairs at least three verses apart); a root table so that
-tsedaqah and tsaddiq match; form (a participle opening the verse) as a
-second pair weight; half-verses as units. Then rerun --tests with the
-rules fixed in advance, and only then Joel and Amos.
+**(e) Second test (done 2026-10-19): still not found.** The reviewer's
+changes, fixed before the run, are now the default (`--chiasm v2`;
+`--chiasm v1` keeps the first test):
+- half-verse units;
+- root families;
+- participle and imperative openings as a form weight;
+- no pairs closer than three units;
+- a symmetry score around each candidate centre, with a one-unit tolerance;
+- a rotation null and a same-book window null.
+
+Results:
+- Amos 5:1-17: 3 of 4 pairs (lament, seek and live, and justice by
+  tsedaqah/tsaddiq), centre between 5:9b and 5:10a, rotation p 0.32,
+  windows p 0.50.
+- Genesis 6-9: centre at 8:2, next to Wenham's 8:1, rotation p 0.026,
+  windows p 0.055, 4 of 14 pairs.
+- Genesis 6:10-9:19: p 0.16 and 0.066.
+
+The trial stopped again; Joel and Amos as whole books have not been
+run. Report: reports/Analysis/STRUCTURE_TRIAL_V2.md; tables:
+reports/Analysis/structure_tests_v2.md.
+
+**(f) Decided after the second run (the reviewer's answers).** Three causes found in the second run:
+- The three-unit minimum, counted in half-verses, excludes Amos
+  5:8a / 5:9a, the participle pair the form weight was meant to catch.
+  Count the gap in verses, or waive it for form pairs.
+- Without the first test's theme rule, "land", "ark", "water" and
+  "Noah" carry most of the Genesis mirror pairs. Set a testament-wide
+  ceiling on a family's frequency, or a passage rule applied the same
+  way to every null window.
+- The one-unit tolerance is too tight for the flood's uneven
+  paragraphs.
+
+The answers were a gap of two units, the theme rule applied inside
+every stretch alike, and a tolerance of 1 under 50 units and 2 above.
+
+**(g) Third and final test (done 2026-10-19): none of the five found.**
+`--chiasm v3`, now the default (v2 and v1 keep the earlier tests).
+
+Rules, fixed before the run:
+- minimum gap 2 units;
+- theme families (more than a third of a stretch's units) set aside
+  in the passage and in each null window alike;
+- tolerance 1 under 50 units, 2 from there on;
+- the report says whether the same centre wins without the form
+  weight.
+
+Easy cases added: Genesis 11:1-9 (centre 11:5) and Psalm 8 (refrain
+at 8:1 and 8:9).
+
+Results:
+- Babel: centre 11:6, 0 of 4 pairs, rotation p 1.00, windows p 0.64.
+- Psalm 8: the refrain found as the outer pair and the centre inside
+  it. The centre beats all 17 rotations, but 1/18 = 0.056 is the
+  lowest p an 18-unit rotation null can give. Windows p 0.12.
+- Amos 5:1-17: 3 of 4 pairs, rotation p 0.35, windows p 0.61.
+- Genesis 6-9 and 6:10-9:19: centre 8:2a, windows p 0.043, rotation
+  p 0.14 and 0.27.
+
+Since Babel and Psalm 8 are not found, the Amos result is not a result
+about Amos: the method needs rethinking, not tuning.
+
+The causes, from the finished note:
+- the rarity floor drops kol "all";
+- the Strong's families pool banah "build" with ben "son" and bayit
+  "house" (family idf 1.44), so "build" drops out of Babel;
+- a rotation null cannot reach 0.05 under 20 units;
+- neighbouring centres score within a point or two;
+- the theme rule sets nothing aside at half-verse scale.
+
+Form never decided a centre in any of the five. The verb counts and
+the half-verse measure were run on Joel and Amos whole
+(reports/Analysis/structure_joel_amos.md): the two halves of a poetic
+verse share a word 33% (Joel) and 30% (Amos) of the time, against 13%
+and 12% for halves paired at random.
+
+**(h) If the chiasm work is taken up again (idea, not scheduled).**
+- Separate instruments for inclusio and chiasm: the inclusio test
+  scores the frame alone against the frames of other windows, not the
+  whole mirror.
+- The same-book window null without the rotation null, which cannot
+  reach 0.05 under 20 units and builds symmetry out of a frame by
+  pairing its two ends across the seam.
+- Frequency-aware root families: a family does not pool a root with
+  children far more frequent than itself (a frequency cap on pooling,
+  or pooling only when both members are below the rarity floor). That
+  keeps tsedaqah with tsaddiq and keeps banah "build" out of the
+  family of ben "son".
+- A vocabulary that keeps "all" (kol) and "build".
+- A centre scored by its distance from the published one instead of
+  in or out.
+
+**(i) The verb table and the half-verse table on every book page
+(done 2026-10-19).** atlas_grammar.py adds two sections to the book
+page, and so to every dossier, after section 7 and 7x:
+- **7v, verbs by chapter:** imperatives, cohortative or jussive
+  (Hebrew), first person, and second person singular against plural
+  with the singular share. Old and New Testaments.
+- **7p, the two halves of the poetic verses:** by chapter, the share
+  that repeat a word across the dividing accent and the part-of-speech
+  likeness, with a baseline row of halves from different verses (all
+  pairings, or a fixed sample of 40,000 in a long book). Old Testament
+  books with a poetry layout only; the others print "Not measured".
+
+Both read the grammar layer of lxx.db and print "Not measured" without
+it. On Joel and Amos they give the same figures as the experiment
+script. Rerun the dossiers to bring them in.
 
 ## Reviewer's open items from the dossier and links reviews (2026-10-17)
 

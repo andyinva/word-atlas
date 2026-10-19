@@ -33,6 +33,7 @@ from atlas_function import book_table as function_book_table, section_table as f
 from atlas_septuagint import vocabulary_sections as septuagint_vocabulary_sections, \
     echoes_section as septuagint_echoes_section
 import atlas_listed
+from atlas_grammar import grammar_sections
 import atlas_translations
 from atlas_sections import (FEW_WORDS, SMALL_WORDS, divisions_of, find_section, sections_of, section_date,
                             section_of, seam_chapters, span_text, cross_divisions, find_cross_section,
@@ -2889,6 +2890,10 @@ def book_page(atlas, book_name):
         for group, division, name, parts in crossing:
             sec.add([name, parts_text(parts), f"{group}: {division}"],
                     link={"book": book, "chapter": next(chs[0] for b, chs in parts if b == book), "section": name})
+    # 7v and 7p: the verbs by chapter and the two halves of the poetic
+    # verses, from the grammar layer of lxx.db (atlas_grammar.py, the
+    # structure trial's verb and half-verse measures, 2026-10-19)
+    grammar_sections(atlas, report, book, info)
     return report
 
 
