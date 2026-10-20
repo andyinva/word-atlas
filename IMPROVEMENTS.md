@@ -1522,13 +1522,33 @@ test of the built Reader on Windows from the stick (after that).
   are editorial. It stays on the standing list for a check by hand,
   page by page.
 
-**Step 2, the Reader's heat page (next).** Draw the strips from
-heat_windows and the spot lists from heat_spots, with heat_strips'
-sentence as each strip's tooltip; open a passage from `passages`, and
-a verse's King James text and tags from the kjv tables. The Reader
-carries copies of atlas_report.py and atlas_pack.py, which need
-updating from this version. It should open the old-schema pack without
-error and say the heat page needs a newer file.
+**Step 2, the Reader's heat page (done, Reader 0.3.12, 2026-10-20).**
+A Heat tab in the Reader (reader_heat.py), before Tools.
+- **The strips.** A painted strip chart draws a book's strips from
+  heat_windows, in the main program's colours, with chapter numbers
+  along the top. Point at a cell for its verses and z; point at a
+  strip's name for heat_strips' sentence and, for a word list, its
+  words. The tab chooses by book (choosing a book's page brings it
+  up), by view (z against the language, percentile against the book,
+  G2 against the language or the book's kind) and by kind of strip.
+- **The spots.** Clicking a strip lists its spots from heat_spots, at
+  the report's line or the near line, with the words that lit them;
+  clicking a spot outlines it on the strip.
+- **The text.** A cell, a spot, a named passage (`passages`) or a
+  typed reference (Genesis 23:7-16, Ruth 3, John 1:1) shows its King
+  James verses from the kjv tables, with Strong's numbers on request.
+- **Old files.** The old-schema pack and the 0.10.69 sample open as
+  before. The tab says the file was made before 0.10.101 and which
+  file to open; the old-schema pack still reads its passages and text.
+- **Around the tab.** Dataset details lists the new tables; the Claude
+  panel is told about them and about schema_notes; atlas_report.py and
+  atlas_pack.py copied over (the Reader's atlas_pages.py is an unused
+  leftover from 0.10.69).
+- **Checked.** Three new tests, 20 of 20 passing. Driven offscreen
+  against the 0.10.101 pack: 66 books, Genesis 47 strips at 1,524
+  windows, the ransom spots of Genesis, the Ruth rest spot. The first
+  opening unpacks the 484 MB file in about 15 seconds; later openings
+  are under a second.
 
 **Step 3, the Windows test (after).** The built Reader run from the
 stick on Windows 11 with the new pack.
