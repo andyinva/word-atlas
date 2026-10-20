@@ -3,8 +3,9 @@
 structure_experiment.py
 
 A trial of three structure measures on one named book (or passage) of
-the Hebrew Bible, read from lxx.db after morph_accents_import.py has
-added the morphology columns and the verse_cola table.  Nothing is
+the Hebrew Bible, read from lxx.db after atlas_morph.py has added the
+morphology columns, the verse_cola table and the root_families table
+(the builders run it; `python3 atlas_morph.py` runs it alone).  Nothing is
 written to atlas.db or lxx.db.
 
 THE THREE PARTS
@@ -48,6 +49,41 @@ THE THREE PARTS
                   the shuffles (p < 0.05), so a frame has to be tighter
                   than the same verses in a random order would give.
 
+    That is the first test (--chiasm v1).  The default is the SECOND
+    TEST (--chiasm v2), whose rules were fixed before it was run
+    (reports/Analysis/STRUCTURE_TRIAL_V2.md):
+      units     half-verses wherever verse_cola gives a split, else verses
+      matching  root families (root_families) instead of Strong's numbers,
+                with the same rarity floor and phrase bonus, and no theme
+                rule (a window's theme would differ from the passage's)
+      form      two units that both open with a participle, or both with
+                an imperative, add the rarity of that opening (from all
+                the testament's units) to their weight
+      gap       no pair of units fewer than 3 units apart
+      score     for each centre (a unit or the gap between two), the
+                unit d places before it is paired with the unit d places
+                after it, or one either side, and the best weights summed;
+                the best centre is the answer
+      nulls     rotation (the passage read as a circle from every other
+                unit) and windows (every stretch of the same length in
+                the same book that does not overlap the passage); the
+                centre survives when it beats 95 per cent of both
+    The THIRD TEST (--chiasm v3, now the default) keeps all of that but
+    with these rules, fixed before it was run
+    (reports/Analysis/STRUCTURE_TRIAL_FINAL.md):
+      gap       2 units instead of 3
+      theme     the families in more than a third of a stretch's units
+                are set aside, inside every stretch alike: the passage
+                and each null window by its own count
+      tolerance 1 unit for a stretch under 50 units, 2 from there on
+      form      a form pair on its own never decides a centre; the report
+                says whether the same centre wins without the form weight
+    and two easy cases in the test set, Genesis 11:1-9 (Babel, centre
+    11:5) and Psalm 8 (the refrain at 8:1 and 8:9).  A rotation null
+    over L units cannot give p below 1/L, so for a passage under 20
+    units the report says whether the centre beat every rotation.
+    The inclusio column on a book run is still the first test's.
+
     Rarity is the inverse document frequency of the lexeme over all the
     verses of the testament: log(verses / verses with the word).  For
     the pair weights a word must be rarer than IDF_FLOOR (about one verse
@@ -81,6 +117,8 @@ WHAT IT WRITES
 
 Usage (from the word_atlas folder, venv on):
     python3 Eval_data/structure_experiment.py --tests
+    python3 Eval_data/structure_experiment.py --tests --chiasm v1     # the first test
+    python3 Eval_data/structure_experiment.py --tests --chiasm v2     # the second test
     python3 Eval_data/structure_experiment.py Joel
     python3 Eval_data/structure_experiment.py Amos --parts verbs,cola
     python3 Eval_data/structure_experiment.py --passage "Amos 5:1-17" --parts frames
@@ -110,6 +148,12 @@ IDF_FLOOR = 2.0
 THEME_SHARE = 1 / 3
 # Survival level for the null model
 ALPHA = 0.05
+# Second and third chiasm tests: the minimum gap is in SymmetrySettings
+# (3 units in the second, 2 in the third).  Third test: the tolerance is
+# 1 unit for a stretch shorter than this, 2 from there on
+TOLERANCE_STEP = 50
+# Second chiasm test: the opening forms that give a pair a form weight
+OPENING_FORMS = ("participle", "imperative")
 
 # Book codes in lxx.db and their English names
 BOOK_NAMES = {
@@ -133,6 +177,25 @@ NT_CODES = set(list(BOOK_NAMES)[39:])
 # The published structures.  Each pair is two (chapter, first verse,
 # last verse) ranges; the centre is one range.  King James numbering.
 PUBLISHED = {
+    "Genesis 11:1-9": {
+        "source": "the tower of Babel as a lexical chiasm (Fokkelman 1975; Wenham 1987)",
+        "pairs": [
+            ("one language, the whole earth", (11, 1, 1), (11, 9, 9)),
+            ("there / from there", (11, 2, 2), (11, 8, 8)),
+            ("one to another; come, let us", (11, 3, 3), (11, 7, 7)),
+            ("let us build a city and a tower / the city and the tower they built", (11, 4, 4), (11, 5, 5)),
+        ],
+        "centre": (11, 5, 5),
+        "centre_label": "'the LORD came down' (11:5)",
+    },
+    "Psalm 8": {
+        "source": "the refrain as inclusio, 'O LORD our Lord, how excellent is thy name in all the earth'",
+        "pairs": [
+            ("the refrain", (8, 1, 1), (8, 9, 9)),
+        ],
+        "centre": (8, 2, 8),
+        "centre_label": "anywhere inside the frame (8:2-8; no centre is claimed)",
+    },
     "Amos 5:1-17": {
         "source": "de Waard, 'The Chiastic Structure of Amos V 1-17', VT 27 (1977)",
         "pairs": [
@@ -273,7 +336,7 @@ class TextStore:
         self.db = sqlite3.connect(db_path)
         have = {r[1] for r in self.db.execute("PRAGMA table_info(tokens)")}
         if "mood" not in have:
-            sys.exit("lxx.db has no morphology columns: run Eval_data/morph_accents_import.py first.")
+            sys.exit("lxx.db has no morphology columns: run python3 atlas_morph.py first.")
         self.has_cola = bool(self.db.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'verse_cola'").fetchone())
         self._idf = {}
@@ -340,6 +403,56 @@ class TextStore:
                 if g:
                     counts[lex][g] += 1
             self._idf[key] = {lex: c.most_common(1)[0][0] for lex, c in counts.items()}
+        return self._idf[key]
+
+    # ---- for the second chiasm test ---------------------------------------
+
+    def families(self):
+        """Strong's number -> root family (atlas_morph.py's root_families), or {} without it."""
+        if "families" not in self._idf:
+            have = self.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'root_families'").fetchone()
+            self._idf["families"] = dict(self.db.execute(
+                "SELECT root, family FROM root_families")) if have else {}
+        return self._idf["families"]
+
+    def family_idf(self, corpus):
+        """log(verses / verses with a word of the family) over the testament."""
+        key = "famidf_" + corpus
+        if key not in self._idf:
+            fam = self.families()
+            word_filter = "t.element = 'root'" if corpus == "TAHOT" else "t.in_tr = 1"
+            total = self.db.execute("SELECT COUNT(*) FROM verses WHERE corpus = ?", (corpus,)).fetchone()[0]
+            verses_of = defaultdict(set)
+            for lex, vid in self.db.execute(
+                    f"SELECT t.root, t.verse_id FROM tokens t JOIN verses v USING (verse_id) "
+                    f"WHERE v.corpus = ? AND {word_filter} AND t.is_stop = 0", (corpus,)):
+                verses_of[fam.get(lex, lex)].add(vid)
+            self._idf[key] = {f: math.log(total / len(vs)) for f, vs in verses_of.items()}
+        return self._idf[key]
+
+    def opening_weights(self, corpus):
+        """
+        The rarity of a unit opening with a participle or an imperative:
+        -log(share of the testament's units that do).  A unit is a half-
+        verse where verse_cola gives a split, else a verse, as in the test.
+        """
+        key = "open_" + corpus
+        if key not in self._idf:
+            word_filter = "t.element = 'root'" if corpus == "TAHOT" else "t.in_tr = 1"
+            split = {}
+            if self.has_cola and corpus == "TAHOT":
+                split = dict(self.db.execute("SELECT verse_id, split_word FROM verse_cola"))
+            first = {}
+            for vid, word_no, mood in self.db.execute(
+                    f"SELECT t.verse_id, t.word_no, t.mood FROM tokens t JOIN verses v USING (verse_id) "
+                    f"WHERE v.corpus = ? AND {word_filter} ORDER BY t.verse_id, t.position", (corpus,)):
+                s = split.get(vid)
+                half = 1 if (s is not None and word_no is not None and word_no > s) else 0
+                first.setdefault((vid, half), mood)
+            n = len(first) or 1
+            counts = Counter(first.values())
+            self._idf[key] = {m: math.log(n / counts[m]) for m in OPENING_FORMS if counts[m]}
         return self._idf[key]
 
 
@@ -592,16 +705,16 @@ class FrameSearch:
 
     # ---- null model -------------------------------------------------------
 
-    def run(self):
-        """Observed best chain and frame, and their place among the shuffles."""
+    def run(self, with_chain=True):
+        """Observed best chain and frame, and their place among the shuffles (with_chain=False: frame only)."""
         identity = list(range(self.n))
-        chain_score, chain = self.best_chain(identity)
+        chain_score, chain = self.best_chain(identity) if with_chain else (0.0, [])
         frame = self.best_frame(identity)
         null_chain, null_frame = [], []
         order = identity[:]
         for _ in range(self.shuffles):
             self.rng.shuffle(order)
-            null_chain.append(self.best_chain(order)[0])
+            null_chain.append(self.best_chain(order)[0] if with_chain else 0.0)
             null_frame.append(self.best_frame(order)[0])
         p_chain = (1 + sum(1 for s in null_chain if s >= chain_score)) / (1 + self.shuffles)
         p_frame = (1 + sum(1 for s in null_frame if s >= frame[0])) / (1 + self.shuffles)
@@ -700,16 +813,425 @@ class PublishedCheck:
 
 
 # ---------------------------------------------------------------------------
+# Part 3, second version: symmetry around a centre, with cohesion-keeping nulls
+# ---------------------------------------------------------------------------
+
+class Unit:
+    """One half-verse (or a whole verse where there is no split)."""
+    __slots__ = ("verse", "half", "fams", "phrases", "opening")
+
+    def __init__(self, verse, half, fams, phrases, opening):
+        self.verse = verse
+        self.half = half            # 'a', 'b' or '' (a whole verse)
+        self.fams = fams            # root families of its content words, rare enough to count
+        self.phrases = phrases      # runs of two such families, in order
+        self.opening = opening      # 'participle', 'imperative' or None
+
+    @property
+    def label(self):
+        return self.verse.label + self.half
+
+
+class UnitBuilder:
+    """Cuts verses into units and gives each its families and opening form."""
+
+    def __init__(self, families, fam_idf, gloss):
+        self.families = families
+        self.fam_idf = fam_idf
+        self.gloss = gloss
+        self.members = defaultdict(Counter)     # family -> the numbers seen in it
+
+    def family(self, lex):
+        return self.families.get(lex, lex)
+
+    def units(self, verses):
+        out = []
+        for v in verses:
+            words = [w for w in v.words if w.lex]
+            split = v.split_word
+            a = [w for w in words if split is not None and w.word_no is not None and w.word_no <= split]
+            b = [w for w in words if split is not None and w.word_no is not None and w.word_no > split]
+            if a and b:
+                out.append(self._unit(v, "a", a))
+                out.append(self._unit(v, "b", b))
+            else:
+                out.append(self._unit(v, "", words))
+        return out
+
+    def _unit(self, verse, half, words):
+        seq = []
+        for w in words:
+            if w.is_stop:
+                continue
+            f = self.family(w.lex)
+            self.members[f][w.lex] += 1
+            if self.fam_idf.get(f, 0) >= IDF_FLOOR:
+                seq.append(f)
+        phrases = {(seq[k], seq[k + 1]) for k in range(len(seq) - 1)}
+        opening = words[0].mood if words and words[0].mood in OPENING_FORMS else None
+        return Unit(verse, half, set(seq), phrases, opening)
+
+    def family_text(self, fam):
+        """'righteousness/righteous' for a family seen as two numbers."""
+        names = []
+        for lex, _ in self.members[fam].most_common(3):
+            g = self.gloss.get(lex, lex)
+            if g not in names:
+                names.append(g)
+        return "/".join(names) or self.gloss.get(fam, fam)
+
+
+class SymmetrySettings:
+    """
+    The fixed rules of one version of the symmetry test.
+        v2   minimum gap 3 units, tolerance 1, no theme rule
+        v3   minimum gap 2 units, tolerance 1 under TOLERANCE_STEP units
+             and 2 from there on, and the theme rule applied inside every
+             stretch (passage and null windows alike): the families in
+             more than THEME_SHARE of the stretch's units are set aside
+    """
+
+    def __init__(self, version):
+        self.version = version
+        self.min_gap = 3 if version == "v2" else 2
+        self.theme = version != "v2"
+
+    def tolerance(self, L):
+        if self.version == "v2":
+            return 1
+        return 1 if L < TOLERANCE_STEP else 2
+
+
+class SymmetrySearch:
+    """
+    The symmetry score of a stretch of units around each possible centre.
+
+    A centre is a unit (c) or the gap between two units (c and c+1).  At
+    each distance d the unit d places before the centre is paired with the
+    unit d places after it, or up to the tolerance either side, and the
+    best of those weights is added.  Pairs closer than the minimum gap are
+    left out, since next-door repetition is parallelism, not chiasm.  The
+    best centre is the stretch's answer and its score the statistic.
+
+    A pair's weight is the summed rarity of the root families the two
+    units share, a phrase bonus as in the first test, and the rarity of
+    the opening form when both open with a participle or both with an
+    imperative.  The weights are worked out for each stretch on its own,
+    because the theme rule (version 3) sets aside the stretch's own
+    theme families: the passage and every null window by the same rule.
+
+    A form pair on its own never decides a centre: the report says
+    whether the same centre wins with the form weight taken out.
+    """
+
+    def __init__(self, units, builder, form_weights, settings):
+        import numpy as np
+        self.np = np
+        self.units = units
+        self.builder = builder
+        self.form_weights = form_weights
+        self.settings = settings
+        self.U = len(units)
+        self._prepare()
+        self._geometry = {}
+
+    # ---- weights ----------------------------------------------------------
+
+    def _prepare(self):
+        """The unit-by-family table, the phrases and the opening forms, once per book."""
+        np = self.np
+        idf = self.builder.fam_idf
+        self.fams = sorted({f for u in self.units for f in u.fams})
+        col = {f: k for k, f in enumerate(self.fams)}
+        self.X = np.zeros((self.U, len(self.fams)), dtype=np.float32)
+        for i, u in enumerate(self.units):
+            for f in u.fams:
+                self.X[i, col[f]] = 1.0
+        self.rarity = np.array([idf[f] for f in self.fams], dtype=np.float32)
+        self.forms = {form: np.array([1.0 if u.opening == form else 0.0 for u in self.units], dtype=np.float32)
+                      for form in self.form_weights}
+
+    def theme_of(self, t, L):
+        """The families in more than THEME_SHARE of units t..t+L-1 (version 3), else none."""
+        if not self.settings.theme:
+            return set()
+        counts = self.X[t:t + L].sum(axis=0)
+        return {self.fams[k] for k in self.np.nonzero(counts > THEME_SHARE * L)[0]}
+
+    def weights(self, t, L, with_form=True):
+        """The L x L pair weights of units t..t+L-1, theme families set aside."""
+        np = self.np
+        idf = self.builder.fam_idf
+        Xw = self.X[t:t + L]
+        counts = Xw.sum(axis=0)
+        keep = counts > 0
+        if self.settings.theme:
+            keep &= counts <= THEME_SHARE * L
+        cols = np.nonzero(keep)[0]
+        Xk = Xw[:, cols]
+        W = (Xk * self.rarity[cols]) @ Xk.T
+        theme = self.theme_of(t, L)
+        # The phrase bonus: the mean rarity of the two words again
+        where = defaultdict(list)
+        for i in range(L):
+            for p in self.units[t + i].phrases:
+                if p[0] not in theme and p[1] not in theme:
+                    where[p].append(i)
+        for p, idx in where.items():
+            if len(idx) > 1:
+                bonus = (idf[p[0]] + idf[p[1]]) / 2
+                for x in range(len(idx)):
+                    for y in range(x + 1, len(idx)):
+                        W[idx[x], idx[y]] += bonus
+                        W[idx[y], idx[x]] += bonus
+        if with_form:
+            for form, weight in self.form_weights.items():
+                v = self.forms[form][t:t + L]
+                W += weight * np.outer(v, v)
+        np.fill_diagonal(W, 0.0)
+        return W
+
+    def pair_detail(self, i, j, theme=()):
+        """The shared families and form of two units, for the tables."""
+        a, b = self.units[i], self.units[j]
+        shared = sorted((a.fams & b.fams) - set(theme), key=lambda f: -self.builder.fam_idf.get(f, 0))
+        bits = [self.builder.family_text(f) for f in shared]
+        if a.opening and a.opening == b.opening:
+            bits.append(f"[both open with a {a.opening}]")
+        return ", ".join(bits) or "."
+
+    # ---- geometry ---------------------------------------------------------
+
+    def geometry(self, L):
+        """
+        For a stretch of L units: one row per (centre, distance) with the
+        left unit and the partner units within the tolerance (local
+        indexes, -1 for none).  Centre ids: 2c for unit c, 2c + 1 for the
+        gap after it.
+        """
+        if L in self._geometry:
+            return self._geometry[L]
+        np = self.np
+        tol = self.settings.tolerance(L)
+        width = 2 * tol + 1
+        cid, left, right = [], [], []
+        for c in range(L):
+            for kind in (0, 1):
+                if kind == 1 and c == L - 1:
+                    continue
+                d = 1
+                while True:
+                    lft = c - d if kind == 0 else c + 1 - d
+                    if lft < 0:
+                        break
+                    mirror = c + d
+                    parts = [r for r in range(mirror - tol, mirror + tol + 1)
+                             if c < r < L and r - lft >= self.settings.min_gap]
+                    if parts:
+                        cid.append(2 * c + kind)
+                        left.append(lft)
+                        right.append(parts + [-1] * (width - len(parts)))
+                    d += 1
+        g = (np.array(cid, dtype=np.int64), np.array(left, dtype=np.int64),
+             np.array(right, dtype=np.int64).reshape(-1, width))
+        self._geometry[L] = g
+        return g
+
+    def scores(self, Wsub):
+        """Score of every centre of a stretch whose pair weights are Wsub."""
+        np = self.np
+        L = Wsub.shape[0]
+        cid, left, right = self.geometry(L)
+        if len(cid) == 0:
+            return np.zeros(2 * L, dtype=np.float32), None
+        valid = right >= 0
+        vals = Wsub[left[:, None], np.where(valid, right, 0)] * valid
+        best = vals.max(axis=1)
+        pick = right[np.arange(len(right)), vals.argmax(axis=1)]
+        return np.bincount(cid, weights=best, minlength=2 * L), (cid, left, pick, best)
+
+    # ---- the test ---------------------------------------------------------
+
+    def run(self, start, end):
+        """
+        The best centre of units start..end-1, its pairs, and its place
+        against the rotations of the stretch and against every stretch of
+        the same length in the book that does not overlap it.
+        """
+        np = self.np
+        L = end - start
+        Wp = self.weights(start, L)
+        sc, rows = self.scores(Wp)
+        centre = int(np.argmax(sc))
+        observed = float(sc[centre])
+        # The same test without the form weight, to see whether form decides the centre
+        sc_plain, _ = self.scores(self.weights(start, L, with_form=False))
+        centre_plain = int(np.argmax(sc_plain))
+        pairs = []
+        if rows is not None:
+            cid, left, pick, best = rows
+            for k in np.nonzero(cid == centre)[0]:
+                if best[k] > 0:
+                    pairs.append((start + int(left[k]), start + int(pick[k]), float(best[k])))
+            pairs.sort(key=lambda p: p[0], reverse=True)       # innermost first
+        # Rotation: the stretch read as a circle from each other unit (same weights, same theme)
+        rot = []
+        for k in range(1, L):
+            perm = np.roll(np.arange(L), -k)
+            rot.append(float(self.scores(Wp[np.ix_(perm, perm)])[0].max()))
+        # Same-book windows of the same length that do not overlap the stretch,
+        # each with its own theme families set aside
+        win = []
+        for t in range(0, self.U - L + 1):
+            if t < end and t + L > start:
+                continue
+            win.append(float(self.scores(self.weights(t, L))[0].max()))
+        p = lambda null: (1 + sum(1 for s in null if s >= observed)) / (1 + len(null))
+        return {
+            "score": observed, "centre": centre, "centre_plain": centre_plain, "pairs": pairs,
+            "start": start, "L": L, "tolerance": self.settings.tolerance(L),
+            "theme": self.theme_of(start, L),
+            "p_rot": p(rot), "n_rot": len(rot), "rot_null": FrameSearch._quantiles(rot),
+            "rot_top": all(observed > s for s in rot),
+            "p_win": p(win), "n_win": len(win), "win_null": FrameSearch._quantiles(win),
+        }
+
+    def centre_units(self, result, key="centre"):
+        """The unit, or the two units either side of the gap, at the centre."""
+        c, kind = divmod(result[key], 2)
+        s = result["start"]
+        return [self.units[s + c]] if kind == 0 else [self.units[s + c], self.units[s + c + 1]]
+
+    @staticmethod
+    def survives(result):
+        return result["p_rot"] < ALPHA and result["p_win"] < ALPHA
+
+    def markdown(self, result):
+        centre = " | ".join(u.label for u in self.centre_units(result))
+        plain = " | ".join(u.label for u in self.centre_units(result, "centre_plain"))
+        mark = lambda p: "yes" if p < ALPHA else "no"
+        theme = ", ".join(self.builder.family_text(f) for f in sorted(result["theme"])) or "none"
+        floor = 1 / (1 + result["n_rot"])
+        lines = [
+            "| null model | stretches | median best score | 95th | p | survives |",
+            "|---|---:|---:|---:|---:|---|",
+            f"| rotation of the passage | {result['n_rot']} | {result['rot_null']['median']:.1f} | "
+            f"{result['rot_null']['q95']:.1f} | {result['p_rot']:.3f} | {mark(result['p_rot'])} |",
+            f"| same-length windows of the book | {result['n_win']} | {result['win_null']['median']:.1f} | "
+            f"{result['win_null']['q95']:.1f} | {result['p_win']:.3f} | {mark(result['p_win'])} |",
+            "",
+            f"Best centre: {centre} (score {result['score']:.1f}, over {result['L']} units, "
+            f"tolerance {result['tolerance']}).  Without the form weight the best centre is {plain}"
+            f"{' (the same)' if plain == centre else ''}.  Theme families set aside: {theme}.",
+        ]
+        if floor >= ALPHA:
+            lines.append("")
+            lines.append(f"With {result['n_rot']} rotations the smallest p the rotation null can give is "
+                         f"{floor:.3f}, so it cannot reach 0.05; the observed centre "
+                         f"{'beats every rotation' if result['rot_top'] else 'does not beat every rotation'}.")
+        lines += ["", "| mirror pair (innermost first) | shared | weight |", "|---|---|---:|"]
+        for i, j, w in result["pairs"]:
+            lines.append(f"| {self.units[i].label} / {self.units[j].label} | "
+                         f"{self.pair_detail(i, j, result['theme'])} | {w:.1f} |")
+        return "\n".join(lines)
+
+
+class SymmetryCheck:
+    """The three-part verdict of the second test against a published structure."""
+
+    def __init__(self, name, search, result):
+        self.case = PUBLISHED[name]
+        self.search = search
+        self.result = result
+
+    def found_pairs(self):
+        out = []
+        for label, r1, r2 in self.case["pairs"]:
+            hit = None
+            for i, j, _ in self.result["pairs"]:
+                a, b = self.search.units[i].verse, self.search.units[j].verse
+                if (PublishedCheck.inside(a, r1) and PublishedCheck.inside(b, r2)) or \
+                        (PublishedCheck.inside(a, r2) and PublishedCheck.inside(b, r1)):
+                    hit = (self.search.units[i], self.search.units[j])
+                    break
+            out.append((label, r1, r2, hit))
+        return out
+
+    def verdict(self):
+        pairs = self.found_pairs()
+        n_found = sum(1 for p in pairs if p[3])
+        centre = self.search.centre_units(self.result)
+        centre_ok = any(PublishedCheck.inside(u.verse, self.case["centre"]) for u in centre)
+        survives = SymmetrySearch.survives(self.result)
+        found = survives and n_found * 2 >= len(pairs) and centre_ok
+        return found, n_found, len(pairs), centre_ok, centre, survives
+
+    def markdown(self):
+        def rng(r):
+            return f"{r[0]}:{r[1]}" + (f"-{r[2]}" if r[2] != r[1] else "")
+        lines = ["| published pair | ranges | found as |", "|---|---|---|"]
+        for label, r1, r2, hit in self.found_pairs():
+            got = f"{hit[0].label} / {hit[1].label}" if hit else "not found"
+            lines.append(f"| {label} | {rng(r1)} / {rng(r2)} | {got} |")
+        found, n_found, total, centre_ok, centre, survives = self.verdict()
+        where = " | ".join(u.label for u in centre)
+        lines.append("")
+        lines.append(f"Published centre {self.case['centre_label']}; the best centre: {where} "
+                     f"({'in' if centre_ok else 'not in'} the published centre).  "
+                     f"Pairs recovered: {n_found} of {total}.  "
+                     f"{'Survives' if survives else 'Does not survive'} both null models "
+                     f"(rotation p = {self.result['p_rot']:.3f}, windows p = {self.result['p_win']:.3f}).  "
+                     f"**Verdict: {'found' if found else 'not found'}.**")
+        return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # The report
 # ---------------------------------------------------------------------------
 
 class Experiment:
     """Runs the chosen parts on a book or passage and writes Markdown."""
 
-    def __init__(self, store, shuffles, seed):
+    def __init__(self, store, shuffles, seed, chiasm="v3"):
         self.store = store
         self.shuffles = shuffles
         self.seed = seed
+        self.chiasm = chiasm
+        self._books = {}        # book code -> (UnitBuilder, SymmetrySearch)
+
+    # ---- the second chiasm test -------------------------------------------
+
+    def book_search(self, code):
+        """The units and pair weights of a whole book, made once."""
+        if code not in self._books:
+            spec = PassageSpec(BOOK_NAMES[code])
+            corpus = spec.corpus
+            builder = UnitBuilder(self.store.families(), self.store.family_idf(corpus), self.store.gloss_of(corpus))
+            units = builder.units(self.store.verses(spec))
+            self._books[code] = SymmetrySearch(units, builder, self.store.opening_weights(corpus),
+                                               SymmetrySettings(self.chiasm))
+        return self._books[code]
+
+    def symmetry(self, spec):
+        """Run the second test on a passage; returns (search, result)."""
+        search = self.book_search(spec.code)
+        idx = [k for k, u in enumerate(search.units) if spec.contains(u.verse.chapter, u.verse.verse)]
+        if len(idx) < 6:
+            return search, None
+        return search, search.run(idx[0], idx[-1] + 1)
+
+    def symmetry_markdown(self, spec, published=None):
+        search, result = self.symmetry(spec)
+        if result is None:
+            return "Too short for the test.", None, None, search
+        words = sum(1 for u in search.units[result["start"]:result["start"] + result["L"]] if u.half)
+        out = [f"{result['L']} units ({words} of them half-verses).", "", search.markdown(result)]
+        verdict = None
+        if published:
+            check = SymmetryCheck(published, search, result)
+            out += ["", f"Against the published structure ({check.case['source']}):", "", check.markdown()]
+            verdict = check.verdict()[0]
+        return "\n".join(out), result, verdict, search
 
     def frames_markdown(self, spec, verses, published=None):
         idf = self.store.idf(spec.corpus)
@@ -752,13 +1274,17 @@ class Experiment:
         return "\n".join(out), result, verdict
 
     def run_tests(self):
-        """The chiasm and inclusio part on the published cases."""
-        parts = ["## The published cases", ""]
+        """The chiasm part on the published cases (the second test unless --chiasm v1)."""
+        title = {"v1": "first chiasm test, with inclusio", "v2": "second chiasm test",
+                 "v3": "third chiasm test"}[self.chiasm]
+        parts = [f"## The published cases ({title})", ""]
         verdicts = {}
         for name in PUBLISHED:
             spec = PassageSpec(name)
-            verses = self.store.verses(spec)
-            text, _, verdict = self.frames_markdown(spec, verses, published=name)
+            if self.chiasm in ("v2", "v3"):
+                text, _, verdict, _ = self.symmetry_markdown(spec, published=name)
+            else:
+                text, _, verdict = self.frames_markdown(spec, self.store.verses(spec), published=name)
             verdicts[name] = verdict
             parts += [f"### {name}", "", text, ""]
         return "\n".join(parts), verdicts
@@ -779,7 +1305,33 @@ class Experiment:
             else:
                 out.append(ColaProbe(verses, gloss).markdown())
             out.append("")
-        if "frames" in parts:
+        if "frames" in parts and self.chiasm in ("v2", "v3"):
+            out += [f"### Chiasm ({'second' if self.chiasm == 'v2' else 'third'} test) and inclusio", ""]
+            chapters = [None] if spec.start is not None else sorted({v.chapter for v in verses})
+            summary = ["| passage | units | best centre | score | rotation p | windows p | survives | "
+                       "inclusio | inclusio p |", "|---|---:|---|---:|---:|---:|---|---|---:|"]
+            details = []
+            mark = lambda p: f"**{p:.3f}**" if p < ALPHA else f"{p:.3f}"
+            for ch in chapters:
+                sub_spec = spec if ch is None else PassageSpec(f"{BOOK_NAMES[spec.code]} {ch}")
+                sub = verses if ch is None else [v for v in verses if v.chapter == ch]
+                text, res, _, search = self.symmetry_markdown(sub_spec)
+                frame = FrameSearch(sub, self.store.idf(spec.corpus), gloss, self.shuffles, self.seed).run(with_chain=False)
+                fs, fa, fb, fw = frame["frame"]
+                incl = f"{sub[fa].label} / {sub[fb].label}: " + ", ".join(gloss.get(x, x) for x in sorted(fw)) \
+                    if fa is not None else "."
+                name_ch = sub_spec.text
+                if res is None:
+                    summary.append(f"| {name_ch} | . | . | . | . | . | . | {incl} | {mark(frame['p_frame'])} |")
+                else:
+                    centre = " / ".join(u.label for u in search.centre_units(res))
+                    summary.append(f"| {name_ch} | {res['L']} | {centre} | {res['score']:.1f} | {mark(res['p_rot'])} | "
+                                   f"{mark(res['p_win'])} | {'yes' if SymmetrySearch.survives(res) else 'no'} | "
+                                   f"{incl} | {mark(frame['p_frame'])} |")
+                details += [f"#### {name_ch}", "", text, ""]
+            out += summary + ["", "p values in bold are under 0.05.  The inclusio column is the first test's "
+                              "(verse shuffles), unchanged.", ""] + details
+        elif "frames" in parts:
             out += ["### Inclusio and chiasm", ""]
             if spec.start is not None:
                 text, _, _ = self.frames_markdown(spec, verses)
@@ -820,12 +1372,15 @@ def main():
     ap.add_argument("--tests", action="store_true", help="run the frames part on the published cases first")
     ap.add_argument("--shuffles", type=int, default=1000, help="shuffles for the null model (default 1000)")
     ap.add_argument("--seed", type=int, default=1, help="random seed (default 1)")
+    ap.add_argument("--chiasm", choices=["v1", "v2", "v3"], default="v3",
+                    help="v3 (default): the third test; v2: the second (symmetry around a centre, "
+                         "gap 3, no theme rule); v1: the first (heaviest nested chain, verse shuffles)")
     ap.add_argument("--db", default=str(ATLAS_DIR / "lxx.db"), help="the lxx.db to read")
     ap.add_argument("--out", help="write the report here instead of printing it")
     args = ap.parse_args()
 
     store = TextStore(args.db)
-    exp = Experiment(store, args.shuffles, args.seed)
+    exp = Experiment(store, args.shuffles, args.seed, args.chiasm)
     parts = {p.strip() for p in args.parts.split(",") if p.strip()}
     report = []
     if args.tests:

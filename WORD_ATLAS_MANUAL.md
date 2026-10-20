@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.101. Andrew Hopkins, with Claude.
+For version 0.10.102. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -504,8 +504,46 @@ and `--no-atlas` leave a program off), and `check DRIVE` reads it
 back. On the drive, `python3 install.py --list` says what it holds,
 and `--app reader --dest FOLDER --yes` installs without questions.
 
-The Windows side of this was written on Linux and has not yet been
-run on a Windows machine: the first drive tried there is the test.
+**The install report (0.10.102).** At the end of an install the
+installer checks what it did and writes `install_report.txt` in the
+install folder, beside `installed_files.json` (every file it copied,
+with its size and checksum). The report covers the computer (system,
+Python, the folder's free space), each program's files (every one
+present and matching what was copied; a damaged or missing file is
+named), the datasets (each opens as a zip, holds the tables the Reader
+reads, and whether it carries the heat strips), PyQt6 (where it came
+from, that it loads and, on Linux, that a window can open), the
+starter files and the menu or Desktop entries. Every problem is
+followed by a "What to do" line, and the last line says NO PROBLEMS
+FOUND or how many there were. It is the file to ask for when someone
+calls about an install that went wrong. `python3 install.py --check`
+on the drive, or `python3 usb_install.py --check` in the installed
+Reader's folder (no drive needed), checks again and rewrites it; the
+Reader's Tools tab has a **Check the install** button that shows the
+same report.
+
+**Updates from GitHub (Reader 0.3.13).** An installed Reader brings
+itself up to date over the internet, without another drive. Its Tools
+tab has **Check for a newer Reader**, which reads the version on the
+main branch of andyinva/word-atlas-reader and, when it is newer,
+offers to replace this copy's program files (the old ones are kept
+under the Reader's `backups` folder, and the datasets, settings and
+key are never touched) or to put the newer Reader into another
+folder; and **Check for a newer dataset**, which looks for the newest
+`.wadb` attached to a release of the same repository, downloads it
+into the Reader's `datasets` folder and opens it, removing the older
+ones if you tick the box. A dataset is published by attaching the
+`.wadb` to a GitHub release (see the Reader's README). A built copy
+cannot replace its own program; it is brought up to date by a new
+build or an updated drive.
+
+**A built copy making a drive (0.10.102).** Opened from a built
+Reader (`dist/WordAtlasReader`), the USB window finds the Reader's
+source folder two levels up, so the program files go on the drive;
+the build's own `datasets` folder is never copied onto the drive.
+
+The Windows side was tried on Windows 11 on 2026-10-20 with the built
+Reader and the 0.10.101 dataset: it installed and ran without trouble.
 
 ## 9. Builds: rebuilding, keeping and going back
 
@@ -5190,6 +5228,13 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.102.** The USB installer checks its own work: an install
+report (`install_report.txt`) and a list of every installed file with
+its checksum (`installed_files.json`), and `--check` to check again
+without the drive (section 8a). A built Reader making a drive finds its
+source folder, and the build's `datasets` folder stays off the drive.
+The Reader (0.3.13) gains updates from GitHub. No page changes.
 
 **0.10.101.** The heat strips in the results file: `atlas_heat.py`
 writes `heat_strips`, `heat_windows` and `heat_spots` to

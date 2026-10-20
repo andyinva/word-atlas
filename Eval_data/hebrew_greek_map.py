@@ -237,7 +237,16 @@ def hebrew_tokens(lxx_path: Path) -> dict:
                 continue
             if root[1:].isdigit() and int(root[1:]) >= 9000:
                 continue
-            out[f"{books[eb - 1]} {ec}:{ev}"].append((root, strongs or root, gloss_key(gloss), gloss or ""))
+            ref = f"{books[eb - 1]} {ec}:{ev}"
+            gloss = gloss or ""
+            # TAHOT splits some words over two tokens ("re-" and "-lease",
+            # Isaiah 61:1; "Melchi-" and "-zedek"): joined into one entry
+            prev = out[ref][-1] if out[ref] else None
+            if prev and prev[0] == root and prev[3].endswith("-") and gloss.startswith("-"):
+                whole = prev[3][:-1] + gloss[1:]
+                out[ref][-1] = (root, prev[1], gloss_key(whole), whole)
+                continue
+            out[ref].append((root, strongs or root, gloss_key(gloss), gloss))
     finally:
         db.close()
     return out
@@ -258,6 +267,18 @@ def greek_glosses(lxx_path: Path) -> dict:
     finally:
         db.close()
     return out
+
+
+def hebrew_names(lxx_path: Path) -> set:
+    """The Hebrew roots TAHOT tags as proper names (a person, a place, a people) in most of their uses."""
+    db = sqlite3.connect(lxx_path.resolve().as_uri() + "?mode=ro", uri=True)
+    try:
+        rows = db.execute(
+            "SELECT t.root, SUM(t.name_kind IN ('person', 'place', 'people')), COUNT(*) FROM tokens t "
+            "JOIN verses v USING (verse_id) WHERE v.corpus = 'TAHOT' AND t.root LIKE 'H%' GROUP BY t.root").fetchall()
+    finally:
+        db.close()
+    return {r for r, named, n in rows if named and named * 2 >= n}
 
 
 def build_senses(out: Path = SENSE_FILE) -> dict:

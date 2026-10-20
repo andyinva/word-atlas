@@ -123,6 +123,15 @@ def plain(word: str) -> str:
 # "rod", from verses like Micah 7:14 where shepherd and rod stand together,
 # and Psalm 2:9 then looked as if the Hebrew had "shepherd".)
 HEBREW_SHARE = 0.05
+# A Septuagint-only verse that this many New Testament verses share a run
+# with is a stock phrase of Jewish Greek, shown once ("for ever and ever,
+# amen", 4 Maccabees 18:24).
+STOCK_VERSES = 4
+# ...and so is one New Testament run found in this many Septuagint verses
+# with no Hebrew ("the borders of Judea", five verses of 1 Maccabees).
+STOCK_RUN_PLACES = 3
+# The stock phrases printed, strongest first (all are in the .json)
+STOCK_SHOWN = 40
 # THE FLOOR.  A "Septuagint reading" or "Hebrew, not the Old Greek" needs
 # FLOOR_WORDS content words on its side, or one word and a citation marker;
 # a verdict below that is weak, shown in its own tier, not counted in the
@@ -137,6 +146,10 @@ CITE_BEFORE = 2
 # Hebrew word's renderings, or this much of the Greek word's uses), or the
 # two are glossed alike; otherwise a difference of text.
 WORDING_REVERSE = 0.1
+# A Greek word used this many times or fewer in the Septuagint, with no real
+# pairing, is "unaligned" rather than a difference of text (a name is not:
+# Rephan for Kiyyun, Amos 5:26, is a difference of text).
+RARE_GREEK = 6
 # THE MAP READ BOTH WAYS.  A pairing of a Hebrew and a Greek word counts
 # when the Septuagint makes it in PAIR_VERSES verses, or in one verse with
 # SINGLE_SHARE of the Hebrew word's renderings; and a Greek word that renders
@@ -330,6 +343,8 @@ class HebrewTest:
         self.sense_map, self.sense_seen = senses
         # The New Testament words' own English glosses, to tell a sense apart
         self.nt_gloss = hebrew_greek_map.greek_glosses(ATLAS_DIR / "lxx.db")
+        # The Hebrew proper names, which cannot stand behind a common Greek word
+        self.names = hebrew_greek_map.hebrew_names(ATLAS_DIR / "lxx.db")
 
     def sense_ok(self, forms, e: str, root: str, h: str = "") -> bool:
         """Whether a Greek word (forms) renders the sense root has in Old Testament verse e (see SENSE_MIN)."""
@@ -738,19 +753,35 @@ class HebrewTest:
 
     def lxx_glosses(self, h: str, e: str, keys) -> tuple:
         """
-        ("word (Hebrew 'gloss', root: wording|text); ...", "wording"|"text"|"") for
-        the Septuagint-only words.  The Hebrew counterpart is the word of the
-        verse the map pairs the Greek word with at all, however weakly.  A
-        counterpart of the same sense as the New Testament word's own gloss
-        makes a difference of wording (the Septuagint chose its word for the
-        same Hebrew); no counterpart, or one of another sense, a difference of
-        text (Psalm 2:9: poimainein, "shepherd", where the Hebrew has "break").
+        ("word (Hebrew 'gloss', root: kind); ...", row kind) for the
+        Septuagint-only words, kind "text", "wording" or "unaligned".  The
+        Hebrew counterpart is the word of the verse the map pairs the Greek
+        word with at all, however weakly; a real pairing (made in PAIR_VERSES
+        verses) or a gloss of the same sense makes a difference of wording,
+        the Septuagint's word for the same Hebrew.  No counterpart, or one of
+        another sense, makes a difference of text (Psalm 2:9: poimainein,
+        "shepherd", where the Hebrew has "break").  A proper name cannot
+        stand behind a common Greek word: when a name is the only candidate,
+        the word is "unaligned", its Hebrew too rare for the map to learn
+        (taxis, "order", for divrah, Psalm 110:4, not "Melchizedek"; the
+        row is then counted with neither text nor wording).  A row is "text"
+        when any of its words is text, else "wording" when any is.
         """
         t = self.texts
         parts, kinds = [], []
         toks = self.centre_first(e)
         for k in keys:
-            best, score = None, (False, 0.0)
+            greek_name = (t.lemma(k) or "x")[:1].isupper()
+            # A Hebrew word of the verse glossed as the New Testament word is
+            # its counterpart before any pairing the map offers (distomos and
+            # "two-edged", Psalm 149:6, a word that occurs twice)
+            a = self.nt_gloss.get(h, {}).get(k, "")
+            alike = next((tok for tok in toks if self.same_sense(a, tok[3], tok[2])), None)
+            if alike:
+                parts.append(f"{t.lemma(k)} (Hebrew '{alike[3]}', {alike[0]}: wording)")
+                kinds.append("wording")
+                continue
+            best, score, named_only = None, (False, 0.0), False
             for tok in toks:
                 # The map either way, the word or its family (empiripatein
                 # beside peripatein, for hithhalek, Leviticus 26:12).  A real
@@ -760,21 +791,39 @@ class HebrewTest:
                 t_, bw = self.map.get(tok[0], {}), self.both_ways.get(tok[0], {})
                 for g in set(t_) | set(bw):
                     if g == k or self.kin(k, [g]):
+                        # Names pair with names only: a Hebrew name cannot stand
+                        # behind a common Greek word, nor a common Hebrew word
+                        # behind a Greek name (Elisha in 2 Kings 5:14's Greek,
+                        # where the Hebrew has "the man of God", not "dipped")
+                        if (tok[0] in self.names) != greek_name:
+                            named_only = named_only or not greek_name
+                            continue
                         rev, verses = bw.get(g, (0.0, 0))
                         v = max(t_.get(g, 0.0), rev)
                         real = verses >= PAIR_VERSES and (t_.get(g, 0.0) >= 0.02 or rev >= WORDING_REVERSE)
                         if (real, v) > score:
                             best, score = tok, (real, v)
+            if best is None and named_only:
+                parts.append(f"{t.lemma(k)} (unaligned: the Hebrew behind it too rare for the map)")
+                kinds.append("unaligned")
+                continue
             if best is None:
                 parts.append(f"{t.lemma(k)} (no Hebrew word behind it: text)")
                 kinds.append("text")
                 continue
             r, unit, key, gloss = best
             same = self.same_sense(self.nt_gloss.get(h, {}).get(k, ""), gloss, key)
+            if not score[0] and not same and not greek_name and t.lxx_total.get(k, 0) <= RARE_GREEK:
+                # A rare Greek word with only a stray pairing: the map had
+                # nothing to learn from (distomos, "two-edged", Psalm 149:6,
+                # where TAHOT glosses the Hebrew literally as "teeth")
+                parts.append(f"{t.lemma(k)} (unaligned: too rare in the Septuagint for the map)")
+                kinds.append("unaligned")
+                continue
             kind = "wording" if score[0] or same else "text"
             parts.append(f"{t.lemma(k)} (Hebrew '{gloss}', {r}: {kind})")
             kinds.append(kind)
-        kind = "text" if "text" in kinds else ("wording" if kinds else "")
+        kind = next((k for k in ("text", "wording", "unaligned") if k in kinds), "")
         return "; ".join(parts), kind
 
     def heb_glosses(self, e: str, keys) -> str:
@@ -783,7 +832,8 @@ class HebrewTest:
         parts = []
         toks = self.tokens.get(e, [])
         for k in keys:
-            best = max(toks, key=lambda tok: self.family_share(tok[0], k), default=None)
+            cands = [tok for tok in toks if tok[0] not in self.names or (t.lemma(k) or "x")[:1].isupper()]
+            best = max(cands, key=lambda tok: self.family_share(tok[0], k), default=None)
             if best and self.family_share(best[0], k) >= HEBREW_SHARE:
                 parts.append(f"{t.lemma(k)} = Hebrew '{best[3]}' ({best[0]})")
             else:
@@ -879,24 +929,71 @@ class HebrewTest:
 
     # --- the Septuagint-only books -----------------------------------------
     def septuagint_only(self) -> list:
-        """Runs of Greek a New Testament verse shares with a book the Hebrew Bible lacks."""
+        """
+        Runs of Greek a New Testament verse shares with a book the Hebrew
+        Bible lacks, each row with a "group":
+            deutero   a Septuagint-only book, and no Hebrew-backed verse
+                      carries the same run (Matthew 22:37 is Deuteronomy 6:5
+                      before it is Tobit 13:6, so it is not shown)
+            inside    a Septuagint addition inside a Hebrew book, or a verse
+                      with no English number (Proverbs 20:9a, Joshua 9:2b;
+                      1 Kings 5:14 in Rahlfs is 1 Kings 4:34 in English)
+            stock     the language's common stock: the run's content words
+                      stand together in more Septuagint verses than an echo
+                      may have ("your father and your mother"), or STOCK_VERSES
+                      or more New Testament verses share a run with one
+                      Septuagint verse ("for ever and ever, amen", 4 Maccabees
+                      18:24, one row with the count)
+        """
         t, S = self.texts, self.s.S
         hebrew_books = set(self.s.atlas.books)
+        # Every Septuagint verse by its content words, for the two tests below
+        index = defaultdict(set)
+        for (corpus, _book), vids in t.by_book.items():
+            if corpus == "LXX":
+                for v in vids:
+                    for k in self.content(v):
+                        index[k].add(v)
         out = []
         for book in self.s.atlas.books:
             if self.s.atlas.book_info[book]["testament"] != "New":
                 continue
+            # The Hebrew-backed verses each New Testament verse is linked to,
+            # with any votes at all
+            keep, self.min_votes = self.min_votes, 1
+            linked = defaultdict(set)
+            for (h, _passage), verses in self.listed(book).items():
+                for ref in verses:
+                    vid = t.by_ref["LXX"].get(ref)
+                    if vid is not None:
+                        linked[h].add(vid)
+            self.min_votes = keep
             vids = t.by_book.get(("GNT", book), [])
             for (vid, start, length, gaps), places in t.runs(vids, "LXX").items():
                 content = self.s._content(vid, start, length, gaps)
                 if len(content) < S.ECHO_MIN_CONTENT or len({p[0] for p in places}) > S.ECHO_MAX_PLACES:
                     continue
+                # A run a Hebrew-backed verse carries has a canonical source:
+                # the same Greek, or a verse the New Testament verse is linked
+                # to that holds all the run's content words (Matthew 22:37 is
+                # Deuteronomy 6:5, ex holes tes kardias, before it is Tobit
+                # 13:6, en hole kardia)
+                if any(t.english_ref(ovid) for ovid, j, fl in places):
+                    continue
+                holding = set.intersection(*(index.get(k, set()) for k in content)) if content else set()
+                here = t.english_ref(vid)
+                if holding & linked.get(here, set()):
+                    continue
+                # The language's common stock: the run's content words stand
+                # together in more Septuagint verses than an echo may have
+                # ("your father and your mother", "his wife and his children")
+                stock = len(holding) > S.ECHO_MAX_PLACES
                 for ovid, j, fl in places:
-                    if t.english_ref(ovid):
-                        continue                       # a book with a Hebrew text
                     corpus, code, ch, vs, eb, ec, ev = t.meta[ovid]
-                    out.append({"here": t.english_ref(vid), "there": t.ref(ovid),
-                                "source": t.book_of_code(code),
+                    source = t.book_of_code(code)
+                    group = "stock" if stock else ("inside" if source in hebrew_books else "deutero")
+                    out.append({"here": here, "there": t.ref(ovid), "source": source, "group": group,
+                                "stock_places": len(holding), "run": (vid, start, length),
                                 "words": t.matched(length, gaps), "content": len(content),
                                 "greek": t.render_run(vid, start, length, gaps, ovid, j)})
         # One row per pair, the longest run
@@ -905,8 +1002,32 @@ class HebrewTest:
             k = (r["here"], r["there"])
             if k not in best or r["words"] > best[k]["words"]:
                 best[k] = r
-        rows = sorted(best.values(), key=lambda r: (-r["content"], -r["words"]))
-        return rows
+        rows = list(best.values())
+        # One New Testament run found in STOCK_RUN_PLACES or more Septuagint-only
+        # verses is a phrase of the language too ("the borders of Judea")
+        per_run = defaultdict(set)
+        for r in rows:
+            per_run[r["run"]].add(r["there"])
+        for r in rows:
+            if len(per_run[r["run"]]) >= STOCK_RUN_PLACES:
+                r["group"] = "stock"
+        # A stock phrase: one Septuagint verse that many New Testament verses
+        # share a run with, collapsed to one row
+        by_there = defaultdict(list)
+        for r in rows:
+            by_there[r["there"]].append(r)
+        kept = []
+        for there, rs in by_there.items():
+            if all(r["group"] == "stock" for r in rs):
+                kept += rs
+            elif len({r["here"] for r in rs}) >= STOCK_VERSES:
+                top = max(rs, key=lambda r: (r["content"], r["words"]))
+                kept.append(dict(top, group="stock", here=f"{len(rs)} verses ("
+                                 + ", ".join(sorted({r["here"] for r in rs}, key=self.s.atlas.ref_key)[:4])
+                                 + (", ..." if len(rs) > 4 else "") + ")"))
+            else:
+                kept += rs
+        return sorted(kept, key=lambda r: (-r["content"], -r["words"]))
 
     def named_cases(self) -> list:
         """The reader's named cases: the word test, or the shared Greek for a book without Hebrew."""
@@ -1040,6 +1161,8 @@ class HebrewReport:
                                f"{'the Greek says something the Hebrew does not' if desc_on else ''}".rstrip())
                     got.append(f"      {'of which wording':<24} {c['septuagint_wording']:>5}         "
                                f"{'the Septuagint chose its word for the same Hebrew' if desc_on else ''}".rstrip())
+                    got.append(f"      {'of which unaligned':<24} {c['septuagint_unaligned']:>5}         "
+                               f"{'the Hebrew behind the word too rare for the map' if desc_on else ''}".rstrip())
             return got
         out += lines(q, nq, True)
         out += ["", f"ALL LISTED CROSS REFERENCES JUDGED  ({n:,} of {len(self.rows):,} tested, {t['weak']} weak rows "
@@ -1087,10 +1210,37 @@ class HebrewReport:
                 if k == "free":
                     diff.append(f"in neither: {r.get('unmatched', '')}")
                 out.append(f"  {r['here']:<20} {r['there']:<22} {'; '.join(diff)}")
-        out += ["", "BOOKS THE SEPTUAGINT HAS AND THE HEBREW BIBLE LACKS  (runs of Greek shared)"]
-        for r in self.apocrypha[:80]:
-            out.append(f"  {r['here']:<20} {r['there']:<28} {r['words']} words  {r['greek']}")
+        out += ["", "BOOKS THE SEPTUAGINT HAS AND THE HEBREW BIBLE LACKS  (runs of Greek shared; a run a "
+                    "Hebrew-backed verse also carries is left out)"]
+        for band, rs in self.apocrypha_bands("deutero"):
+            out.append(f"  {band}")
+            for r in rs:
+                out.append(f"    {r['here']:<20} {r['there']:<28} {r['words']} words  {r['greek']}")
+        for group, title in (("inside", "SEPTUAGINT ADDITIONS AND UNNUMBERED VERSES INSIDE HEBREW BOOKS"),
+                             ("stock", "STOCK PHRASES  (the language's common stock, or one Septuagint verse shared with "
+                                       f"{STOCK_VERSES} or more New Testament verses)")):
+            out += ["", title]
+            rs = [r for r in self.apocrypha if r["group"] == group]
+            for r in rs[:STOCK_SHOWN]:
+                out.append(f"  {r['here']:<20} {r['there']:<28} {r['words']} words  {r['greek']}")
+            if len(rs) > STOCK_SHOWN:
+                out.append(f"  ... and {len(rs) - STOCK_SHOWN} more (all in hebrew_readings.json)")
         return "\n".join(out)
+
+    # The strength bands of the Septuagint-only list, by content words shared
+    BANDS = ((6, "6 or more content words"), (4, "4 or 5 content words"), (0, "2 or 3 content words"))
+
+    def apocrypha_bands(self, group: str) -> list:
+        """[(band title, rows)] for one group of the Septuagint-only list, strongest first."""
+        out = []
+        rows = [r for r in self.apocrypha if r["group"] == group]
+        floor_above = 10 ** 6
+        for floor, title in self.BANDS:
+            rs = [r for r in rows if floor <= r["content"] < floor_above]
+            if rs:
+                out.append((title, rs))
+            floor_above = floor
+        return out
 
     def html(self) -> str:
         from isolation import HtmlReport
@@ -1120,6 +1270,7 @@ class HebrewReport:
             if k == "septuagint":
                 quote_rows += qrow("\u2003of which a difference of text", "septuagint_text")
                 quote_rows += qrow("\u2003of which a difference of wording", "septuagint_wording")
+                quote_rows += qrow("\u2003of which unaligned (the Hebrew too rare for the map)", "septuagint_unaligned")
         two = table(["Old Testament verse", "New Testament uses and verdicts"],
                     [[ot, "; ".join(f"{h}: {LABEL_SHORT.get(k, k)}" for h, k in uses)]
                      for ot, uses in self.two_writers()])
@@ -1153,8 +1304,15 @@ class HebrewReport:
             c = Counter(r["verdict"] for r in self.judged if r.get("cites") and r["here"].rsplit(" ", 1)[0] in bks)
             cite_rows.append([name] + [c[k] for k, _, _ in VERDICTS])
         citations = table(["books"] + [lab for _, lab, _ in VERDICTS], cite_rows, 1)
-        apoc = table(["New Testament", "Septuagint", "book", "words", "Greek shared"],
-                     [[r["here"], r["there"], r["source"], r["words"], r["greek"]] for r in self.apocrypha[:150]], 3)
+        def apoc_table(rs):
+            return table(["New Testament", "Septuagint", "book", "words", "Greek shared"],
+                         [[r["here"], r["there"], r["source"], r["words"], r["greek"]] for r in rs], 3)
+        apoc = "".join(f"<h3>{escape(band)}</h3>{apoc_table(rs)}" for band, rs in self.apocrypha_bands("deutero"))
+        inside = apoc_table([r for r in self.apocrypha if r["group"] == "inside"])
+        stock_rows = [r for r in self.apocrypha if r["group"] == "stock"]
+        stock = apoc_table(stock_rows[:STOCK_SHOWN]) + (
+            f"<p>... and {len(stock_rows) - STOCK_SHOWN} more, all in hebrew_readings.json.</p>"
+            if len(stock_rows) > STOCK_SHOWN else "")
         body = f"""
 <h1>Which text did the New Testament quote?</h1>
 <p>Word by word against the Hebrew itself. Every content word of a New Testament quotation is asked whether it stands
@@ -1175,7 +1333,10 @@ included; allusions lean to the Hebrew because a writer alluding in his own Gree
 below that it is weak, listed in its own section and not counted in the shares. A Septuagint reading is a difference
 of <i>text</i> when one of its Septuagint-only words has no Hebrew word behind it, or one of another sense (Psalm 2:9,
 "shepherd" where the Hebrew has "break"); otherwise it is a difference of <i>wording</i>, the Septuagint's own word
-for the same Hebrew, which says nothing about the text the writer read. Only the first is a finding about texts.</p>
+for the same Hebrew, which says nothing about the text the writer read. Only the first is a finding about texts. A
+word is <i>unaligned</i> when the map cannot say: the only candidate behind it is a proper name of the other kind
+(taxis, "order", with only "Melchizedek" beside it, Psalm 110:4), or it is a rare Greek word with only a stray pairing
+(distomos, "two-edged", Psalm 149:6). Unaligned rows are counted with neither text nor wording.</p>
 <p>Of all judged cross references, {100 * t['agree'] / max(n, 1):.0f}% agree with both texts in every witnessed word,
 {100 * t['septuagint'] / max(n, 1):.0f}% follow the Septuagint where the Hebrew differs,
 {100 * t['masoretic'] / max(n, 1):.0f}% follow the Hebrew where Rahlfs' Greek differs,
@@ -1235,10 +1396,22 @@ Greek). The words that match nothing are listed for reading.</p>
 {pairs('free')}
 <h2>Books the Septuagint has and the Hebrew Bible lacks</h2>
 <p>Runs of four or more Greek words, two or more of them content words, that a New Testament verse shares with
-Wisdom, Sirach, Baruch, Tobit, Judith, the Maccabees and the other books with no Hebrew (Masoretic) text. Any such
-reading is a Septuagint reading by definition. Many are the common phrases of Jewish Greek rather than quotations;
-the strongest are listed first.</p>
+Wisdom, Sirach, Baruch, Tobit, Judith, the Maccabees and the other books with no Hebrew (Masoretic) text, strongest
+first in three bands. A run that a Hebrew-backed verse also carries is left out: it has a canonical source (Matthew
+22:37 is Deuteronomy 6:5 before it is Tobit 13:6; Hebrews 8:10 is Jeremiah 31:33 before it is Baruch 2:35).</p>
 {apoc}
+<h2>Septuagint additions and unnumbered verses inside Hebrew books</h2>
+<p>Runs shared with a verse of a Hebrew book that has no English number: a Septuagint addition (Proverbs 20:9a,
+Joshua 9:2b, Daniel 3:25 in the Greek) or a verse numbered differently (1 Kings 5:14 in Rahlfs is 1 Kings 4:34 in
+English; Psalm 62:1 in Rahlfs is the heading of Psalm 63).</p>
+{inside}
+<h2>Stock phrases</h2>
+<p>The language's common stock, not quotations: a run whose content words stand together in more Septuagint verses
+than an echo may have ("your father and your mother", "his wife and his children", "the law of Moses"); one
+Septuagint verse sharing a run with {STOCK_VERSES} or more New Testament verses ("for ever and ever, amen", 4
+Maccabees 18:24, shown once with the verses counted); or one New Testament run found in {STOCK_RUN_PLACES} or more
+Septuagint verses ("the borders of Judea").</p>
+{stock}
 <h2>What the words mean</h2>
 <dl>
 <dt>Word map</dt><dd>For each Hebrew word, the share of its occurrences the Septuagint translated by each Greek word,

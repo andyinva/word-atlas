@@ -107,6 +107,12 @@ class RevelationReadings:
                 r["neighbour"] = r["there"] not in r.get("listed_all", [r["there"]])
                 if r["neighbour"]:
                     r["strength"] = "probable"
+                # A Septuagint reading whose Septuagint-only words are all the
+                # Septuagint's own word for the same Hebrew (distomos for
+                # "two-edged", Psalm 149:6) is a difference of wording, not a
+                # reading: listed apart, not counted
+                if r["verdict"] == "septuagint" and r.get("lxx_kind") in ("wording", "unaligned"):
+                    r["strength"] = "wording"
             out.append(r)
         return sorted(out, key=lambda r: self.sorter.atlas.ref_key(r["here"]))
 
@@ -181,14 +187,29 @@ class RevelationReport:
         self.rows, self.deutero = rows, deutero
 
     def tally(self):
-        """{verdict: {strength: (verses, passages)}}."""
+        """
+        {verdict: {strength: (verses, passages)}}: each Revelation verse once
+        (21:3 against Leviticus 26:11 and Ezekiel 37:27 is one reading), and
+        each Old Testament verse once however often Revelation uses it.  A
+        verse is counted at its strongest tier.
+        """
         out = defaultdict(dict)
         for v in ("septuagint", "masoretic", "mixed"):
+            done = set()
             for s in STRENGTHS:
-                rs = [r for r in self.rows if r["verdict"] == v and r["strength"] == s]
-                passages = {r["there"].rsplit(":", 1)[0] + ":" + r["there"].rsplit(":", 1)[1] for r in rs}
-                out[v][s] = (len(rs), len(passages))
+                rs = [r for r in self.rows if r["verdict"] == v and r["strength"] == s and r["here"] not in done]
+                done |= {r["here"] for r in rs}
+                out[v][s] = (len({r["here"] for r in rs}), len({r["there"] for r in rs}))
         return out
+
+    @staticmethod
+    def label(r) -> str:
+        """The row's reading, with Daniel's Greek named for what it is (Theodotion's)."""
+        if r["verdict"] == "septuagint" and r["there"].startswith("Daniel "):
+            return "Theodotion reading"
+        if r["verdict"] == "masoretic" and r["there"].startswith("Daniel "):
+            return "Hebrew, not Theodotion"
+        return LABEL[r["verdict"]]
 
     def passage_groups(self, verdict: str) -> dict:
         """Old Testament passage -> the Revelation verses that read it so."""
@@ -212,12 +233,19 @@ class RevelationReport:
                 "  which needs a marked citation, cannot occur here.  A reading found at a neighbour of the",
                 "  verse readers list is shown with the listed verse and counted as probable at most.",
                 "  Daniel is compared with Theodotion's Greek; the Old Greek is shown beside it."]
-        for v in ("septuagint", "masoretic", "mixed"):
-            out += ["", LABEL[v].upper()]
-            for r in (r for r in self.rows if r["verdict"] == v):
-                words = []
+        out += ["", "  Each Revelation verse is counted once (21:3 reads Leviticus 26:11 and Ezekiel 37:27 together),",
+                "  at its strongest tier.  hebrew_readings.py counts pairs (a verse with two sources is two rows) and",
+                "  only rows above its floor, so its Revelation figures differ from these by construction."]
+        for v, title in (("septuagint", "SEPTUAGINT READINGS (THEODOTION'S FOR DANIEL)"),
+                         ("masoretic", LABEL["masoretic"].upper()), ("mixed", LABEL["mixed"].upper()),
+                         ("wording", "SEPTUAGINT WORDING, NOT A READING  (the Septuagint's own word for the same Hebrew; "
+                                     "not counted)")):
+            out += ["", title]
+            for r in (r for r in self.rows if (r["strength"] == "wording") == (v == "wording")
+                      and (v == "wording" or r["verdict"] == v)):
+                words = [self.label(r)] if v != "wording" else []
                 if r["septuagint_only"]:
-                    words.append(f"Septuagint only: {r['septuagint_only']}")
+                    words.append(f"Septuagint only: {r.get('septuagint_gloss') or r['septuagint_only']}")
                 if r.get("hebrew_behind"):
                     words.append(f"by the Hebrew: {r['hebrew_behind']}")
                 if v == "free":
@@ -252,10 +280,11 @@ class RevelationReport:
 
         def cards(verdict):
             parts = []
-            for r in (r for r in self.rows if r["verdict"] == verdict):
+            for r in (r for r in self.rows if (r["strength"] == "wording") == (verdict == "wording")
+                      and (verdict == "wording" or r["verdict"] == verdict)):
                 deciding = []
                 if r["septuagint_only"]:
-                    deciding.append(f"<b>Septuagint only:</b> {escape(r['septuagint_only'])}")
+                    deciding.append(f"<b>Septuagint only:</b> {escape(r.get('septuagint_gloss') or r['septuagint_only'])}")
                 if r.get("hebrew_behind"):
                     deciding.append(f"<b>by the Hebrew:</b> {escape(r['hebrew_behind'])}")
                 where = escape(r["there"])
@@ -265,7 +294,7 @@ class RevelationReport:
                       if r.get("greek_og") else "")
                 parts.append(
                     f"<div class='card'><h3>{escape(r['here'])} &nbsp;&middot;&nbsp; {where} "
-                    f"<span class='tag'>{escape(r['strength'])}</span></h3>"
+                    f"<span class='tag'>{escape(self.label(r))}, {escape(r['strength'])}</span></h3>"
                     f"<p>{' &nbsp; '.join(deciding)} &nbsp; <span class='muted'>in both: {escape(r['both'])}; "
                     f"votes {r['votes']}</span></p>"
                     f"<table><tr><th>Revelation</th><td lang='grc'>{escape(r.get('greek_nt', ''))}</td></tr>"
@@ -306,17 +335,26 @@ that floor, so the whole-New-Testament count leaves it out, but many of Revelati
 (Zechariah 12:10, "pierced"; Psalm 2:9, "shepherd"), so they are shown here in their own column. A reading found only at
 a neighbour of the verse readers list is probable at most. "By passage" counts each Old Testament passage once, however often
 Revelation uses it. Revelation never marks a citation ("it is written"), so "free or another text", which needs one,
-cannot occur and is not counted.</p>
+cannot occur and is not counted. Each Revelation verse is counted once, at its strongest tier (21:3 reads Leviticus
+26:11 and Ezekiel 37:27 together, one reading); hebrew_readings.py counts pairs, a verse with two sources as two rows,
+and only rows above its floor, so its Revelation figures differ from these by construction. A Septuagint reading that
+is only the Septuagint's wording for the same Hebrew is listed apart and not counted.</p>
 <div class="wrap"><table><tr><th>reading</th><th>confirmed, by verse</th><th>confirmed, by passage</th>
 <th>one word, by verse</th><th>one word, by passage</th>
 <th>probable, by verse</th><th>probable, by passage</th></tr>{head_rows}</table></div>
 <p>"Hebrew" here means "the Hebrew against the Septuagint's Greek": Rahlfs' Old Greek for every book but Daniel, which is
 compared with Theodotion's Greek (the Daniel Revelation knows; the Old Greek is shown beside it). Revelation may have
 used a Greek revised toward the Hebrew (Theodotion's Zechariah has "pierced", as Revelation 1:7 does).</p>
-<h2>Septuagint readings</h2>{cards('septuagint')}
+<h2>Septuagint readings</h2>
+<p>Each Septuagint-only word is shown with the Hebrew behind it and whether the difference is one of text. The Daniel
+rows are Theodotion's Greek, labelled so.</p>{cards('septuagint')}
 <h2>Hebrew readings (not the Old Greek)</h2>{cards('masoretic')}
 <h2>Mixed</h2>
 <p>The Greek in one word and the Hebrew in another, in the same verse.</p>{cards('mixed')}
+<h2>Septuagint wording, not a reading</h2>
+<p>A Septuagint-only word that is the Septuagint's own word for the same Hebrew (distomos for "two-edged", Psalm
+149:6, a Hebrew word that occurs twice), or whose Hebrew is too rare for the map to align. The wording agrees with the
+Septuagint; the text does not differ, so these are not counted.</p>{cards('wording')}
 <h2>Agreeing with both texts</h2>
 <div class="wrap"><table><tr><th>Revelation</th><th>Old Testament</th><th>words in both</th><th>votes</th></tr>{agree_rows}</table></div>
 <h2>Allusions to the Septuagint-only books</h2>

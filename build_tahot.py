@@ -56,7 +56,11 @@ WHAT IT WRITES (into lxx.db, leaving the other corpora untouched)
     settings   tahot_source, tahot_built, tahot_verses, tahot_words,
                tahot_tokens; and pos_filled, since the plain
                part-of-speech and name columns (atlas_pos.py) are
-               filled at the end of the run
+               filled at the end of the run; and morph_layer_built,
+               since atlas_morph.py then adds the morphology columns
+               (stem, voice, tense, mood, person, gender, number), the
+               half-verses (verse_cola, from the accents this build
+               strips) and the root families (root_families)
     metadata.db  a corpora row 'hebrew-ot-tahot' if the table lacks one
                (run atlas_backup.py backup afterwards)
 
@@ -307,6 +311,13 @@ def build(data_dir, out_path, metadata_path):
     from atlas_pos import PosColumns
     log("filling the pos and name_kind columns (atlas_pos.py)")
     PosColumns(out_path).fill()
+    # The grammar layer (atlas_morph.py): the morphology spelled out into
+    # columns, the half-verses of the Hebrew from the accents, and the
+    # root families from the Strong's lexicon.  A missing source (the
+    # TAHOT files, or atlas.db on a first build) is noted and skipped.
+    from atlas_morph import MorphLayer
+    log("filling the morphology columns, verse_cola and root_families (atlas_morph.py)")
+    MorphLayer(out_path, tahot_dir=data_dir, quiet_skips=True).run()
 
     log(f"done: {out_path}")
     print(f"  {len(verse_rows):,} verses, {n_words:,} words, {len(token_rows):,} elements "

@@ -1,4 +1,4 @@
-*Notes as of 2026-10-18, after the gloss and chapter rules, the buying words, and the stations Numbers 16:41-50 and Genesis 42:25-44:34. Edit this file freely; ransom_rest_report.py puts it into the write-up word for word.*
+*Notes as of 2026-10-18, after the gloss and chapter rules, the buying words, the stations Numbers 16:41-50 and Genesis 42:25-44:34, and goren and terumah. Edit this file freely; ransom_rest_report.py puts it into the write-up word for word.*
 
 **Reading the misses.**
 
@@ -20,8 +20,12 @@
 
 **Second senses still in the strips.** ba'al H1167 is the ox's 'owner' in Exodus 21 to 22; Shaddai H7706 is Job's diction (discount Job when reading the rest strip); shalam H7999 is the law of damages and recompense; arown H727 is Joseph's coffin in Genesis 50:26; agorazo G59 is ordinary buying in the Gospels; 'inheritance' H5159 lights the land allotments; naga' H5060 is touching the unclean in Leviticus 11 and Numbers 19, though it also brings in Isaiah 6:7, Isaiah 52 to 53 and Exodus 12:22.
 
+**Shaddai in the rest strip.** Shaddai H7706 stays in the list as it is, but 31 of its 48 uses are Job's, the Almighty of the speeches, and the Job windows of the rest strip that light on 'Almighty' alone are to be discounted. The patriarchal uses count: Jacob's 'God Almighty give you mercy before the man' (Genesis 43:14), in the Joseph station, is one of them.
+
+**Three formulas of the stations.** The Passage page's signature formulas find three that belong to the stations themselves. 'She is my sister': six verses, all in the stations (Genesis 12:19; 20:2, 5, 12; 26:7, 9), and in no other verse of the Bible. 'The lad': Isaac on Moriah (Genesis 22:5, 12) and Benjamin in the Joseph station (43:8; 44:22-34), fourteen verses, the son offered and the son offered for. 'An offering': the wave offering shared by the freewill gold of Exodus 35:22 and the Levites waved in Numbers 8:11-21, five verses and no others.
+
 **The Passage page.** The ransom list's law words (the kaphar family, cover, nega', shalam) are weak in the stations: they run hot in the law chapters, while the stations are narrative and carry silver, shekel, buy, the kinsman's redeem, the trespass offering and maggefah. The narrative thread is carried by the vocabulary of price and purchase, and the vocabulary of atonement and covering belongs to the law that interprets it, which is the division Hebrews makes when it reads the stories through Leviticus 16. The 'covering' idea rests on Genesis 20:16 (kesut) and Leviticus 16, not on a word running through the stations.
 
 **The stations.** In Genesis 17 'silver' and 'purchase' are the servants 'bought with money', circumcised with the house (17:12, 13, 23, 27): the one chapter where the ransom words and the covenant words stand together. In Numbers 31:48-54 'visit' is 'the sum of the men' and 'there lacketh not one', which TAHOT does not gloss as the census.
 
-**Still open.** Discounting Shaddai in Job; whether goren H1637 (the threshing floor) and terumah H8641 (the heave offering) belong in the rest list.
+**Added after these notes were first written.** goren H1637, the threshing floor, joined the rest list, and terumah H8641, the heave offering, joined the ransom list (the half-shekel is a terumah in Exodus 30:13-15, and so is the captains' gold in Numbers 31:52).

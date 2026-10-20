@@ -50,3 +50,6 @@ Eval_data/results/
 heat_reports.json
 # Eval_data: full vocabulary of every verse, made by Eval_data/export_vocab.py (rebuilt in seconds)
 Eval_data/vocab/
+
+# Safety copies of lxx.db made before a trial (163 MB, never committed)
+lxx.db.before*

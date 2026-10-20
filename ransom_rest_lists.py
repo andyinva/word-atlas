@@ -66,6 +66,9 @@ WORD_LISTS = {
         "H4736": "purchase",          # miqnah: 'bought', 'purchase', 'price' (Gen 17:12, 23:18, Jer 32:11)
         "H3739": "buy (bargain)",     # karah: Hosea 3:2 'I bought her', Deut 2:6; not 'gave a feast' (GLOSS_RULES)
         "H8255": "shekel",
+        # the heave offering: the half-shekel is a terumah (Exodus 30:13-15), and so is the
+        # captains' gold (Numbers 31:52); TAHOT glosses it 'contribution' (added 2026-10-18)
+        "H8641": "heave offering (terumah)",
         # restitution and trespass
         "H7999": "make restitution",   # shalam: also 'repay', 'perform', 'finish'; the Exodus 22 sense leads
         "H817": "trespass (offering)", "H816": "trespass", "H819": "guiltiness",
@@ -99,7 +102,11 @@ WORD_LISTS = {
         "H1285": "covenant", "H4135": "circumcise", "H5159": "inheritance",
         "G1242": "covenant", "G4061": "circumcision", "G2817": "inheritance",
         # the Almighty, Moriah, the ark, the foundation
+        # Shaddai counts everywhere; 31 of its 48 uses are Job's, the Almighty of the speeches,
+        # to be discounted when reading the strip (Jacob's in Genesis 43:14 counts)
         "H7706": "Almighty (Shaddai)", "H4179": "Moriah", "H727": "ark",
+        # the threshing floor: Araunah's and Ornan's, bought for the altar; Boaz's (added 2026-10-18)
+        "H1637": "threshing floor",
         "G3841": "Almighty", "G2787": "ark", "G2310": "foundation", "G2311": "found (lay a foundation)",
     },
 }
