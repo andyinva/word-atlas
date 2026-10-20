@@ -12,13 +12,20 @@ WHAT IT READS
     metadata.db    the lists "ransom" and "rest" and the passage "Ransom
                    and rest" (stored by `python3 ransom_rest_lists.py`;
                    run that first after changing the lists or stations)
+    reports/results.db
+                   the heat rows (heat_spots) of the two strips, written by
+                   every atlas_heat.py run and filled for every book by
+                   `python3 run_heat.py --all`: the hit, near and miss
+                   tables and the tables of windows nobody named are read
+                   from them (since 0.10.101), so the write-up and the
+                   Reader's heat page draw from the same numbers
     lxx.db         the original text, for the strips and the stations
     atlas.db       for the Passage page
     Eval_data/ransom_rest_notes.md
                    the hand-written reading notes, put into the write-up
                    word for word under their own heading.  Everything
-                   else in the write-up is counted afresh on each run;
-                   the notes are not, so read them against the tables.
+                   else in the write-up is counted or read afresh on each
+                   run; the notes are not, so read them against the tables.
 
 WHAT IT WRITES
     reports/Analysis/RANSOM_AND_REST_STRIPS.md     the write-up
@@ -39,7 +46,11 @@ HOW A CHAPTER IS SCORED
 
 Usage (from the word_atlas folder, venv on):
     python3 ransom_rest_lists.py                   # after any change to the lists or stations
-    python3 Eval_data/ransom_rest_report.py        # the full run, about four minutes
+    python3 run_heat.py --all --no-svg             # fills the heat rows of every book (or use --run below)
+    python3 Eval_data/ransom_rest_report.py        # the write-up, reading the strips from reports/results.db
+    python3 Eval_data/ransom_rest_report.py --run  # run the strips over its books first (writes their rows)
+    python3 Eval_data/ransom_rest_report.py --recount
+                                                   # count the strips afresh from the text reports, the old way
     python3 Eval_data/ransom_rest_report.py --svg  # and the strip charts of the main books
     python3 Eval_data/ransom_rest_report.py --skip-run
                                                    # rewrite the write-up from the last run's windows
@@ -63,6 +74,7 @@ ATLAS_DIR = EVAL_DIR.parent
 sys.path.insert(0, str(ATLAS_DIR))
 
 RESULTS_DIR = EVAL_DIR / "results"
+RESULTS_DB = ATLAS_DIR / "reports" / "results.db"
 SPOTS_FILE = RESULTS_DIR / "ransom_rest_spots.json"
 PREVIOUS_FILE = RESULTS_DIR / "ransom_rest_spots_previous.json"
 NOTES_FILE = EVAL_DIR / "ransom_rest_notes.md"
@@ -112,8 +124,67 @@ UNEXPECTED_SHOWN = 20
 KEY_KEYNESS = 10.0
 
 
+class StripRows:
+    """
+    The hot windows of the two strips, read from the heat tables of
+    reports/results.db (heat_spots), which every atlas_heat.py run
+    writes and `python3 run_heat.py --all` fills for every book: the
+    same rows the Reader's heat page draws from, so the write-up and the
+    Reader show the same numbers.  The z scale against every book of the
+    same language with ten-verse windows, as the strips have always been
+    read here; the hits are the spots at the run's threshold (z 2) and
+    the near ones the spots at three quarters of it (z 1.5).
+    """
+
+    VIEW = ("z", "bible", 10)
+    LINES = {str(HIT_Z): "spot", str(NEAR_Z): "near"}
+
+    def __init__(self, books, path: Path = RESULTS_DB):
+        self.books = books
+        self.path = path
+
+    def missing(self) -> list:
+        """The books with no rows of the two strips in this view (empty when all are there)."""
+        if not self.path.exists():
+            return list(self.books)
+        db = sqlite3.connect(self.path.resolve().as_uri() + "?mode=ro", uri=True)
+        try:
+            have = {b for (b,) in db.execute(
+                "SELECT DISTINCT book FROM heat_windows WHERE scale = ? AND norm = ? AND window_size = ? "
+                "AND strip IN (?, ?)", self.VIEW + tuple(STRIPS))}
+        except sqlite3.OperationalError:
+            have = set()
+        finally:
+            db.close()
+        return [b for b in self.books if b not in have]
+
+    def run(self) -> dict:
+        """{threshold as text: [window, ...]} over every book, at both lines, in the order the reports list them."""
+        db = sqlite3.connect(self.path.resolve().as_uri() + "?mode=ro", uri=True)
+        result = {}
+        try:
+            for threshold, line in self.LINES.items():
+                found = []
+                for book in self.books:
+                    for strip in STRIPS:
+                        for c1, v1, c2, v2, shown, at, words in db.execute(
+                                "SELECT start_chapter, start_verse, end_chapter, end_verse, peak_shown, peak_at, "
+                                "words FROM heat_spots WHERE book = ? AND scale = ? AND norm = ? AND "
+                                "window_size = ? AND strip = ? AND line = ? AND hot = 1 "
+                                "ORDER BY start_chapter, start_verse", (book,) + self.VIEW + (strip, line)):
+                            # The peak as the report prints it ('z +3.29'), read
+                            # the way the report's line was always read
+                            z = float(shown.split()[-1])
+                            found.append({"strip": strip, "book": book, "from": [c1, v1], "to": [c2, v2],
+                                          "z": z, "at": at, "words": words.strip()})
+                result[threshold] = found
+        finally:
+            db.close()
+        return result
+
+
 class StripRun:
-    """Runs atlas_heat.py over the books and keeps every hot window of the two strips."""
+    """Runs atlas_heat.py over the books (with --run), which writes the rows StripRows reads."""
 
     # One hot-spot line of atlas_heat.py's text report:
     #   "  hot  Genesis 23:7-24:2           peak    z +3.29 at 23:12  'silver' 5"
@@ -146,7 +217,7 @@ class StripRun:
         return spots
 
     def run(self) -> dict:
-        """{threshold as text: [window, ...]} over every book, at both lines."""
+        """{threshold as text: [window, ...]} over every book, at both lines (the old way, counted afresh)."""
         result = {}
         for threshold in (HIT_Z, NEAR_Z):
             found = []
@@ -155,6 +226,15 @@ class StripRun:
                 found += self.windows(book, threshold)
             result[str(threshold)] = found
         return result
+
+    def write_rows(self) -> None:
+        """Run atlas_heat.py once per book at the usual threshold: each run writes its rows to results.db."""
+        for book in self.books:
+            print(f"  {book}")
+            out = subprocess.run([sys.executable, "atlas_heat.py", book, "--families", "--lists", ",".join(STRIPS)],
+                                 capture_output=True, text=True, cwd=ATLAS_DIR)
+            if out.returncode != 0:
+                sys.exit(f"atlas_heat.py failed on {book}:\n{out.stderr or out.stdout}")
 
     @staticmethod
     def save(spots: dict) -> None:
@@ -360,8 +440,9 @@ class ReportWriter:
         w(f"Written by Eval_data/ransom_rest_report.py on {date.today().isoformat()} for the paper \"Abram and "
           f"Abraham\". The lists and the passage are those of ransom_rest_lists.py: \"ransom\" "
           f"{len(L.WORD_LISTS['ransom'])} roots, \"rest\" {len(L.WORD_LISTS['rest'])}, and the named passage "
-          f"\"{PASSAGE}\", {len(L.STATIONS)} ranges. Every table below is counted afresh on each run; the reading "
-          f"notes at the end are written by hand (Eval_data/ransom_rest_notes.md) and should be read against them.")
+          f"\"{PASSAGE}\", {len(L.STATIONS)} ranges. The strip tables are read from the heat rows of reports/results.db "
+          f"(the same rows the Reader's heat page draws), the Passage page and the stations are counted on each run; the "
+          f"reading notes at the end are written by hand (Eval_data/ransom_rest_notes.md) and should be read against them.")
         w("")
         w(f"Each strip is a z-score of the list's share of a 10-verse window against every book of the same language, "
           f"from `python3 atlas_heat.py BOOK --families --lists ransom,rest`, over {', '.join(BOOKS)}. A **hit** is a "
@@ -419,7 +500,7 @@ class ReportWriter:
         w("## Reading notes")
         w("")
         w("Written by hand, not counted: check each figure in them against the tables above, which this run "
-          "counted afresh.")
+          "counted or read afresh.")
         w("")
         w(self.notes.strip() if self.notes else "(No notes file: Eval_data/ransom_rest_notes.md.)")
         w("")
@@ -486,7 +567,14 @@ def span(window: dict) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="The Ransom and rest strips, Passage page, stations and write-up")
     parser.add_argument("--skip-run", action="store_true",
-                        help="reuse the last run's windows instead of running the strips again")
+                        help="reuse the last run's windows (Eval_data/results/ransom_rest_spots.json) "
+                             "instead of reading the results file")
+    parser.add_argument("--run", action="store_true",
+                        help="run atlas_heat.py over the books first, which writes their rows to "
+                             "reports/results.db (otherwise the rows of the last run_heat.py --all are read)")
+    parser.add_argument("--recount", action="store_true",
+                        help="count the windows afresh from atlas_heat.py's text reports, the way the "
+                             "script did before 0.10.101 (to check the rows against)")
     parser.add_argument("--svg", action="store_true", help="also draw the strip charts of " + ", ".join(SVG_BOOKS))
     parser.add_argument("--out", type=Path, default=REPORT_FILE, help="where to write the write-up")
     args = parser.parse_args()
@@ -499,10 +587,23 @@ def main() -> None:
         if spots is None:
             sys.exit(f"No saved run at {SPOTS_FILE}: run without --skip-run first.")
         previous = StripRun.load(PREVIOUS_FILE)
-    else:
-        print("Running the strips:")
+    elif args.recount:
+        print("Counting the strips afresh:")
         previous = StripRun.load(SPOTS_FILE)
         spots = StripRun(BOOKS).run()
+        StripRun.save(spots)
+    else:
+        if args.run:
+            print("Running the strips (each run writes its rows to reports/results.db):")
+            StripRun(BOOKS).write_rows()
+        rows = StripRows(BOOKS)
+        lacking = rows.missing()
+        if lacking:
+            sys.exit(f"reports/results.db has no ransom and rest rows for {', '.join(lacking)}.\n"
+                     f"Fill them with  python3 run_heat.py --all  (every book), or run this script with --run.")
+        print("Reading the strips from reports/results.db (heat_spots)")
+        previous = StripRun.load(SPOTS_FILE)
+        spots = rows.run()
         StripRun.save(spots)
     scorer = Scorer(spots)
     changes = Scorer.changes(previous, spots)

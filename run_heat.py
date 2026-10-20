@@ -6,7 +6,7 @@ Runs the standard set of heat reports for one or more books, so every
 change to Word Atlas can be followed by the same reports and compared
 with the last ones.
 
-For each book it writes four reports to reports/:
+For each book it writes five reports to reports/:
     heat_<book>_self.txt / .svg   the book against itself, percentile scale,
                                   feeling families: the shape of the book
     heat_<book>_ot.txt / .svg     the book against its testament, z scale,
@@ -18,12 +18,28 @@ For each book it writes four reports to reports/:
                                   Testament book against its own kind
                                   (--norm group): names in the stories,
                                   numbers in the visions
+    heat_<book>_contexts.txt / .svg
+                                  every context strip of the book's
+                                  testament (--contexts both --all-contexts):
+                                  what a passage is about, and the voices,
+                                  who speaks to whom
+Every run with the families draws every word list stored in metadata.db
+(--lists all: character, mercy and truth, fruit and flesh, and the paper
+lists ransom and rest), so every strip has its rows.
+
+THE RESULTS FILE
+    Every atlas_heat.py run writes its strips, every window's score and
+    its spots into reports/results.db (the heat_strips, heat_windows and
+    heat_spots tables; see atlas_report.HEAT_SCHEMA), replacing its own
+    rows and leaving the rest.  --all therefore fills them for every
+    book and every strip, which is what the Reader's heat page and
+    Eval_data/ransom_rest_report.py read.
 
 Three options of its own, which can stand anywhere after the book names:
     --all       every book of the Bible, in order, instead of named books
-                (about a quarter of an hour; the names strips read lxx.db
-                once per run)
-    --one       also write heat_<book>_all.txt, the four text reports one
+                (about half an hour; the names strips read lxx.db once
+                per run)
+    --one       also write heat_<book>_all.txt, the five text reports one
                 after another with a divider line between them
     --no-svg    write the text reports only, no charts
 Any other option goes to every atlas_heat.py run unchanged.
@@ -34,6 +50,7 @@ Usage:
     python run_heat.py Isaiah --window 15   (extra options go to every run)
     python run_heat.py Daniel --one --no-svg
     python run_heat.py --all --one --no-svg    (every book, one text file each)
+    python run_heat.py --all --no-svg          (every book; fills the results file's heat tables)
 """
 
 import sqlite3
@@ -95,13 +112,18 @@ def main() -> None:
         # The own-kind yardstick is for the Old Testament; a New Testament
         # book is measured against its whole testament whatever is asked.
         yardstick = ["--norm", "group"] if testament == "ot" else []
-        # The four reports: a name, the options that make it, and whether
+        # The five reports: a name, the options that make it, and whether
         # a chart goes with it.
+        # Every run with the families takes every stored word list
+        # (--lists all), so the paper lists ransom and rest have their
+        # rows in the results file for every book like the others.
+        lists = ["--lists", "all"]
         reports = [
-            ("self", ["--norm", "book", "--families", "--scale", "percentile"], True),
-            (testament, ["--families"], True),
-            ("g2", ["--families", "--scale", "g2"], False),
-            ("names", ["--names", "--families", "--scale", "g2"] + yardstick, True),
+            ("self", ["--norm", "book", "--families", "--scale", "percentile"] + lists, True),
+            (testament, ["--families"] + lists, True),
+            ("g2", ["--families", "--scale", "g2"] + lists, False),
+            ("names", ["--names", "--families", "--scale", "g2"] + lists + yardstick, True),
+            ("contexts", ["--contexts", "both", "--all-contexts"], True),
         ]
         print(f"{book}:")
         written = []
@@ -112,12 +134,12 @@ def main() -> None:
             written.append(out)
             print(f"    reports/{out.name}" + (" and .svg" if svg else ""))
         if one:
-            # The four text reports in one file, a divider between them.
+            # The five text reports in one file, a divider between them.
             whole = REPORTS / f"{stem}_all.txt"
             divider = "\n\n" + "=" * 78 + "\n\n"
             whole.write_text(divider.join(p.read_text(encoding="utf-8").rstrip("\n")
                                           for p in written) + "\n", encoding="utf-8")
-            print(f"    reports/{whole.name}  (all four in one)")
+            print(f"    reports/{whole.name}  (all five in one)")
 
 
 if __name__ == "__main__":

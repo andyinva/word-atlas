@@ -703,6 +703,83 @@ def test_guards(atlas, only):
                    "66 books, numbers + dates = the number words")
 
 
+# --- the heat rows and the pack (0.10.101) -----------------------------------------------------
+def test_heat_and_pack(atlas, only):
+    """
+    The heat tables of reports/results.db cover every book for every
+    strip a run drew (run_heat.py --all fills them), and atlas_pack.py
+    refuses a results file written before the tables came in.
+    """
+    import sqlite3
+    name = "guard: every heat strip has rows in heat_windows for every book (run_heat.py --all)"
+    if not only or only in name:
+        path = os.path.join(PROGRAM_DIR, "reports", "results.db")
+        db = sqlite3.connect("file:" + path.replace("\\", "/") + "?mode=ro", uri=True) if os.path.exists(path) else None
+        try:
+            strips = db.execute("SELECT strip, testament FROM heat_strips").fetchall() if db else []
+        except sqlite3.OperationalError:
+            strips = []
+        if not strips:
+            skip(name, "no heat rows in reports/results.db yet: python3 run_heat.py --all")
+        else:
+            have = {}
+            for strip, book in db.execute("SELECT DISTINCT strip, book FROM heat_windows"):
+                have.setdefault(strip, set()).add(book)
+            books_of = {}
+            for book in atlas.books:
+                books_of.setdefault(atlas.book_info[book]["testament"], []).append(book)
+            missing = []
+            for strip, testament in strips:
+                lacking = [b for b in books_of.get(testament, []) if b not in have.get(strip, set())]
+                if lacking:
+                    missing.append(f"{strip} ({testament}): {len(lacking)} books, e.g. {lacking[0]}")
+            report(name, not missing, "; ".join(missing[:4]) if missing else
+                   f"{len(strips)} strips by testament, every book")
+        if db:
+            db.close()
+
+    name = "guard: atlas_pack.py refuses a results.db without schema_notes"
+    if not only or only in name:
+        import sqlite3
+        import tempfile
+        import atlas_pack
+        import atlas_report
+        with tempfile.TemporaryDirectory() as tmp:
+            old = os.path.join(tmp, "old.db")
+            db = sqlite3.connect(old)
+            db.executescript(atlas_report.RESULTS_SCHEMA)
+            db.execute("INSERT INTO runs VALUES (1, '0.10.87', 'test', '2026-10-10 10:00:00', '')")
+            db.commit()
+            db.close()
+            problems = []
+            try:
+                atlas_pack.pack(old, os.path.join(tmp, "old.wadb"))
+                problems.append("an old file was packed")
+            except SystemExit as e:
+                if "schema_notes" not in str(e):
+                    problems.append(f"refused for another reason: {e}")
+            if os.path.exists(os.path.join(tmp, "old.wadb")):
+                problems.append("a .wadb was written")
+            # A file with the table gets past the check (packed when the
+            # pack's sources are here, so a visitor without them is not failed)
+            new = os.path.join(tmp, "new.db")
+            db = sqlite3.connect(new)
+            atlas_report.ensure_results_schema(db)
+            db.execute("INSERT INTO runs VALUES (1, '0.10.101', 'test', '2026-10-20 10:00:00', '')")
+            db.commit()
+            db.close()
+            if os.path.exists(atlas_pack.METADATA_PATH) and os.path.exists(atlas_pack.SOURCE_PATH):
+                try:
+                    out = atlas_pack.pack(new, os.path.join(tmp, "new.wadb"))
+                    import zipfile
+                    names = zipfile.ZipFile(out).namelist()
+                    if sorted(names) != ["manifest.json", "results.db"]:
+                        problems.append(f"the pack holds {names}")
+                except SystemExit as e:
+                    problems.append(f"a new file was refused: {e}")
+            report(name, not problems, "; ".join(problems))
+
+
 # --- the window -----------------------------------------------------------------------------
 WINDOW_SCRIPT = """
 import sys
@@ -1148,6 +1225,7 @@ def main(argv):
         print("guard: pos_experiment's numbers and dates add up to the number words")
         print("guard: the window's two tabs; the workbench's commands; atlas_dist's bundle; atlas_usb's drive and installer")
         print("guard: atlas_source's own text taken out of a bibles.db")
+        print("guard: every heat strip has rows for every book; atlas_pack refuses a results.db without schema_notes")
         print("housekeeping: one version everywhere; no em dash; every module compiles")
         return 0
     started = time.perf_counter()
@@ -1159,6 +1237,7 @@ def main(argv):
     test_source(only)
     atlas = atlas_pages.Atlas()
     test_guards(atlas, only)
+    test_heat_and_pack(atlas, only)
     test_window(only)
     test_smoke(atlas, only)
     test_dossier(atlas, only)

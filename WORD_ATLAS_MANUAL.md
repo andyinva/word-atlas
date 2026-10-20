@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.100. Andrew Hopkins, with Claude.
+For version 0.10.101. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -575,7 +575,9 @@ English ones.
 | `translations.db` | An older export of the four text tables of Bible Search Lite's `bibles.db` (books, translations, verses, verse_texts), never committed; `atlas_source.db` carries the translations from 0.10.92 and is read before it, so it can be deleted; `translations_index.db` is what `build` makes of it, never committed either |
 | `atlas_listed.py` | The cross references (OpenBible.info on the Treasury of Scripture Knowledge, from bibles.db) behind the `listed` column and footers of sections 4, 4e and 6 |
 | `atlas_results.py` | Questions across the canon asked of reports/results.db, each answer saved as a text file under reports/ (section 19) |
-| `atlas_pack.py` | Packs reports/results.db with a manifest into one `.wadb` file for the Word Atlas Reader, the separate viewer for readers who have the dataset and not the program (section 19) |
+| `atlas_pack.py` | Packs a copy of reports/results.db, with the named passages and the King James text added, and a manifest into one `.wadb` file for the Word Atlas Reader, the separate viewer for readers who have the dataset and not the program; refuses a results file without schema_notes (section 19) |
+| `atlas_morph.py` | The grammar layer of lxx.db: the morphology spelled out into columns, the half-verses from the Masoretic accents (verse_cola) and the root families (root_families); run by build_tahot.py and build_gnt.py |
+| `atlas_grammar.py` | Sections 7v (verbs by chapter) and 7p (the two halves of the poetic verses) of the book page, from the grammar layer |
 | `atlas_heat.py` | One book as heat strips: wording, feeling families, word lists, and with `--names` the names and numbers strips with their date and feast marks; a text report and an SVG chart (section 8, READING_THE_HEAT_STRIPS.md) |
 | `run_heat.py` | The standard four heat reports for the books named, or `--all` for every book; `--one` joins them into one text file, `--no-svg` leaves the charts out (section 8) |
 | `heat_explore.py` | Questions asked of `reports/heat_reports.json`, every book's heat reports gathered into one file: summary, book, strip, word, compare, chapters, csv (section 8) |
@@ -1687,6 +1689,30 @@ table as a grid that sorts, a search across every cell, the
 questions of the data with the reader's own API key, Claude working
 through a read-only SQL query. The Reader needs Python and PyQt6, or
 nothing at all when built with PyInstaller; its README says how.
+
+Since 0.10.101 the file holds the heat strips as well, and describes
+itself. Every `atlas_heat.py` run writes three tables into
+`reports/results.db`: `heat_strips` (each strip's name, its kind:
+measure, feeling, feeling family, word list, names, context or voice;
+one sentence saying what it measures; and for a word list its roots
+with their plain words, copied from metadata.db when the run was made),
+`heat_windows` (every window's score on every strip, by book, scale,
+norm and window size) and `heat_spots` (the hot and cool spots with the
+words that lit them, as the text report prints them, at the run's
+threshold and at three quarters of it, the "near" line). A run replaces
+its own rows and leaves the rest, so `python3 run_heat.py --all` fills
+them for every book and every strip; it now draws every stored word
+list (ransom and rest among them) and a fifth report,
+`heat_<book>_contexts`, with every context and voice of the book's
+testament. `Eval_data/ransom_rest_report.py` reads its strip tables from
+these rows. A `schema_notes` table says in plain words what every table
+and column of the file holds, with its units. `atlas_pack.py` adds to
+the packed copy the named passages of metadata.db and the King James
+text with its Strong's tags from atlas_source.db, so the `.wadb` holds
+everything the Reader shows and nothing else of the atlas need travel
+with it; no chart goes into the pack. It refuses a results file
+without `schema_notes` (one written before 0.10.101); `--allow-old-schema`
+packs such a file anyway, only to test the Reader against an old file.
 With `--brief` (the button's Yes) each chapter page keeps only its
 leading words, signature words, formulas and synopsis, and each section
 page its signature words, formulas and echo tables, which is what a
@@ -5164,6 +5190,21 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.101.** The heat strips in the results file: `atlas_heat.py`
+writes `heat_strips`, `heat_windows` and `heat_spots` to
+`reports/results.db` on every run, `run_heat.py --all` draws every word
+list and a fifth report of every context and voice, so it fills them
+for every book and strip, and `Eval_data/ransom_rest_report.py` reads
+its hit, near and miss tables from the rows. A `schema_notes` table
+describes every table of the file. `atlas_pack.py` carries the named
+passages and the King James text with its tags into the pack, and
+refuses a results file without `schema_notes`. Book pages gain 7v
+(verbs by chapter) and 7p (the two halves of the poetic verses), from
+the grammar layer `atlas_morph.py` adds to lxx.db (morphology columns,
+the half-verses from the Masoretic accents, root families), which
+build_tahot.py and build_gnt.py now run. Two guards in test_atlas.py.
+Section 19 describes the file.
 
 **0.10.100.** `run_heat.py --all` runs the set for every book of the
 Bible in order, so `python3 run_heat.py --all --one --no-svg` leaves one

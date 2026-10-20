@@ -7,7 +7,7 @@ with the version that carried them. Add to it whenever a review or a
 conversation raises something; the manual's version history records
 what shipped, this records what has not.
 
-Last updated 2026-10-13, at version 0.10.100.
+Last updated 2026-10-20, at version 0.10.101.
 
 ## Standing work
 
@@ -28,13 +28,21 @@ Still to read: the Pastorals and Philemon as pages of their own. The three dossi
 the Revelation reviewer asked for (Isaiah, Hebrews, Mark) are to be
 regenerated with the fixed 1b and read.
 
-**The canon-wide rerun (done 2026-10-03).** All 66 dossiers on
-0.10.50 read through: no traceback, NaN or None, every refusal as
-designed, Job's eight parts and the Psalter's five Books right. Four
-things fixed in 0.10.52 (a declined table's header, duplicate phrase
-rows, "ch None", 1d's run supply) and one footer added (1b's Aramaic
-baseline). Rerun the dossiers after the next change that touches a
-table.
+**The canon-wide rerun (done 2026-10-03; again 2026-10-20 on
+0.10.101).** All 66 dossiers on 0.10.50 read through: no traceback, NaN
+or None, every refusal as designed, Job's eight parts and the
+Psalter's five Books right. Four things fixed in 0.10.52 (a declined
+table's header, duplicate phrase rows, "ch None", 1d's run supply) and
+one footer added (1b's Aramaic baseline). The second rerun, `dossier
+all --results` on 0.10.101 (2,191 pages: 66 book, 1,189 chapter, 134
+section, 201 compare, 535 word and 66 testament pages), checked by
+machine rather than read through: no traceback; every table without
+rows carries its reason; no cell reads None or nan except six cells of
+section 5 (Reach and depth), "deepest at" printing "Nahum None" for a
+word spread evenly through a short book (Obadiah, Nahum twice,
+Habakkuk, Haggai, 2 Thessalonians). Fixed in 0.10.101 ('.' for a word
+with no deepest chapter). The new 7v and 7p are on every book page.
+Rerun the dossiers after the next change that touches a table.
 
 **Check the poetry flag against a printed BHS (standing).**
 atlas_morph.py's POETRY_LAYOUT decides which verses count as poetry
@@ -1434,6 +1442,103 @@ cross-testament validation measures Revelation's crossing share
 baseline would say whether Revelation's companions are unusual among
 the New Testament books or only unusual against the Old.
 
+## One file for the Reader (2026-10-20)
+
+**What.** The Reader should need one file and nothing else from the
+atlas: the pages, the heat strips, the named passages and the King
+James text, all in the `.wadb`, described inside itself. Three steps:
+the atlas side (done 0.10.101), the Reader's heat page (next), and a
+test of the built Reader on Windows from the stick (after that).
+
+**Step 1, the atlas side (done 0.10.101).**
+- **The heat tables.** atlas_heat.py writes three tables to
+  reports/results.db on every run (schema in atlas_report.HEAT_SCHEMA):
+  - `heat_strips`: strip; testament; kind (measure, feeling, feeling
+    family, word list, names, context or voice); one sentence saying
+    what it measures; and for a word list its roots with their plain
+    words, copied from metadata.db's word_lists at run time.
+  - `heat_windows`: book, scale, norm, window size, strip, the window's
+    place, its first and last verse, and its z.
+  - `heat_spots`: book, strip, the verse range, the peak (as a number
+    and as printed), the peak's verse, and the words that lit it with
+    their counts, exactly as the text report prints them (both read
+    one method, HeatReport.spot_words). Kept at the run's threshold
+    ('spot') and at three quarters of it ('near', z 1.5), with hot and
+    cool marked.
+  - Scale, norm and window size are in the keys beside book and strip,
+    since one strip has different figures in each of run_heat.py's
+    reports. A run replaces its own rows (its book, its strips, its
+    scale, norm and window) and leaves the rest. The text reports are
+    unchanged (four compared byte for byte).
+- **run_heat.py --all fills them** for every book and every strip. The
+  runs with the families take `--lists all` (ransom and rest included),
+  and a fifth report, `heat_<book>_contexts`, draws every context and
+  voice (`--contexts both --all-contexts`). The run of 2026-10-20:
+  98 strips by testament, 2,980,678 window rows, 37,644 spot rows,
+  every book for every strip of its testament; about 20 minutes on
+  this machine.
+- **Eval_data/ransom_rest_report.py reads the rows.** Its hit, near and
+  miss tables and its tables of windows nobody named come from
+  heat_spots (z, bible, 10-verse windows), not from parsing fresh
+  atlas_heat.py runs. `--run` writes the rows for its books first;
+  `--recount` keeps the old way, to check against. Checked against the
+  run of 2026-10-18: the 217 hot and 285 near windows are identical,
+  item for item, and the write-up's tables are the same line for line
+  (only the date and the two sentences saying where the tables come
+  from differ).
+- **schema_notes** (table, column, what it holds in plain words, its
+  units): 109 lines covering the three heat tables, the tables the
+  Reader already reads (runs, pages, sections, cells, refs, footers),
+  the pack's tables and itself. Written whenever a program opens the
+  file (atlas_report.ensure_results_schema). The run table asked for
+  is the existing `runs` (version, the build line with its date, when
+  the run began), so none was added.
+- **The pack carries the rest.** atlas_pack.py packs a copy of
+  results.db with `passages` and `passage_ranges` (metadata.db) and
+  `kjv_books`, `kjv_verses` and `kjv_tags` (the King James text with
+  its Strong's tags, from atlas_source.db) added to the copy only, and
+  nothing else: no SVG or other file. It refuses a results.db without
+  schema_notes. `--allow-old-schema` packs one anyway, only to give the
+  Reader an old file to test against; its manifest says so.
+- **Two guards in test_atlas.py:** every strip in heat_strips has rows
+  in heat_windows for every book of its testament (skipped when there
+  are no heat rows yet), and atlas_pack.py refuses a results.db without
+  schema_notes and packs only results.db and the manifest.
+- **Two packs for the Reader step**, in word_atlas_reader/datasets:
+  - `word_atlas_0.10.101_2026-10-20.wadb`: this run, 146.5 MB, from a
+    484 MB file.
+  - `word_atlas_0.10.87_2026-10-10_old_schema.wadb`: the 0.10.87
+    results file packed with --allow-old-schema, 114.5 MB, no heat
+    tables.
+  - Both copied in parts (the copy limit is 30 MB a file); join them
+    with cat. The 0.10.87 pack itself stays beside them.
+- **The dossier sections** asked for here (the verb table and the
+  half-verse table) were already on every book page as 7v and 7p
+  (atlas_grammar.py, 2026-10-19). They sit after section 7 and 7x,
+  since 7d is on the division and section pages, not the book page.
+- **The poetry flag against a printed BHS: not done.** There is no
+  printed BHS here and no open digital source of its layout: the
+  Leningrad Codex lays out only a few songs, and the BHS line breaks
+  are editorial. It stays on the standing list for a check by hand,
+  page by page.
+
+**Step 2, the Reader's heat page (next).** Draw the strips from
+heat_windows and the spot lists from heat_spots, with heat_strips'
+sentence as each strip's tooltip; open a passage from `passages`, and
+a verse's King James text and tags from the kjv tables. The Reader
+carries copies of atlas_report.py and atlas_pack.py, which need
+updating from this version. It should open the old-schema pack without
+error and say the heat page needs a newer file.
+
+**Step 3, the Windows test (after).** The built Reader run from the
+stick on Windows 11 with the new pack.
+
+**Size (note).** heat_windows is most of the new weight: about 190 MB
+of the 484 MB file, compressing to about 40 MB of the pack. If the
+stick or the Reader finds it heavy, keep only the views the Reader
+draws, or store the windows once per book and view with the scores
+beside them.
+
 ## 1.0
 
 **A test script (done 0.10.63).** test_atlas.py: smoke test of every
@@ -1475,7 +1580,7 @@ system would be added.
 
 ## DONE
 
-2026-10-03 the repository public with 0.10.37 pushed. 0.10.100 run_heat.py --all (every book). 0.10.99 run_heat.py --one (the four text reports in one file) and --no-svg. 0.10.98 run_heat.py's fourth report (heat_<book>_names); number labels by whole words and the Hebrew teens counted once; "divine" renamed "mercy and truth". 0.10.97 the word-list strips counted from lxx.db with the gloss rules (they agree with the trial spot for spot); spots sharing half a window joined. 0.10.96 atlas_heat.py --names (nations, persons, home, numbers; date and feast marks), --norm group and group:NAME, the four word-list strips with --families (atlas_feelings.py lists, metadata.db word_lists); the counting rules in atlas_pos.py, filled by the two builders; three guards. 0.10.95 test_atlas.py: a guard that pos_experiment.py's numbers and dates add up to the number words of every book (skipped when lxx.db has no filled pos column); no page changes. 0.10.94 build_tahot.py: the Aramaic function words that stand alone are stop words (825 tokens in Daniel 2 to 7, Ezra 4 to 7 and Jeremiah 10:11 had been stored as content words); no page reads the Hebrew text's stop flag yet, so no table changes (five book pages compared line for line); it takes `python3 build_tahot.py`, then `python3 atlas_pos.py`; the trial tools atlas_pos.py, pos_experiment.py and word_code_experiment.py came in beside it (see the parts of speech section). 0.10.93 the USB window's lines kept within the pane (the Choose button was pushed out of sight); bibles.db no longer offered for the drive. 0.10.92 atlas_source.py: Word Atlas's own Bible text taken out of bibles.db (the King James, its tags, the translations free of copyright), read first by every build and carried by the USB drive. 0.10.91 openbible_import.py, the cross references refreshed from the source (written in another session as 0.10.88 and joined to this line of work here). 0.10.90 a Reader bundle takes every program file in the Reader's folder, not a fixed list. 0.10.89 the drive's installer puts the Reader's dataset in the Reader's own datasets folder; the drive guard offline and without the disk flush. 0.10.88 the Workbench a tab of the window, the Reader's tools on its own Tools tab, and a USB drive that installs either program with its data on Windows or Linux (atlas_usb.py). 0.10.87 the idiom question sets the Greek-held rows apart and counts distinct echoes. 0.10.86 the divine name and shall folded in the translations matcher, the best pair named, the Greek-confirmed pairs out of the idiom tally, content words beside 'whole in Greek'. 0.10.85 atlas_dist.py and the Install menu: bundles for a new install of the Reader or of Word Atlas. 0.10.84 the Workbench, every command under one menu. 0.10.83 the translations numbered another way remapped by trial against TVTMS's Hebrew, Latin and Greek maps; the index built on 33 translations. 0.10.82 the reviewer's read of 0.10.81 (articles counted when shared, common-stock runs, 'cited, N roots' rows); the copyrighted translations excluded. 0.10.81 the rabbinic library's pairs as a second web (sefaria_links.py; the cited column and footers on 4 and 6; `atlas_results.py cited`). 0.10.80 the other English translations as witnesses to the English echoes (atlas_translations.py; translations and families columns on 4 and 4f; `atlas_results.py idiom`). 0.10.79 4f's 'whole in Greek', articles stepped over, root counts. 0.10.78 4f's three-way Greek test. 0.10.77 4f's listed four-word echoes; `atlas_results.py unlisted`, a results query that samples the unlisted echo rows for grading by hand. 0.10.76 listings counted once, 4 and 4e reconciled, three-word Greek runs on listed pairs. 0.10.75 the cross references as a check on the echo tables (listed column, footers, results question). 0.10.74 the packed file named after its run. 0.10.73 atlas_pack.py and the Word Atlas Reader (its own repository). 0.10.72 figure-like text columns right-aligned. 0.10.71 the window's double-click crash. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
+2026-10-03 the repository public with 0.10.37 pushed. 0.10.101 the heat strips in the results file: atlas_heat.py writes heat_strips, heat_windows and heat_spots on every run, run_heat.py --all draws every word list and a fifth report of every context and voice so it fills them for every book and strip, and Eval_data/ransom_rest_report.py reads its strip tables from them (the same windows as the run of 2026-10-18); schema_notes; atlas_pack.py carries the named passages and the King James text with its tags, packs no other file, and refuses a results file without schema_notes; book pages gain 7v and 7p from the grammar layer (atlas_morph.py, now run by the two builders; atlas_grammar.py); section 5's "deepest at" prints '.' for a word with no deepest chapter; two guards; the canon-wide rerun of the dossiers. 0.10.100 run_heat.py --all (every book). 0.10.99 run_heat.py --one (the four text reports in one file) and --no-svg. 0.10.98 run_heat.py's fourth report (heat_<book>_names); number labels by whole words and the Hebrew teens counted once; "divine" renamed "mercy and truth". 0.10.97 the word-list strips counted from lxx.db with the gloss rules (they agree with the trial spot for spot); spots sharing half a window joined. 0.10.96 atlas_heat.py --names (nations, persons, home, numbers; date and feast marks), --norm group and group:NAME, the four word-list strips with --families (atlas_feelings.py lists, metadata.db word_lists); the counting rules in atlas_pos.py, filled by the two builders; three guards. 0.10.95 test_atlas.py: a guard that pos_experiment.py's numbers and dates add up to the number words of every book (skipped when lxx.db has no filled pos column); no page changes. 0.10.94 build_tahot.py: the Aramaic function words that stand alone are stop words (825 tokens in Daniel 2 to 7, Ezra 4 to 7 and Jeremiah 10:11 had been stored as content words); no page reads the Hebrew text's stop flag yet, so no table changes (five book pages compared line for line); it takes `python3 build_tahot.py`, then `python3 atlas_pos.py`; the trial tools atlas_pos.py, pos_experiment.py and word_code_experiment.py came in beside it (see the parts of speech section). 0.10.93 the USB window's lines kept within the pane (the Choose button was pushed out of sight); bibles.db no longer offered for the drive. 0.10.92 atlas_source.py: Word Atlas's own Bible text taken out of bibles.db (the King James, its tags, the translations free of copyright), read first by every build and carried by the USB drive. 0.10.91 openbible_import.py, the cross references refreshed from the source (written in another session as 0.10.88 and joined to this line of work here). 0.10.90 a Reader bundle takes every program file in the Reader's folder, not a fixed list. 0.10.89 the drive's installer puts the Reader's dataset in the Reader's own datasets folder; the drive guard offline and without the disk flush. 0.10.88 the Workbench a tab of the window, the Reader's tools on its own Tools tab, and a USB drive that installs either program with its data on Windows or Linux (atlas_usb.py). 0.10.87 the idiom question sets the Greek-held rows apart and counts distinct echoes. 0.10.86 the divine name and shall folded in the translations matcher, the best pair named, the Greek-confirmed pairs out of the idiom tally, content words beside 'whole in Greek'. 0.10.85 atlas_dist.py and the Install menu: bundles for a new install of the Reader or of Word Atlas. 0.10.84 the Workbench, every command under one menu. 0.10.83 the translations numbered another way remapped by trial against TVTMS's Hebrew, Latin and Greek maps; the index built on 33 translations. 0.10.82 the reviewer's read of 0.10.81 (articles counted when shared, common-stock runs, 'cited, N roots' rows); the copyrighted translations excluded. 0.10.81 the rabbinic library's pairs as a second web (sefaria_links.py; the cited column and footers on 4 and 6; `atlas_results.py cited`). 0.10.80 the other English translations as witnesses to the English echoes (atlas_translations.py; translations and families columns on 4 and 4f; `atlas_results.py idiom`). 0.10.79 4f's 'whole in Greek', articles stepped over, root counts. 0.10.78 4f's three-way Greek test. 0.10.77 4f's listed four-word echoes; `atlas_results.py unlisted`, a results query that samples the unlisted echo rows for grading by hand. 0.10.76 listings counted once, 4 and 4e reconciled, three-word Greek runs on listed pairs. 0.10.75 the cross references as a check on the echo tables (listed column, footers, results question). 0.10.74 the packed file named after its run. 0.10.73 atlas_pack.py and the Word Atlas Reader (its own repository). 0.10.72 figure-like text columns right-aligned. 0.10.71 the window's double-click crash. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
 splits. 0.10.50 1d a language at a time for Daniel and Ezra. 0.10.49 a run figure for the once-here share. 0.10.48 1c and 1d refusals and the sibling caution. 0.10.47 nearest beyond the kind under 1c and 1d. 0.10.46 1d's run figures cached. 0.10.45 1d's run columns. 0.10.44 vocabulary richness (1d); Hebrews in parts. 0.10.43 the kind's own size yardsticks. 0.10.42 nine-in-ten yardsticks and a no-pronoun Delta. 0.10.41 cautions and a size yardstick on 1c and 7d; three more
 letters in parts. 0.10.40 the function-word layer, 1c and 7d (New Testament). 0.10.39 section 7's leading words floored and ended early. 0.10.38 2 Corinthians, Galatians and Ephesians in parts. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
 words, 3 to 5). 0.10.34 1b stops at a keyness floor (6.63); three occurrences for a

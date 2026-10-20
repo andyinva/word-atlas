@@ -181,6 +181,7 @@ import math
 import statistics
 from statistics import NormalDist
 import sys
+import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from html import escape
@@ -898,6 +899,122 @@ def find_spots(windows: list[Window], measure: str, threshold: float) -> list[Sp
 
 
 # ===========================================================================
+# The heat tables of reports/results.db
+# ===========================================================================
+# One sentence per strip, for heat_strips.description.  The word lists,
+# the families and the contexts get theirs from their names below.
+STRIP_DESCRIPTIONS = {
+    "density": "The share of the King James words in the window that are content words rather than "
+               "words like 'and, the, of, unto'.",
+    "variety": "How many different words the window uses, counted in steady runs of 50 content words "
+               "(a moving-average type-token ratio).",
+    "rare": "The share of the window's content words that are rare: used 10 times or fewer in the Bible, "
+            "an Aramaic word judged within the Aramaic.",
+    "hammer": "The share of the window's content words taken by its single most repeated word, the voice "
+              "formulas and the commonest words left out.",
+    "action": "The share of the window's content words that are verbs.",
+    "feeling": "The share of the window's content words that are feeling words of the reviewed list in "
+               "metadata.db (atlas_feelings.py).",
+    "nations": "The share of the original text's content words that name places outside the homeland, "
+               "or peoples.",
+    "persons": "The share of the original text's content words that name men and women.",
+    "home": "The share of the original text's content words that are Israel, Judah, Jerusalem or Zion.",
+    "numbers": "The share of the original text's content words that are number words, less 'one' and "
+               "less the dates.",
+}
+
+
+class HeatResults:
+    """
+    Writes one atlas_heat.py run into the heat tables of the results
+    file (atlas_report.HEAT_SCHEMA): what each strip it drew measures,
+    every window's score on it, and its spots with the words that lit
+    them, the same spots and words the text report prints.  The run
+    replaces its own rows (this book, these strips, this scale, norm and
+    window) and leaves every other row as it was.
+    """
+
+    def __init__(self, path: Path):
+        import atlas_report
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.db = sqlite3.connect(path)
+        atlas_report.ensure_results_schema(self.db)
+        self.path = path
+
+    @staticmethod
+    def kind_of(strip: str, lists: dict, contexts: dict) -> str:
+        """The strip's kind for heat_strips: measure, feeling, feeling family, word list, names, context, voice."""
+        if strip in contexts:
+            return "voice" if contexts[strip][0] == "orientation" else "context"
+        if strip in lists:
+            return "word list"
+        if strip in NAME_MEASURES:
+            return "names"
+        if strip in FAMILY_NAMES:
+            return "feeling family"
+        if strip == "feeling":
+            return "feeling"
+        return "measure"
+
+    @staticmethod
+    def describe(strip: str, kind: str, lists: dict, contexts: dict, letter: str) -> tuple:
+        """(one sentence, the roots text) for a strip."""
+        if kind == "word list":
+            words = [(r, w) for r, w in lists[strip].items() if r.startswith(letter)]
+            text = (f"The share of the original text's content words in the word list '{strip}' "
+                    f"({len(words)} roots in this testament's language, metadata.db word_lists), counted "
+                    f"with atlas_pos.py's gloss rules.")
+            return text, "\n".join(f"{r} {w}" for r, w in words)
+        if kind in ("context", "voice"):
+            layer, entry = contexts[strip]
+            what = "what a passage is about" if layer == "content" else "who speaks to whom"
+            return (f"The window's share of the {layer} context {entry['number']} ({what}; marking words "
+                    f"'{entry['words']}'), found by Eval_data/discover_contexts.py."), ""
+        if kind == "feeling family":
+            return (f"The share of the window's content words that are feeling words of the {strip} family "
+                    f"(metadata.db feeling_words, atlas_feelings.py)."), ""
+        return STRIP_DESCRIPTIONS.get(strip, f"The {strip} strip."), ""
+
+    def write(self, book: str, testament: str, letter: str, windows: list, args, report: "HeatReport",
+              strips: list, lists: dict, contexts: dict) -> None:
+        when = time.strftime("%Y-%m-%d %H:%M:%S")
+        key = (book, args.scale, args.norm, args.window)
+        db = self.db
+        marks = ",".join("?" * len(strips))
+        db.execute(f"DELETE FROM heat_windows WHERE book = ? AND scale = ? AND norm = ? AND window_size = ? "
+                   f"AND strip IN ({marks})", key + tuple(strips))
+        db.execute(f"DELETE FROM heat_spots WHERE book = ? AND scale = ? AND norm = ? AND window_size = ? "
+                   f"AND strip IN ({marks})", key + tuple(strips))
+        for strip in strips:
+            kind = self.kind_of(strip, lists, contexts)
+            text, roots = self.describe(strip, kind, lists, contexts, letter)
+            db.execute("INSERT OR REPLACE INTO heat_strips VALUES (?, ?, ?, ?, ?, ?)",
+                       (strip, testament, kind, text, roots, when))
+            db.executemany(
+                "INSERT INTO heat_windows VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [key + (strip, i, w.verses[0].chapter, w.verses[0].verse, w.verses[-1].chapter,
+                        w.verses[-1].verse, round(float(w.z[strip]), 4)) for i, w in enumerate(windows)])
+            # The spots at the run's threshold, as the report lists them,
+            # and at three quarters of it (z 1.5 for 2), the 'near' line
+            for line, threshold in (("spot", args.threshold), ("near", 0.75 * args.threshold)):
+                rows = []
+                for s in find_spots(windows, strip, threshold):
+                    if not s.hot and strip in CONTEXT_MEASURES:
+                        continue        # a context's cool spot is no finding, and the report lists none
+                    a, b = s.first.verses[0], s.last.verses[-1]
+                    rows.append(key + (strip, line, threshold, int(s.hot), s.span(book), a.chapter, a.verse,
+                                       b.chapter, b.verse, round(float(s.peak.z[strip]), 4),
+                                       str(s.peak.shown[strip]).strip(), s.peak.middle.ref,
+                                       report.spot_words(s, strip)))
+                db.executemany("INSERT INTO heat_spots VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                               rows)
+        db.commit()
+
+    def close(self) -> None:
+        self.db.close()
+
+
+# ===========================================================================
 # The text report
 # ===========================================================================
 class HeatReport:
@@ -966,6 +1083,27 @@ class HeatReport:
     def gloss(self, root: str) -> str:
         return f"'{self.loader.glosses.get(root, root)}' {root}" if root else ""
 
+    def spot_words(self, s: "Spot", m: str) -> str:
+        """
+        The words a spot's line prints after its peak: the hammered word,
+        a family's categories and words, or a names or word-list strip's
+        words with their counts; '' for the other strips and for a cool
+        spot.  The text report and the heat_spots rows both take it from
+        here, so the two say the same.
+        """
+        extra = ""
+        # Only a hot spot has a hammered word; on a cool spot the top
+        # word is weak by definition, so it is not named.
+        if m == "hammer" and s.hot and s.peak.hammer_word:
+            extra = f"hammered: '{s.peak.hammer_english}' {s.peak.hammer_word}"
+        if s.hot and (m == "feeling" or m in FAMILY_NAMES):
+            extra = self.feeling_detail(s, m)
+        if s.hot and m in NAME_MEASURES:
+            extra = self.names_detail(s, m)
+        if s.hot and m in self.lists:
+            extra = self.names_detail(s, m)
+        return extra
+
     def render(self) -> str:
         a = self.args
         out = [f"HOT AND COOL SPOTS: {self.book}",
@@ -999,17 +1137,8 @@ class HeatReport:
                     out.append(f"  {label}: none")
                     continue
                 for s in sorted(group, key=lambda s: s.first.verses[0].verse_id):
-                    extra = ""
-                    # Only a hot spot has a hammered word; on a cool spot
-                    # the top word is weak by definition, so it is not named.
-                    if m == "hammer" and s.hot and s.peak.hammer_word:
-                        extra = f"  hammered: '{s.peak.hammer_english}' {s.peak.hammer_word}"
-                    if s.hot and (m == "feeling" or m in FAMILY_NAMES):
-                        extra = "  " + self.feeling_detail(s, m)
-                    if s.hot and m in NAME_MEASURES:
-                        extra = "  " + self.names_detail(s, m)
-                    if s.hot and m in self.lists:
-                        extra = "  " + self.names_detail(s, m)
+                    words = self.spot_words(s, m)
+                    extra = "  " + words if words else ""
                     out.append(f"  {label:<5}{s.span(self.book):<28}"
                                f"peak {s.peak.shown[m]:>10} at {s.peak.middle.ref}{extra}")
             out.append("")
@@ -1361,6 +1490,9 @@ def main() -> None:
     parser.add_argument("--metadata", type=Path, default=SCRIPT_DIR / "metadata.db")
     parser.add_argument("--out", type=Path, help="also write the report to this file")
     parser.add_argument("--svg", type=Path, help="write the strip chart to this SVG file")
+    parser.add_argument("--results", type=Path, default=SCRIPT_DIR / "reports" / "results.db",
+                        help="the results file the run's strips, windows and spots are written to "
+                             "(default reports/results.db)")
     args = parser.parse_args()
     if args.threshold is None:
         args.threshold = DEFAULT_THRESHOLD[args.scale]
@@ -1475,8 +1607,17 @@ def main() -> None:
     if contexts:
         choose_contexts(args, windows, contexts, strips.made)
 
-    text = HeatReport(book, windows, norms, loader, args, feelings, lists).render()
+    heat_report = HeatReport(book, windows, norms, loader, args, feelings, lists)
+    text = heat_report.render()
     print(text)
+    # The heat tables of the results file: every strip this run drew,
+    # its windows' scores and its spots, replacing this run's own rows
+    letter = "H" if loader.language_of(book) == "Hebrew" else "G"
+    context_of = {label: (layer, entry) for label, layer, entry in contexts}
+    results = HeatResults(args.results)
+    results.write(book, loader.testament[book], letter, windows, args, heat_report, list(MEASURES),
+                  lists, context_of)
+    results.close()
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(text + "\n", encoding="utf-8")

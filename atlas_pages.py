@@ -54,7 +54,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.100"   # the program version; the window title and every report print it
+VERSION = "0.10.101"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -4082,8 +4082,12 @@ def reach_depth_section(atlas, report, title, book, info):
         chosen.setdefault(r["root"], r)
     for r in sorted(chosen.values(), key=lambda r: -r["keyness"]):
         reach = round(100 * r["chapters_reached"] / info["chapters"])
+        # A word spread evenly has no deepest chapter (depth 0, no
+        # depth_chapter stored): '.' rather than "Nahum None", which the
+        # canon-wide rerun of 0.10.101 found on six book pages
+        deepest = f"{book} {r['depth_chapter']}" if r["depth_chapter"] is not None else "."
         sec.add([atlas.form(r["root"]), reach, round(r["depth"] or 0, 1),
-                 f"{book} {r['depth_chapter']}", r["weight"], round(r["keyness"], 1)],
+                 deepest, r["weight"], round(r["keyness"], 1)],
                 link={"word": r["root"], "book": book, "chapter": r["depth_chapter"]})
 
 
