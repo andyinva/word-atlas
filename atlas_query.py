@@ -336,6 +336,12 @@ def main(argv):
             print(f"{prefix}(written to {path}, {os.path.getsize(path) // 1000} KB)")
         if writer is not None:
             writer.close()
+            # Each canon-wide run adds some 400 MB; the diff needs only the
+            # newest two, so say so when a third is there
+            import atlas_results
+            hint = atlas_results.prune_hint(writer.path)
+            if hint:
+                print(hint)
         return
     try:
         if command == "book":

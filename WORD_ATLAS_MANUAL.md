@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.103. Andrew Hopkins, with Claude.
+For version 0.10.104. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -1698,8 +1698,13 @@ together, from the cited-pairs footers of 4 and 6, with the share
 held, in the form of `listed`; 0.10.81),
 `diff 1 2` (the cells that differ between two runs, pages matched by
 title, sections by number and rows by their first cell, which is the
-reviewer's diff of two dossiers made exact), and `sql "SELECT ..."`
-for anything else. `--run N` reads a run other than the latest;
+reviewer's diff of two dossiers made exact), `prune` (0.10.104:
+deletes all but the newest two runs, `--keep N` for another number,
+and compacts the file; it lists what it will keep and delete and asks
+first, `--yes` does not ask; the heat rows and sources stay), and
+`sql "SELECT ..."` for anything else. Each canon-wide rerun adds a run
+of some 400 MB, and the diff needs only the last two, so the rerun
+suggests `prune` when the file holds three runs or more. `--run N` reads a run other than the latest;
 `--out NAME` names the saved file. The first canon-wide run (0.10.70)
 shaped the questions: a page is stored once per run by its title, so
 a cross-book section page rendered into three dossiers is counted
@@ -1767,7 +1772,16 @@ sources table to carry, so the credits always travel with the numbers;
 a cell of the table that is malformed (the wrong number of columns, an
 "adapted" cell that does not begin yes or no) stops the pack with the
 line named. Edit the table in `ATTRIBUTION.md` and pack again to change
-what a dataset says. The Reader's About box shows the table.
+what a dataset says. The Reader's About box shows the table. Because the
+Septuagint layer is licensed for non-commercial use only, a packed
+dataset as a whole is distributed for non-commercial use only.
+
+Since 0.10.104 a pack carries one run. `results.db` keeps every dossier
+run, so that two can be compared, but the Reader opens on the newest and
+a second full run would double the pack. So `atlas_pack.py` packs only
+the newest run by default (`--latest-only`, which may also be typed):
+the other runs' pages are left out of the packed copy, which is then
+compacted, and the manifest names them. `--all-runs` packs every run.
 With `--brief` (the button's Yes) each chapter page keeps only its
 leading words, signature words, formulas and synopsis, and each section
 page its signature words, formulas and echo tables, which is what a
@@ -5245,6 +5259,14 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.104.** One run per pack: `atlas_pack.py` packs only the newest
+run of `results.db` unless `--all-runs` is given (the 0.10.103 pack
+had carried two full runs). `atlas_results.py prune` keeps the newest
+two runs of `results.db` (`--keep N`), deletes the rest and vacuums
+the file; the canon-wide rerun suggests it once a third run is there. `ATTRIBUTION.md` says at its head that the
+packed dataset as a whole is non-commercial, because of the Septuagint
+layer. No page changes.
 
 **0.10.103.** A `sources` table in `reports/results.db`, carried in the
 pack and described in `schema_notes`: one row per outside dataset,

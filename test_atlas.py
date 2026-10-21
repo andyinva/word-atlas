@@ -851,6 +851,117 @@ def test_heat_and_pack(atlas, only):
                         problems.append(f"refused for another reason: {e}")
         report(name, not problems, "; ".join(problems) if problems else f"{len(rows)} sources")
 
+    name = "guard: atlas_pack.py packs only the newest run unless --all-runs, and leaves results.db whole"
+    if not only or only in name:
+        import json
+        import sqlite3
+        import tempfile
+        import zipfile
+        import atlas_pack
+        import atlas_report
+        if not (os.path.exists(atlas_pack.METADATA_PATH) and os.path.exists(atlas_pack.SOURCE_PATH)):
+            skip(name, "metadata.db or atlas_source.db not beside the program")
+        else:
+            problems = []
+            with tempfile.TemporaryDirectory() as tmp:
+                # Two runs of one page each, every row of the page tables filled
+                path = os.path.join(tmp, "results.db")
+                db = sqlite3.connect(path)
+                atlas_report.ensure_results_schema(db)
+                for run in (1, 2):
+                    db.execute("INSERT INTO runs VALUES (?, ?, 'test', ?, '')",
+                               (run, f"0.10.10{run}", f"2026-10-2{run} 10:00:00"))
+                    db.execute("INSERT INTO pages (page_id, run_id, name, title, kind, notes) "
+                               "VALUES (?, ?, 'book_ruth', 'Book page [Ruth] (KJV)', 'Book', '')", (run, run))
+                    db.execute("INSERT INTO sections (section_id, page_id, position, number, title, note, kind, "
+                               "columns, n_rows) VALUES (?, ?, 0, '1', '1. Test', '', 'table', 'a', 1)", (run, run))
+                    for table in ("cells", "refs", "footers"):
+                        cols = [r[1] for r in db.execute(f"PRAGMA table_info({table})")]
+                        values = [run if c == "section_id" else (0 if c in ("row", "col", "position") else "x")
+                                  for c in cols]
+                        db.execute(f"INSERT INTO {table} VALUES ({','.join('?' * len(cols))})", values)
+                db.commit()
+                db.close()
+
+                def packed(out):
+                    with zipfile.ZipFile(out) as z:
+                        z.extract("results.db", out + "_unpacked")
+                        manifest = json.loads(z.read("manifest.json"))
+                    inside = sqlite3.connect(os.path.join(out + "_unpacked", "results.db"))
+                    counts = {t: inside.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+                              for t in ("runs", "pages", "sections", "cells", "refs", "footers")}
+                    first = inside.execute("SELECT MIN(run_id) FROM pages").fetchone()[0]
+                    inside.close()
+                    return counts, first, manifest
+
+                counts, first, manifest = packed(atlas_pack.pack(path, os.path.join(tmp, "one.wadb")))
+                if set(counts.values()) != {1} or first != 2:
+                    problems.append(f"the default pack holds {counts}, first page of run {first}")
+                if [r["run_id"] for r in manifest["runs"]] != [2] or \
+                        [r["run_id"] for r in manifest["runs_left_out"]] != [1]:
+                    problems.append(f"the manifest's runs are wrong: {manifest['runs']}, {manifest['runs_left_out']}")
+                counts, _, manifest = packed(atlas_pack.pack(path, os.path.join(tmp, "all.wadb"), all_runs=True))
+                if set(counts.values()) != {2} or manifest["runs_left_out"]:
+                    problems.append(f"--all-runs holds {counts}")
+                db = sqlite3.connect(path)
+                if db.execute("SELECT COUNT(*) FROM pages").fetchone()[0] != 2:
+                    problems.append("results.db itself lost a run")
+                db.close()
+            report(name, not problems, "; ".join(problems))
+
+    name = "guard: atlas_results.py prune keeps the newest two runs, asks first, and the rerun suggests it"
+    if not only or only in name:
+        import io
+        import sqlite3
+        import tempfile
+        import contextlib
+        import atlas_report
+        import atlas_results
+        problems = []
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "results.db")
+            db = sqlite3.connect(path)
+            atlas_report.ensure_results_schema(db)
+            # Three runs, each a page with a table, a thousand cells, a ref and a footer
+            for run in (1, 2, 3):
+                db.execute("INSERT INTO runs VALUES (?, 'v', 'test', ?, '')", (run, f"2026-10-2{run} 10:00:00"))
+                db.execute("INSERT INTO pages (page_id, run_id, name, title, kind, notes) "
+                           "VALUES (?, ?, 'p', 'Book page [Ruth] (KJV)', 'Book', '')", (run, run))
+                db.execute("INSERT INTO sections VALUES (?, ?, 0, '1', '1. T', '', 'table', 'a', 1000)", (run, run))
+                db.executemany("INSERT INTO cells VALUES (?, ?, 0, 'a', ?, NULL)",
+                               [(run, r, "x" * 200) for r in range(1000)])
+                db.execute("INSERT INTO refs VALUES (?, 0, 'Ruth 1:1')", (run,))
+                db.execute("INSERT INTO footers VALUES (?, 0, 'f')", (run,))
+            db.execute("INSERT INTO heat_strips (strip, testament, kind, description, updated) "
+                       "VALUES ('rest', 'Old', 'word list', 'd', '2026-10-21')")
+            db.commit()
+            db.close()
+            if not atlas_results.prune_hint(path):
+                problems.append("no hint with three runs")
+            before = os.path.getsize(path)
+            with contextlib.redirect_stdout(io.StringIO()):
+                kept_all = atlas_results.prune(path, answer=lambda prompt: "n")
+                gone = atlas_results.prune(path, answer=lambda prompt: "y")
+            if kept_all:
+                problems.append("a 'no' deleted runs")
+            if gone != [1]:
+                problems.append(f"prune deleted {gone}, not run 1")
+            db = sqlite3.connect(path)
+            left = {t: db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+                    for t in ("runs", "pages", "sections", "cells", "refs", "footers", "heat_strips", "sources")}
+            first = db.execute("SELECT MIN(run_id) FROM pages").fetchone()[0]
+            db.close()
+            if (left["runs"], left["pages"], left["sections"], left["refs"], left["footers"]) != (2, 2, 2, 2, 2) \
+                    or left["cells"] != 2000 or first != 2:
+                problems.append(f"after prune: {left}, first page of run {first}")
+            if left["heat_strips"] != 1 or not left["sources"]:
+                problems.append("prune took rows that belong to no run")
+            if os.path.getsize(path) >= before:
+                problems.append("the file did not shrink (no vacuum)")
+            if atlas_results.prune_hint(path):
+                problems.append("a hint with only two runs")
+        report(name, not problems, "; ".join(problems))
+
 
 # --- the window -----------------------------------------------------------------------------
 WINDOW_SCRIPT = """
