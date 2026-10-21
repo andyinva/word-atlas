@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.102. Andrew Hopkins, with Claude.
+For version 0.10.103. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -452,8 +452,8 @@ ticked: they are built from public-domain and freely licensed
 material, and the last is what lets the installed copy rebuild its
 own atlas (0.10.92). Three are left for you to tick. `lxx.db` holds Rahlfs' Septuagint, which may be passed
 on with its credit but never sold (CC BY-NC-SA), beside STEPBible's
-texts. `sefaria_links.db` waits on confirming Sefaria's licence for
-the links as a set (section 12, the cited column). `results.db` is large, and the
+texts. `sefaria_links.db` holds Sefaria's links, used under CC BY by
+permission of Sefaria's developer team (October 2026; ATTRIBUTION.md). `results.db` is large, and the
 Reader's dataset already carries its pages. `bibles.db`, Bible
 Search Lite's whole database, is not on the list (it was until
 0.10.93): Word Atlas reads `atlas_source.db` in its place, and it
@@ -1259,8 +1259,11 @@ the one the Septuagint map uses, and `import` turns every verse into
 the King James numbering as it reads. `atlas_results.py cited`
 gathers the counts for every book of a run (section 19). The links
 export is Sefaria's own metadata, and a report carries counts only,
-credited to Sefaria; the licence on the links as a set should be
-confirmed before a dataset with these counts is distributed. Without
+credited to Sefaria. The links are used under CC BY, by permission of
+Sefaria's developer team (October 2026), and the footers say that the
+counts are Word Atlas's adaptation under CC BY (0.10.103), as the
+OpenBible footers do for the cross references; ATTRIBUTION.md has the
+full credit. Without
 `sefaria_links.db` beside the program the column and footers are left
 out.
 
@@ -1751,6 +1754,20 @@ everything the Reader shows and nothing else of the atlas need travel
 with it; no chart goes into the pack. It refuses a results file
 without `schema_notes` (one written before 0.10.101); `--allow-old-schema`
 packs such a file anyway, only to test the Reader against an old file.
+
+Since 0.10.103 the file also names whose data its figures rest on. A
+`sources` table holds one row per outside dataset (its name, what it
+supplies, the license it is used under, the credit line it asks for,
+and whether the atlas's figures are an adaptation of it, with what was
+made), copied from the table at the end of `ATTRIBUTION.md` in the
+program's folder every time the results file is opened for writing,
+and described in `schema_notes`. `atlas_pack.py` reads `ATTRIBUTION.md`
+again into the packed copy, and refuses to pack when there is no
+sources table to carry, so the credits always travel with the numbers;
+a cell of the table that is malformed (the wrong number of columns, an
+"adapted" cell that does not begin yes or no) stops the pack with the
+line named. Edit the table in `ATTRIBUTION.md` and pack again to change
+what a dataset says. The Reader's About box shows the table.
 With `--brief` (the button's Yes) each chapter page keeps only its
 leading words, signature words, formulas and synopsis, and each section
 page its signature words, formulas and echo tables, which is what a
@@ -5228,6 +5245,17 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.103.** A `sources` table in `reports/results.db`, carried in the
+pack and described in `schema_notes`: one row per outside dataset,
+copied from the table at the end of `ATTRIBUTION.md` (name, what it
+supplies, license, the credit line it asks for, whether the figures are
+an adaptation of it). The pack refuses to go without it. The footers
+that credit OpenBible and Sefaria say that the counts are Word Atlas's
+adaptation under CC BY. `ATTRIBUTION.md` gains the Septuagint's edition
+and license, as lxx.db records them, and the Strong's dictionary. The
+Reader (0.3.14) shows the table in its About box. Pages change only in
+those two footers' credit lines.
 
 **0.10.102.** The USB installer checks its own work: an install
 report (`install_report.txt`) and a list of every installed file with

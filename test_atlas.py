@@ -779,6 +779,78 @@ def test_heat_and_pack(atlas, only):
                     problems.append(f"a new file was refused: {e}")
             report(name, not problems, "; ".join(problems))
 
+    name = "guard: ATTRIBUTION.md's sources go into results.db and the pack, and the footers mark adaptations"
+    if not only or only in name:
+        import json
+        import sqlite3
+        import tempfile
+        import zipfile
+        import atlas_listed
+        import atlas_pack
+        import atlas_report
+        problems = []
+        rows = atlas_report.read_attribution()
+        names = [r[0] for r in rows]
+        for wanted in ("Septuagint", "OpenBible", "Sefaria", "TAHOT", "King James"):
+            if not any(wanted in n for n in names):
+                problems.append(f"no {wanted} row in ATTRIBUTION.md's sources table")
+        lxx = [r for r in rows if "Septuagint" in r[0]]
+        if lxx and "CC BY-NC-SA" not in lxx[0][2]:
+            problems.append("the Septuagint row does not give its license")
+        for credit in (atlas_listed.CREDIT, atlas_listed.CITED_CREDIT):
+            if "adaptation" not in credit or "CC BY" not in credit:
+                problems.append(f"footer credit does not mark the counts as an adaptation: {credit}")
+        with tempfile.TemporaryDirectory() as tmp:
+            # A slip in the table is caught, not shipped
+            bad = os.path.join(tmp, "bad.md")
+            with open(bad, "w", encoding="utf-8") as f:
+                f.write("# x\n\n## The sources table\n\n| Name | Supplies | License | Credit | Adapted |\n"
+                        "| --- | --- | --- | --- | --- |\n| A | B | C | D | perhaps |\n")
+            try:
+                atlas_report.read_attribution(bad)
+                problems.append("a row whose 'adapted' is neither yes nor no was read")
+            except ValueError:
+                pass
+            path = os.path.join(tmp, "results.db")
+            db = sqlite3.connect(path)
+            atlas_report.ensure_results_schema(db)
+            got = db.execute("SELECT COUNT(*) FROM sources").fetchone()[0]
+            noted = db.execute("SELECT COUNT(*) FROM schema_notes WHERE table_name = 'sources'").fetchone()[0]
+            db.execute("INSERT INTO runs VALUES (1, '0.10.103', 'test', '2026-10-20 10:00:00', '')")
+            db.commit()
+            db.close()
+            if got != len(rows) or not rows:
+                problems.append(f"results.db holds {got} sources, ATTRIBUTION.md {len(rows)}")
+            if noted != 7:
+                problems.append(f"schema_notes has {noted} lines for sources, not 7")
+            if os.path.exists(atlas_pack.METADATA_PATH) and os.path.exists(atlas_pack.SOURCE_PATH):
+                out = atlas_pack.pack(path, os.path.join(tmp, "p.wadb"))
+                with zipfile.ZipFile(out) as z:
+                    z.extract("results.db", os.path.join(tmp, "x"))
+                    manifest = json.loads(z.read("manifest.json"))
+                packed = sqlite3.connect(os.path.join(tmp, "x", "results.db"))
+                carried = [r[0] for r in packed.execute("SELECT name FROM sources ORDER BY position")]
+                packed.close()
+                if carried != names:
+                    problems.append(f"the pack carries {carried}")
+                if manifest["tables"].get("sources") != len(rows):
+                    problems.append("the manifest does not count the sources")
+                # No ATTRIBUTION.md and no rows already there: refused
+                bare = os.path.join(tmp, "bare.db")
+                db = sqlite3.connect(bare)
+                atlas_report.ensure_results_schema(db, attribution_path=os.path.join(tmp, "none.md"))
+                db.execute("INSERT INTO runs VALUES (1, '0.10.103', 'test', '2026-10-20 10:00:00', '')")
+                db.commit()
+                db.close()
+                try:
+                    atlas_pack.pack(bare, os.path.join(tmp, "bare.wadb"),
+                                    attribution_path=os.path.join(tmp, "none.md"))
+                    problems.append("a pack without sources was made")
+                except SystemExit as e:
+                    if "sources" not in str(e):
+                        problems.append(f"refused for another reason: {e}")
+        report(name, not problems, "; ".join(problems) if problems else f"{len(rows)} sources")
+
 
 # --- the window -----------------------------------------------------------------------------
 WINDOW_SCRIPT = """
@@ -1001,6 +1073,11 @@ def test_usb(only):
         if os.path.exists(edited):
             with open(edited, "a", encoding="utf-8") as f:
                 f.write("\na note of my own\n")
+            # The installer leaves a file alone when it is more than two
+            # seconds newer than the drive's copy; a fast run can edit it
+            # inside those two seconds, so the edit is dated a minute on
+            later = time.time() + 60
+            os.utime(edited, (later, later))
             out = subprocess.run([sys.executable, os.path.join(root, "install.py"), "--app", "atlas", "--dest", dest,
                                   "--yes", "--no-shortcuts", "--no-pyqt"], capture_output=True, text=True, env=env,
                                  timeout=300)

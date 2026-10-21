@@ -114,6 +114,11 @@ reader the `.wadb` and the Reader, and they have the findings.
 
 ## Credits in the data
 
+`ATTRIBUTION.md` lists every outside dataset the figures rest on, with
+its license and the credit line it asks for. The table at its end is
+copied into the `sources` table of `reports/results.db` and of every
+packed dataset, and the Reader's About box shows it (0.10.103).
+
 The `listed` column and footers of the echo tables (sections 4, 4e, 6)
 use the cross references in Bible Search Lite's `bibles.db`: the
 OpenBible.info set, built on the Treasury of Scripture Knowledge, used
@@ -131,6 +136,9 @@ The `cited` column and footers of sections 4 and 6 count the passages
 of the rabbinic library that cite two verses together, derived from
 the links of Sefaria's library (sefaria.org) by `sefaria_links.py`
 from its export; a report carries counts only, never Sefaria's text.
+The links are used under CC BY by permission of Sefaria's developer
+team, and the counts, like those of the cross references, are Word
+Atlas's adaptation under CC BY.
 The Hebrew verse numbering is mapped to the King James's with
 STEPBible's TVTMS data (CC BY 4.0).
 
