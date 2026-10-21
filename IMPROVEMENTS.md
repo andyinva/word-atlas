@@ -1657,6 +1657,13 @@ pack by accident with this default, so a routine pack need not fail.
   canon-wide rerun prints the suggestion when a third run is present.
   The deletion is atlas_report.delete_runs, which the one-run pack uses
   too. One guard.
+- **The repack (2026-10-21).** The 0.10.103 run packed alone:
+  477.9 MB of database into a 128.1 MB `word_atlas_0.10.103_2026-10-20.wadb`
+  (2,191 pages, 2,980,678 heat windows, 9 sources), against 811.6 MB
+  into 256.8 MB with both runs: half the size, and below the 146.5 MB of
+  the 0.10.101 pack, since the one-run copy is compacted after the
+  older run is taken out. The two-run file was deleted. The first step
+  of "One file for the Reader" is closed.
 
 **Size (note).** heat_windows is most of the new weight: about 190 MB
 of the 484 MB file, compressing to about 40 MB of the pack. If the
