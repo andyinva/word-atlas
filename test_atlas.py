@@ -992,6 +992,19 @@ w.workbench_started([sys.executable, "build_atlas.py"])
 closed = not w.tabs.isTabEnabled(0)
 w.workbench_finished([sys.executable, "build_atlas.py"], 0)
 print("build hook:", "ok" if closed and w.tabs.isTabEnabled(0) and w.atlas.books else "wrong")
+# Notes, section notes and footers wrap within the visible pane, even on
+# a page whose pictures make it wider than the window (0.10.105)
+from PyQt6.QtWidgets import QLabel
+w.tabs.setCurrentIndex(0)
+w.resize(1000, 800)
+w.open_page("Book", "Revelation", None, "")
+for _ in range(5):
+    app.processEvents()
+pv = w.page_view
+vp = pv.scroll.viewport().width()
+notes = [l for l in pv.body.findChildren(QLabel) if l.objectName() == "note"]
+cut = [l for l in notes if l.geometry().right() > vp]
+print("notes wrap:", f"{len(notes)} notes, page {pv.body.width()} wide in a pane of {vp}, {len(cut)} cut off")
 """
 
 
@@ -1033,6 +1046,11 @@ def test_window(only):
         if lines.get("build hook") != "ok":
             problems.append(f"build hook {lines.get('build hook')!r}")
         report(name, not problems, "; ".join(problems))
+    name = "guard: the page's notes and footers wrap within the visible pane on a page wider than the window"
+    if not only or only in name:
+        lines = dict(l.split(": ", 1) for l in out.stdout.splitlines() if ": " in l)
+        said = lines.get("notes wrap", "")
+        report(name, said.endswith(" 0 cut off") and not said.startswith("0 notes"), said or "no line from the window")
 
 
 # --- housekeeping -----------------------------------------------------------------------

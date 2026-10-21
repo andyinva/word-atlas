@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.104. Andrew Hopkins, with Claude.
+For version 0.10.105. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -5259,6 +5259,13 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.105.** On the Atlas tab, the notes under a page's title, the
+note above each table and the footer lines below it wrap to the width
+the page pane shows. A page made wider than the window by a picture or
+a wide table had wrapped them to the page's own width, so they ran off
+the right edge however wide the window was made. The text, the verse
+pane and the tables are unchanged.
 
 **0.10.104.** One run per pack: `atlas_pack.py` packs only the newest
 run of `results.db` unless `--all-runs` is given (the 0.10.103 pack

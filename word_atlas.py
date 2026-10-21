@@ -47,7 +47,7 @@ import sys
 import importlib
 import os
 
-from PyQt6.QtCore import QTimer, QProcess, QRectF, Qt
+from PyQt6.QtCore import QEvent, QTimer, QProcess, QRectF, Qt
 from PyQt6.QtGui import QColor, QFont, QKeySequence, QPainter, QPen, QShortcut
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame, QHBoxLayout, QInputDialog, QLabel,
                              QLineEdit, QMainWindow, QMessageBox, QPushButton,
@@ -608,10 +608,38 @@ class PageView(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(self.scroll)
         self.body = None
+        # The notes under the title, the note above each table and the
+        # footers below it.  A wide picture or table can make the page
+        # wider than the pane, and a label wrapped to the page's width
+        # then runs off the right edge; so these are held to the pane's
+        # visible width instead (fit_notes), and re-fitted as it resizes
+        self.wrap_labels = []
+        self.scroll.viewport().installEventFilter(self)
         self.show_report(None)
+
+    def note_label(self, text):
+        """A note, a section's note or a footer line: wrapped, and kept within the visible pane."""
+        lab = QLabel(text)
+        lab.setObjectName("note")
+        lab.setProperty("help", "note")
+        lab.setWordWrap(True)
+        self.wrap_labels.append(lab)
+        return lab
+
+    def fit_notes(self):
+        """Hold every note to the width the pane shows, less the page's margins."""
+        width = max(200, self.scroll.viewport().width() - 16)
+        for lab in self.wrap_labels:
+            lab.setMaximumWidth(width)
+
+    def eventFilter(self, obj, event):
+        if obj is self.scroll.viewport() and event.type() == QEvent.Type.Resize:
+            self.fit_notes()
+        return super().eventFilter(obj, event)
 
     def show_report(self, report):
         """Replace the page contents with a Report (None = empty page)."""
+        self.wrap_labels = []
         body = QWidget()
         layout = QVBoxLayout(body)
         layout.setContentsMargins(8, 4, 8, 8)
@@ -627,22 +655,14 @@ class PageView(QWidget):
             title.setProperty("help", "title")
             layout.addWidget(title)
             for note in report.notes:
-                lab = QLabel(note)
-                lab.setObjectName("note")
-                lab.setProperty("help", "note")
-                lab.setWordWrap(True)
-                layout.addWidget(lab)
+                layout.addWidget(self.note_label(note))
             for section in report.sections:
                 head = QLabel(section.title)
                 head.setObjectName("section")
                 head.setProperty("help", "section")
                 layout.addWidget(head)
                 if section.note:
-                    lab = QLabel(section.note)
-                    lab.setObjectName("note")
-                    lab.setProperty("help", "note")
-                    lab.setWordWrap(True)
-                    layout.addWidget(lab)
+                    layout.addWidget(self.note_label(section.note))
                 if section.kind == "heatmap" and section.rows:
                     # The picture, in its own scroll area since it can be
                     # wider than the window, then the numbers beneath
@@ -669,12 +689,9 @@ class PageView(QWidget):
                         lambda r, c, t=table: self.on_row_opened(t.section, r))
                     layout.addWidget(table)
                 for line in section.footer:
-                    lab = QLabel(line)
-                    lab.setObjectName("note")
-                    lab.setProperty("help", "note")
-                    lab.setWordWrap(True)
-                    layout.addWidget(lab)
+                    layout.addWidget(self.note_label(line))
         layout.addStretch()
+        self.fit_notes()
         self.scroll.setWidget(body)
         self.body = body
         self.scroll.verticalScrollBar().setValue(0)
