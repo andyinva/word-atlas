@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.105. Andrew Hopkins, with Claude.
+For version 0.10.106. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -5259,6 +5259,14 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.106.** The top bar's buttons are never narrower than their
+labels: the window's style had given every button a fixed least width,
+so a crowded bar (the Word page's book, word and Any book) squeezed
+"Save as text" to "ve as te". **Rebuild atlas** moved to the Ask row,
+beside the Build box it rebuilds, which leaves the top bar room for
+every page choice; the ?, back and forward buttons are a little
+narrower.
 
 **0.10.105.** On the Atlas tab, the notes under a page's title, the
 note above each table and the footer lines below it wrap to the width

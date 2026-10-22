@@ -94,7 +94,7 @@ QLabel#section { font-weight: bold; padding: 8px 0 2px 0; }
 QLabel#header { background-color: #e6e6e6; color: #333333; padding: 3px 6px;
                 border: 1px solid #c8c8c8; font-weight: bold; }
 QPushButton { background-color: #e0e0e0; border: 1px solid #999999; padding: 4px 10px;
-              border-radius: 2px; min-width: 50px; }
+              border-radius: 2px; }
 QPushButton:hover { background-color: #d0d0d0; }
 QPushButton:pressed { background-color: #c0c0c0; }
 QPushButton:disabled { color: #999999; border-color: #cccccc; }
@@ -123,6 +123,19 @@ QMenu::item:disabled { color: #999999; }
 QMenu::separator { height: 1px; background: #d8d8d8; margin: 3px 6px; }
 QPlainTextEdit { background-color: #ffffff; border: 1px solid #c8c8c8; }
 """
+
+
+def fit_buttons(widget, least=56):
+    """
+    Give every button under a widget a minimum width of its label (and
+    padding), at least `least` pixels, so a crowded row can never squeeze
+    a button until its text is cut ("ve as te" for "Save as text").
+    Buttons given a fixed width (the ? and the arrows) are left alone.
+    """
+    for button in widget.findChildren(QPushButton):
+        if button.minimumWidth() == button.maximumWidth():
+            continue
+        button.setMinimumWidth(max(least, button.sizeHint().width()))
 
 
 class SectionTable(QTableWidget):
@@ -736,6 +749,7 @@ class WordAtlasWindow(QMainWindow):
         self.workbench_build = False      # a build_atlas.py started from the Workbench is running
         if WorkbenchPanel is not None:
             self.workbench = WorkbenchPanel(self)
+            fit_buttons(self.workbench)
             self.workbench.command_started.connect(self.workbench_started)
             self.workbench.command_finished.connect(self.workbench_finished)
             self.tabs.addTab(self.workbench, "Workbench")
@@ -788,7 +802,7 @@ class WordAtlasWindow(QMainWindow):
         # of the window shows a note about that part (atlas_help.py).
         self.help_btn = QPushButton("?")
         self.help_btn.setCheckable(True)
-        self.help_btn.setFixedWidth(30)
+        self.help_btn.setFixedWidth(40)
         self.help_btn.setToolTip("Help mode (F1): point at anything to read what it is")
         self.help_btn.setProperty("help", "help")
         bar.addWidget(self.help_btn)
@@ -796,7 +810,7 @@ class WordAtlasWindow(QMainWindow):
         self.back_btn = QPushButton("◀")
         self.fwd_btn = QPushButton("▶")
         for b in (self.back_btn, self.fwd_btn):
-            b.setFixedWidth(30)
+            b.setFixedWidth(40)
             b.setToolTip("Turn back / forward through the pages you have visited")
         self.back_btn.setProperty("help", "back")
         self.fwd_btn.setProperty("help", "forward")
@@ -852,6 +866,10 @@ class WordAtlasWindow(QMainWindow):
         self.section_box = QComboBox()
         self.section_box.setProperty("help", "section_box")
         self.section_box.setMinimumWidth(220)
+        # As wide as 24 characters, not as wide as its longest entry, so a
+        # long section name cannot push the top bar past the window
+        self.section_box.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.section_box.setMinimumContentsLength(24)
         bar.addWidget(self.section_box)
         self.update_section_list(self.book_box.currentText())
 
@@ -863,6 +881,10 @@ class WordAtlasWindow(QMainWindow):
         self.passage_box = QComboBox()
         self.passage_box.setProperty("help", "passage_box")
         self.passage_box.setMinimumWidth(220)
+        # As wide as 24 characters, not as wide as its longest entry, so a
+        # long section name cannot push the top bar past the window
+        self.passage_box.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.passage_box.setMinimumContentsLength(24)
         bar.addWidget(self.passage_box)
         self.update_passage_list()
 
@@ -923,15 +945,6 @@ class WordAtlasWindow(QMainWindow):
         self.dossier_btn.clicked.connect(self.save_dossier)
         bar.addWidget(self.dossier_btn)
 
-        # Rebuild atlas.db from the Bible text with the rules now in
-        # atlas_text.py, then reload the modules and the page on screen.
-        # For the trial-and-error phase: change a rule, click, compare.
-        self.rebuild_btn = QPushButton("Rebuild atlas")
-        self.rebuild_btn.setToolTip("Recompute every table from the Bible text with the current rules "
-                                    "(about a minute), then reload this page")
-        self.rebuild_btn.clicked.connect(self.rebuild_atlas)
-        self.rebuild_btn.setProperty("help", "rebuild")
-        bar.addWidget(self.rebuild_btn)
         bar.addStretch()
 
         self.status = QLabel("")
@@ -969,6 +982,17 @@ class WordAtlasWindow(QMainWindow):
         self.build_box.setMinimumWidth(160)
         self.build_box.currentIndexChanged.connect(self.switch_build)
         ask_bar.addWidget(self.build_box)
+        # Rebuild atlas.db from the Bible text with the rules now in
+        # atlas_text.py, then reload the modules and the page on screen.
+        # For the trial-and-error phase: change a rule, click, compare.
+        # Beside the Build box since 0.10.106, where the top bar has room
+        # for the longest page choice (Word: a book, a word, Any book)
+        self.rebuild_btn = QPushButton("Rebuild atlas")
+        self.rebuild_btn.setToolTip("Recompute every table from the Bible text with the current rules "
+                                    "(about a minute), then reload this page")
+        self.rebuild_btn.clicked.connect(self.rebuild_atlas)
+        self.rebuild_btn.setProperty("help", "rebuild")
+        ask_bar.addWidget(self.rebuild_btn)
         self.restore_btn = QPushButton("Restore rules")
         self.restore_btn.setToolTip("Copy the rules (atlas_text.py) that made the chosen kept build "
                                     "back over the working atlas_text.py, so a rebuild returns to that state")
@@ -987,6 +1011,10 @@ class WordAtlasWindow(QMainWindow):
             ask_bar.addWidget(self.backup_btn)
             self.update_backup_button()
         root.addLayout(ask_bar)
+
+        # No button narrower than its label: the bars give up space from
+        # the Ask box and the stretch, never from a button's text
+        fit_buttons(central)
 
         line = QFrame()
         line.setObjectName("line")

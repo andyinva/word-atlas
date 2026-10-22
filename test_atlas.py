@@ -971,6 +971,7 @@ from PyQt6.QtTest import QTest
 from PyQt6.QtCore import Qt
 app = QApplication(sys.argv)
 import word_atlas, atlas_pages
+app.setStyleSheet(word_atlas.STYLE)            # the window's own look, set before it is made, as main() does
 w = word_atlas.WordAtlasWindow(atlas_pages.Atlas())
 w.show()
 w.open_page("Book", "Jude", None, "")
@@ -1005,6 +1006,20 @@ vp = pv.scroll.viewport().width()
 notes = [l for l in pv.body.findChildren(QLabel) if l.objectName() == "note"]
 cut = [l for l in notes if l.geometry().right() > vp]
 print("notes wrap:", f"{len(notes)} notes, page {pv.body.width()} wide in a pane of {vp}, {len(cut)} cut off")
+# No button narrower than its label on any kind of page, however the
+# window is sized (0.10.106: the style's fixed minimum had let a crowded
+# bar squeeze "Save as text" to "ve as te")
+from PyQt6.QtWidgets import QPushButton
+squeezed, widest = [], 0
+for kind in w.PAGE_KINDS:
+    w.kind_box.setCurrentText(kind)
+    w.resize(900, 800)
+    for _ in range(3):
+        app.processEvents()
+    widest = max(widest, w.minimumSizeHint().width())
+    squeezed += [f"{kind}: {b.text()} {b.width()}<{b.sizeHint().width()}" for b in w.findChildren(QPushButton)
+                 if b.isVisible() and b.width() < b.sizeHint().width()]
+print("buttons fit:", f"{len(squeezed)} squeezed, widest bar {widest}" + ("; " + "; ".join(squeezed[:3]) if squeezed else ""))
 """
 
 
@@ -1018,7 +1033,11 @@ def test_window(only):
     message) kills the process rather than raising.
     """
     name = "guard: the window survives a double-click on a table"
-    if only and only not in name:
+    # One run of the window answers every guard below; it runs when any of them is asked for
+    names = (name, "guard: the window opens on the Atlas tab with the Workbench behind the second",
+             "guard: the page's notes and footers wrap within the visible pane on a page wider than the window",
+             "guard: no top-bar button is squeezed narrower than its label, on any kind of page")
+    if only and not any(only in n for n in names):
         return
     try:
         import PyQt6  # noqa: F401
@@ -1029,7 +1048,9 @@ def test_window(only):
     out = subprocess.run([sys.executable, "-c", WINDOW_SCRIPT], capture_output=True, text=True,
                          env=env, cwd=PROGRAM_DIR, timeout=300)
     opened = [l for l in out.stdout.splitlines() if l.startswith("opened:")]
-    if out.returncode == 0 and opened:
+    if only and only not in name:
+        pass
+    elif out.returncode == 0 and opened:
         report(name, True, opened[0][8:60])
     else:
         tail = (out.stderr.strip().splitlines() or ["no output"])[-1]
@@ -1051,6 +1072,11 @@ def test_window(only):
         lines = dict(l.split(": ", 1) for l in out.stdout.splitlines() if ": " in l)
         said = lines.get("notes wrap", "")
         report(name, said.endswith(" 0 cut off") and not said.startswith("0 notes"), said or "no line from the window")
+    name = "guard: no top-bar button is squeezed narrower than its label, on any kind of page"
+    if not only or only in name:
+        lines = dict(l.split(": ", 1) for l in out.stdout.splitlines() if ": " in l)
+        said = lines.get("buttons fit", "")
+        report(name, said.startswith("0 squeezed"), said or "no line from the window")
 
 
 # --- housekeeping -----------------------------------------------------------------------
