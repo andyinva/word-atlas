@@ -22,6 +22,7 @@ Pages: book_page, chapter_page, word_page, kin_page.
 Author: Andrew Hopkins (with Claude)
 """
 
+import json
 import math
 import os
 import re
@@ -54,7 +55,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.106"   # the program version; the window title and every report print it
+VERSION = "0.10.114"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -831,8 +832,13 @@ class Atlas:
         gloss = self.settings.get("tags_absorbed_by_gloss")
         rules = (f"gloss rule on ({gloss} absorbed)" if gloss else
                  "built before the gloss rule of 0.9.7: rebuild with build_atlas.py")
-        return (f"Word Atlas {VERSION}; build '{label}' made {self.settings.get('built', '?')}, "
+        line = (f"Word Atlas {VERSION}; build '{label}' made {self.settings.get('built', '?')}, "
                 f"roots {roots}, {rules}, window {self.window}, {self.settings.get('translation', '')}.")
+        # The themes the build carries (atlas_themes.py), when it has any
+        themes = self.settings.get("themes")
+        if themes:
+            line += f" Themes: {themes}."
+        return line
 
     def english_stems(self):
         """
@@ -4965,4 +4971,219 @@ def kin_page(atlas, book_name, chapter):
         sec.add([f"{b} {c}", round(total, 1), len(shared), order, f"{source_ref[s_id]} / {ref}", words]
                 + ([by] if strongs else []),
                 refs=refs, link={"book": b, "chapter": c})
+    return report
+
+
+# ===========================================================================
+# Themes (atlas_themes.py): the Theme page
+# ===========================================================================
+
+def theme_list(atlas):
+    """
+    The themes this build carries, as {theme id: name}, in name order.
+    An empty dict for a build made before themes (0.10.109): it has no
+    theme tables, and a rebuild adds them.
+    """
+    try:
+        return {r[0]: r[1] for r in atlas.db.execute("SELECT theme_id, name FROM theme ORDER BY name")}
+    except sqlite3.Error:
+        return {}
+
+
+def find_theme(atlas, text):
+    """A theme given by id or by name (any case) -> its id, or None."""
+    themes = theme_list(atlas)
+    text = (text or "").strip().lower()
+    for tid, name in themes.items():
+        if text in (tid.lower(), name.lower()):
+            return tid
+    return None
+
+
+def range_lift(observed, expected, cushion):
+    """The lift of several chapters taken together: their counts summed, the same formula."""
+    return (observed + cushion) / (expected + cushion)
+
+
+def theme_page(atlas, name):
+    """
+    The page of a theme: a hand-made set of verses that belong together
+    (themes/*.json, loaded into the build by atlas_themes.py).
+
+    1. The strip: one cell per chapter of the canon in order, shaded by
+       the lift per chapter (the theme's verses in the chapter against
+       what its length would give them by chance), core verses or core
+       plus borderline; the table beneath lists the chapters that hold
+       any theme verse.
+    2. By book, 3. by section: the same counts summed, with the lift of
+       the whole range.
+    4. The verses, core, borderline and excluded, each with its reason.
+    5. The references the atlas could not match, if any.
+    6. The companion terms, when the theme names some.
+    """
+    tid = find_theme(atlas, name)
+    if tid is None:
+        known = ", ".join(f"{i} ({n})" for i, n in theme_list(atlas).items()) or \
+            "(none: put a theme file in themes/ and rebuild, or run python3 atlas_themes.py load)"
+        raise ValueError(f"No theme named '{name}'.  Known themes: {known}.")
+    db = atlas.db
+    theme = db.execute("SELECT * FROM theme WHERE theme_id = ?", (tid,)).fetchone()
+    cushion = float(theme["cushion"])
+    strip = db.execute("SELECT * FROM theme_strip WHERE theme_id = ? ORDER BY position", (tid,)).fetchall()
+    verses = db.execute("SELECT * FROM theme_verse WHERE theme_id = ? ORDER BY position", (tid,)).fetchall()
+    problems = db.execute("SELECT reference, problem FROM theme_problem WHERE theme_id = ?", (tid,)).fetchall()
+    terms = db.execute("SELECT strongs, root, note FROM theme_term WHERE theme_id = ? ORDER BY strongs, root",
+                       (tid,)).fetchall()
+    counts = Counter(v["role"] for v in verses)
+    patterns = json.loads(theme["require_patterns"] or "[]")
+
+    # The references of each chapter's counted verses (core and borderline,
+    # found in the atlas), for the verse pane
+    refs_of = defaultdict(list)
+    roles_of = defaultdict(list)
+    for v in verses:
+        if v["verse_id"] is not None and v["role"] != "excluded":
+            ref = f"{v['book']} {v['chapter']}:{v['verse']}"
+            refs_of[(v["book"], v["chapter"])].append(ref)
+            roles_of[(v["book"], v["chapter"])].append(v["role"])
+
+    label = theme["name"]
+    report = Report("theme_" + tid, f"Theme page [{label}] ({atlas.settings.get('translation', '')})")
+    report.notes.append(
+        f"{label}: {len(verses)} verses in the theme file {theme['file']} (from {theme['source_file'] or 'a verse list'}): "
+        f"core {counts['core']}, borderline {counts['borderline']}, excluded {counts['excluded']}.  "
+        f"Home range {theme['home_label']}; cushion {cushion:g}."
+        + (f"  Every verse holds: {' and '.join(patterns)}." if patterns else "")
+        + (f"  {theme['notes']}" if theme["notes"] else ""))
+    report.notes.append(
+        "Lift per chapter = (theme verses in the chapter + cushion) / (expected + cushion), where expected is "
+        "the theme's verses in the home range times the chapter's share of the home range's verses.  1.0 is "
+        "ordinary for the theme; a chapter with none comes out a little under 1.  Core counts core verses only; "
+        "'with borderline' adds the borderline ones.  Excluded verses are listed but never counted.")
+
+    # -- 1. the strip --------------------------------------------------------------
+    sec = report.section(
+        f"1. Strip [{label}]",
+        ["chapter", "section", "verses", "core", "with borderline", "expected", "lift core", "lift with borderline"],
+        note="One cell per chapter of the canon, in order, one line per book; the colour is the lift per chapter "
+             "(blue under ordinary, light grey ordinary, red over; full red at a lift of 4); a chapter with none of the theme is plain.  Section boundaries are marked by a short "
+             "line.  Chapters outside the home range are grey.  Point at a cell for its figures; click it for "
+             "its verses, double-click for the chapter page.  The table lists the chapters holding a theme verse.",
+        kind="strip")
+    sec.strip = []            # every chapter: the numbers the picture is drawn from
+    sec.strip_rows = {}       # strip position -> table row, for the chapters in the table
+    sec.cushion = cushion
+    for s in strip:
+        book, ch = s["book"], s["chapter"]
+        # The section, its start and the colours were worked out when the
+        # theme was loaded (atlas_themes.py); the page only carries them
+        sec.strip.append({"position": s["position"], "book": book, "chapter": ch,
+                          "verses": s["chapter_verses"], "in_home": bool(s["in_home"]),
+                          "core": s["core"], "all": s["all_verses"],
+                          "expected_core": s["expected_core"], "expected_all": s["expected_all"],
+                          "lift_core": s["lift_core"], "lift_all": s["lift_all"],
+                          "section": s["section"], "section_start": bool(s["section_start"]),
+                          "colour_core": s["colour_core"], "colour_all": s["colour_all"]})
+        if s["all_verses"]:
+            sec.strip_rows[s["position"]] = len(sec.rows)
+            sec.add([f"{book} {ch}", s["section"], s["chapter_verses"], s["core"], s["all_verses"],
+                     round(s["expected_all"], 2) if s["expected_all"] is not None else "",
+                     round(s["lift_core"], 2) if s["lift_core"] is not None else "",
+                     round(s["lift_all"], 2) if s["lift_all"] is not None else ""],
+                    refs=refs_of[(book, ch)], link={"book": book, "chapter": ch})
+    sec.footer.append(f"{len(sec.rows)} of {len(strip)} chapters hold a theme verse.")
+
+    # -- 2. by book ----------------------------------------------------------------
+    by_book = defaultdict(lambda: {"verses": 0, "core": 0, "all": 0, "e_core": 0.0, "e_all": 0.0,
+                                   "chapters": 0, "home": False})
+    for s in strip:
+        b = by_book[s["book"]]
+        b["verses"] += s["chapter_verses"]
+        b["core"] += s["core"]
+        b["all"] += s["all_verses"]
+        b["chapters"] += 1 if s["all_verses"] else 0
+        if s["in_home"]:
+            b["home"] = True
+            b["e_core"] += s["expected_core"]
+            b["e_all"] += s["expected_all"]
+    sec = report.section(
+        f"2. By book [{label}]",
+        ["book", "verses", "chapters with the theme", "core", "with borderline", "expected", "lift core",
+         "lift with borderline"],
+        note="Each book's chapters taken together: the counts summed, and the lift of the whole book by the same "
+             "formula.  Books holding no theme verse are left out.")
+    for book in atlas.books:
+        b = by_book.get(book)
+        if not b or not b["all"]:
+            continue
+        refs = [r for (bk, _c), rs in refs_of.items() if bk == book for r in rs]
+        refs.sort(key=lambda r: (int(r.rsplit(" ", 1)[1].split(":")[0]), int(r.split(":")[1])))
+        if b["home"]:
+            lifts = [round(range_lift(b["core"], b["e_core"], cushion), 2),
+                     round(range_lift(b["all"], b["e_all"], cushion), 2)]
+            expected = round(b["e_all"], 1)
+        else:
+            lifts, expected = ["", ""], ""
+        sec.add([book, b["verses"], b["chapters"], b["core"], b["all"], expected] + lifts,
+                refs=refs, link={"book": book})
+
+    # -- 3. by section -------------------------------------------------------------
+    sec = report.section(
+        f"3. By section [{label}]",
+        ["section", "chapters", "core", "with borderline", "expected", "lift core", "lift with borderline"],
+        note="The sections of each book holding the theme (atlas_sections.py, the book's main division), so "
+             "the strip can be read a section at a time.  A book without sections is in the table above only.")
+    strip_of = {(s["book"], s["chapter"]): s for s in strip}
+    for book in atlas.books:
+        if not by_book.get(book, {}).get("all"):
+            continue
+        n_ch = atlas.book_info[book]["chapters"] if hasattr(atlas, "book_info") else None
+        for sname, chapters, _rest in sections_of(book, n_chapters=n_ch):
+            cells = [strip_of[(book, c)] for c in chapters if (book, c) in strip_of]
+            core = sum(c["core"] for c in cells)
+            allv = sum(c["all_verses"] for c in cells)
+            if not allv:
+                continue
+            home = all(c["in_home"] for c in cells)
+            e_core = sum(c["expected_core"] or 0 for c in cells)
+            e_all = sum(c["expected_all"] or 0 for c in cells)
+            span = f"{chapters[0]}" if len(chapters) == 1 else f"{chapters[0]}-{chapters[-1]}"
+            if chapters != list(range(chapters[0], chapters[-1] + 1)):
+                span = ", ".join(str(c) for c in chapters)
+            refs = [r for c in chapters for r in refs_of.get((book, c), [])]
+            sec.add([f"{book}: {sname}", span, core, allv,
+                     round(e_all, 1) if home else "",
+                     round(range_lift(core, e_core, cushion), 2) if home else "",
+                     round(range_lift(allv, e_all, cushion), 2) if home else ""],
+                    refs=refs, link={"book": book, "chapter": chapters[0]})
+
+    # -- 4. the verses -------------------------------------------------------------
+    sec = report.section(
+        f"4. Verses [{label}]",
+        ["reference", "role", "reason", "as written", "text"],
+        note="Every verse of the theme file with its role.  'As written' is the reference as the verse list gave "
+             "it, when another numbering was turned into the atlas's.  The text is this build's.")
+    for v in verses:
+        ref = f"{v['book']} {v['chapter']}:{v['verse']}"
+        sec.add([ref, v["role"], v["reason"], v["as_written"], v["text"]],
+                refs=[ref] if v["verse_id"] is not None else [], link={"book": v["book"], "chapter": v["chapter"]})
+
+    # -- 5. not matched ------------------------------------------------------------
+    sec = report.section(f"5. Not matched [{label}]", ["reference", "problem"],
+                         note="References of the theme file the atlas could not place.  They are not counted "
+                              "in the strip; a renumber rule in the theme's overrides file mends one.")
+    for ref, why in problems:
+        sec.add([ref, why])
+    if not problems:
+        sec.footer.append("Every reference of the theme was found in the atlas.")
+
+    # -- 6. companion terms --------------------------------------------------------
+    sec = report.section(f"6. Companion terms [{label}]", ["Strong's", "root", "note"],
+                         note="Words that go with the theme, kept by Strong's number and root.  They are not "
+                              "searched yet; see IMPROVEMENTS.md.")
+    for t in terms:
+        sec.add([t["strongs"], t["root"], t["note"]], link={"word": t["strongs"] or t["root"]})
+    if not terms:
+        # Worded without "None", which the tests take as a value left unfilled
+        sec.footer.append("No companion terms named yet (\"companion_terms\" in the theme file).")
     return report

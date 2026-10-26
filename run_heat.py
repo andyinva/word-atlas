@@ -33,7 +33,11 @@ THE RESULTS FILE
     heat_spots tables; see atlas_report.HEAT_SCHEMA), replacing its own
     rows and leaving the rest.  --all therefore fills them for every
     book and every strip, which is what the Reader's heat page and
-    Eval_data/ransom_rest_report.py read.
+    Eval_data/ransom_rest_report.py read.  --all ends with the two
+    strips of kind translations, disagreement and missing
+    (atlas_renderings.py strips: how far the English translations
+    stand apart on each verse, and the share lacking it), when
+    atlas_source.db holds the translations.
 
 Three options of its own, which can stand anywhere after the book names:
     --all       every book of the Bible, in order, instead of named books
@@ -142,5 +146,24 @@ def main() -> None:
             print(f"    reports/{whole.name}  (all five in one)")
 
 
+def translation_strips() -> None:
+    """
+    The strips of kind translations (atlas_renderings.py strips): measured
+    over the whole Bible at once, so run once after the books, not per book.
+    Skipped with a note when the translations are not beside the program.
+    """
+    if not (SCRIPT_DIR / "atlas_source.db").exists():
+        print("translations strips: no atlas_source.db beside the program (python3 atlas_source.py make); skipped")
+        return
+    print("translations strips (atlas_renderings.py strips):")
+    result = subprocess.run([sys.executable, str(SCRIPT_DIR / "atlas_renderings.py"), "strips"],
+                            capture_output=True, text=True)
+    if result.returncode != 0:
+        sys.exit(f"atlas_renderings.py strips failed:\n{result.stderr}")
+    print("    disagreement and missing written for every book")
+
+
 if __name__ == "__main__":
     main()
+    if "--all" in sys.argv[1:]:
+        translation_strips()

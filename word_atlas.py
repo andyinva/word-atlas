@@ -62,6 +62,7 @@ import atlas_help
 import atlas_pages
 import atlas_query
 import atlas_sections
+import atlas_themes
 import atlas_text
 from atlas_ask import AskError
 
@@ -353,6 +354,142 @@ class HeatmapWidget(QWidget):
                           self.CELL_W, self.CELL_H)
             p.setPen(QPen(QColor("#d04000"), 2))
             p.drawRect(rect)
+        p.end()
+
+
+class ThemeStripWidget(QWidget):
+    """
+    A theme's strip: one cell per chapter of the canon in canonical
+    order, wrapped one line per book, each cell coloured by the lift per
+    chapter as the heat strips are (blue under ordinary, light grey
+    ordinary, red over).  The colour is t = log2(lift) / 2, clamped to
+    -1 .. 1, so a lift of 4 or more is full red and 1/4 or less full
+    blue; a chapter holding none of the theme is drawn plain (MID).  A short dark tick under a line marks where a section of the
+    book begins (atlas_sections.py), so the strip reads a section at a
+    time.  Chapters outside the theme's home range are grey.  Click a
+    cell for its verses; double-click for the chapter page.
+    """
+
+    CELL_W, CELL_H, GAP, TOP = 6, 11, 3, 6
+    def __init__(self, section, on_row, on_row_open=None, parent=None):
+        super().__init__(parent)
+        self.section = section
+        self.on_row = on_row
+        self.on_row_open = on_row_open
+        self.with_borderline = False
+        self.hover = None
+        # The cells by book, in canonical order: [(book, [cell, ...])]
+        self.lines = []
+        for cell in section.strip:
+            if not self.lines or self.lines[-1][0] != cell["book"]:
+                self.lines.append((cell["book"], []))
+            self.lines[-1][1].append(cell)
+        # Where each book's sections begin (not the first chapter), as stored with the theme
+        self.starts = {book: {c["chapter"] for c in cells if c.get("section_start")} for book, cells in self.lines}
+        metrics = self.fontMetrics()
+        self.LEFT = max((metrics.horizontalAdvance(b) for b, _ in self.lines), default=60) + 12
+        widest = max((len(c) for _, c in self.lines), default=1)
+        self.setMouseTracking(True)
+        self.setFixedSize(self.LEFT + widest * self.CELL_W + 12,
+                          self.TOP + len(self.lines) * (self.CELL_H + self.GAP) + 8)
+
+    def set_with_borderline(self, on):
+        """Shade by core verses only, or by core plus borderline."""
+        self.with_borderline = bool(on)
+        self.update()
+
+    def colour(self, cell):
+        """
+        The cell's colour.  A theme stores each cell's colour when it is
+        loaded (atlas_themes.strip_colour): grey outside the home range,
+        plain for a chapter with none of the theme, else the lift on the
+        blue-grey-red scale.  A cell without a stored colour gets it from
+        the same function.
+        """
+        stored = cell.get("colour_all" if self.with_borderline else "colour_core")
+        if stored:
+            return QColor(stored)
+        value = cell["lift_all"] if self.with_borderline else cell["lift_core"]
+        count = cell["all"] if self.with_borderline else cell["core"]
+        return QColor(atlas_themes.strip_colour(value, count, cell["in_home"]))
+
+    def cell_at(self, pos):
+        """The cell under a point, or None."""
+        line = int((pos.y() - self.TOP) // (self.CELL_H + self.GAP))
+        col = int((pos.x() - self.LEFT) // self.CELL_W)
+        if 0 <= line < len(self.lines) and pos.x() >= self.LEFT and 0 <= col < len(self.lines[line][1]):
+            return self.lines[line][1][col]
+        return None
+
+    def tip(self, cell):
+        """The figures of one chapter, as the tooltip shows them."""
+        text = f"{cell['book']} {cell['chapter']}"
+        if cell["section"]:
+            text += f" ({cell['section']})"
+        text += f": {cell['core']} core, {cell['all']} with borderline, of {cell['verses']} verses"
+        if cell["in_home"] and cell["lift_core"] is not None:
+            text += (f"\nexpected {cell['expected_core']:.2f} core, {cell['expected_all']:.2f} with borderline"
+                     f"\nlift {cell['lift_core']:.2f} core, {cell['lift_all']:.2f} with borderline")
+        else:
+            text += "\noutside the home range: no lift"
+        return text
+
+    def help_at(self, pos):
+        """Help note for the strip, naming the cell under the pointer."""
+        text = atlas_help.PICTURE_HELP.get("theme_strip", "")
+        cell = self.cell_at(pos)
+        if cell:
+            text += "\n\nThis cell: " + self.tip(cell).replace("\n", "; ")
+        return text
+
+    def mouseMoveEvent(self, event):
+        cell = self.cell_at(event.position())
+        if cell is not self.hover:
+            self.hover = cell
+            self.setToolTip(self.tip(cell) if cell else "")
+            self.update()
+
+    def leaveEvent(self, event):
+        self.hover = None
+        self.update()
+
+    def mousePressEvent(self, event):
+        """Click: the chapter's theme verses in the verse pane (a chapter without any shows nothing)."""
+        cell = self.cell_at(event.position())
+        if cell is not None and cell["position"] in self.section.strip_rows:
+            self.on_row(self.section, self.section.strip_rows[cell["position"]])
+
+    def mouseDoubleClickEvent(self, event):
+        """Double-click: turn to the chapter's page."""
+        cell = self.cell_at(event.position())
+        if cell is not None and self.on_row_open and cell["position"] in self.section.strip_rows:
+            self.on_row_open(self.section, self.section.strip_rows[cell["position"]])
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.fillRect(self.rect(), QColor("#ffffff"))
+        font = p.font()
+        font.setPointSize(8)
+        p.setFont(font)
+        for i, (book, cells) in enumerate(self.lines):
+            y = self.TOP + i * (self.CELL_H + self.GAP)
+            p.setPen(QColor("#333333"))
+            p.drawText(QRectF(0, y - 2, self.LEFT - 6, self.CELL_H + 4),
+                       Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, book)
+            for j, cell in enumerate(cells):
+                x = self.LEFT + j * self.CELL_W
+                p.fillRect(QRectF(x, y, self.CELL_W - 0.5, self.CELL_H), self.colour(cell))
+                if cell["chapter"] in self.starts[book]:
+                    # A section begins here: a short dark tick under its first cell
+                    p.fillRect(QRectF(x, y + self.CELL_H, 1.5, self.GAP), QColor("#2b2b29"))
+        if self.hover is not None:
+            for i, (book, cells) in enumerate(self.lines):
+                if book == self.hover["book"]:
+                    j = self.hover["chapter"] - cells[0]["chapter"]
+                    rect = QRectF(self.LEFT + j * self.CELL_W - 1, self.TOP + i * (self.CELL_H + self.GAP) - 1,
+                                  self.CELL_W + 1, self.CELL_H + 2)
+                    p.setPen(QPen(QColor("#d04000"), 1.5))
+                    p.drawRect(rect)
         p.end()
 
 
@@ -690,6 +827,17 @@ class PageView(QWidget):
                 elif section.kind == "bars" and section.rows:
                     picture = BarChartWidget(section, self.atlas, self.on_row_clicked)
                     layout.addWidget(picture)
+                elif section.kind == "strip" and getattr(section, "strip", None):
+                    # The theme strip: one cell per chapter, a line per book,
+                    # with a choice of core verses or core plus borderline
+                    picture = ThemeStripWidget(section, self.on_row_clicked, self.on_row_opened)
+                    which = QCheckBox("count the borderline verses too")
+                    which.setToolTip("Core verses only, or core plus the borderline verses (ordinary property "
+                                     "or family beside the theme)")
+                    which.toggled.connect(picture.set_with_borderline)
+                    which.setProperty("help", "theme_strip")
+                    layout.addWidget(which)
+                    layout.addWidget(picture, 0, Qt.AlignmentFlag.AlignLeft)
                 elif section.kind == "scatter" and section.rows:
                     picture = ScatterWidget(section, self.on_row_clicked, self.on_row_opened)
                     layout.addWidget(picture, 0, Qt.AlignmentFlag.AlignLeft)
@@ -716,7 +864,7 @@ class WordAtlasWindow(QMainWindow):
     and Workbench (every command-line tool under menus, with a log).
     """
 
-    PAGE_KINDS = ["Book", "Chapter", "Section", "Passage", "Word", "Kin", "Testament", "Compare"]
+    PAGE_KINDS = ["Book", "Chapter", "Section", "Passage", "Word", "Kin", "Testament", "Compare", "Theme"]
 
     def __init__(self, atlas, workbench=False, problem=""):
         """
@@ -887,6 +1035,19 @@ class WordAtlasWindow(QMainWindow):
         self.passage_box.setMinimumContentsLength(24)
         bar.addWidget(self.passage_box)
         self.update_passage_list()
+
+        # The theme, for a Theme page: the themes this build carries
+        # (themes/*.json, loaded by every build; atlas_themes.py)
+        self.theme_label = QLabel("Theme:")
+        self.theme_label.setProperty("help", "theme_box")
+        bar.addWidget(self.theme_label)
+        self.theme_box = QComboBox()
+        self.theme_box.setProperty("help", "theme_box")
+        self.theme_box.setMinimumWidth(180)
+        self.theme_box.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.theme_box.setMinimumContentsLength(20)
+        bar.addWidget(self.theme_box)
+        self.update_theme_list()
 
         self.chapter_label = QLabel("Chapter:")
         self.chapter_label.setProperty("help", "chapter")
@@ -1092,6 +1253,14 @@ class WordAtlasWindow(QMainWindow):
         if self.passage_box.count() == 0:
             self.passage_box.addItem("(no passages: see metadata.db and atlas_passages.py)", "")
 
+    def update_theme_list(self):
+        """Fill the Theme box with the themes the open build carries."""
+        self.theme_box.clear()
+        for tid, name in atlas_pages.theme_list(self.atlas).items():
+            self.theme_box.addItem(name, tid)
+        if self.theme_box.count() == 0:
+            self.theme_box.addItem("(no themes: Workbench, Themes menu)", "")
+
     def update_controls(self, kind):
         """Show only the controls the chosen page kind needs."""
         chapter = kind in ("Chapter", "Kin")
@@ -1105,8 +1274,10 @@ class WordAtlasWindow(QMainWindow):
             w.setVisible(kind == "Section")
         for w in (self.passage_label, self.passage_box):
             w.setVisible(kind == "Passage")
+        for w in (self.theme_label, self.theme_box):
+            w.setVisible(kind == "Theme")
         for w in (self.book_label, self.book_box):
-            w.setVisible(kind not in ("Testament", "Passage"))
+            w.setVisible(kind not in ("Testament", "Passage", "Theme"))
         for w in (self.verses_label, self.verses_edit):
             w.setVisible(kind == "Kin")
         for w in (self.word_label, self.word_edit, self.any_book_btn):
@@ -1137,6 +1308,12 @@ class WordAtlasWindow(QMainWindow):
             if not word:
                 QMessageBox.information(self, "Word Atlas", "No passages: add them with atlas_passages.py.")
                 return
+        if kind == "Theme":
+            word = self.theme_box.currentData() or ""     # the theme id rides in the word slot
+            if not word:
+                QMessageBox.information(self, "Word Atlas", "This build carries no themes.  Import one on the "
+                                        "Workbench tab (Themes menu), or put a theme file in themes/ and rebuild.")
+                return
         self.open_page(kind, book, chapter, word)
 
     # -- opening pages -------------------------------------------------------------------
@@ -1159,6 +1336,8 @@ class WordAtlasWindow(QMainWindow):
                 report = atlas_pages.section_page(self.atlas, book, word)
             elif kind == "Passage":
                 report = atlas_pages.passage_page(self.atlas, word)
+            elif kind == "Theme":
+                report = atlas_pages.theme_page(self.atlas, word)
             else:
                 report = atlas_pages.kin_page(self.atlas, book, chapter)
         except ValueError as e:
@@ -1197,6 +1376,10 @@ class WordAtlasWindow(QMainWindow):
             i = self.passage_box.findData(word)
             if i >= 0:
                 self.passage_box.setCurrentIndex(i)
+        if kind == "Theme":
+            i = self.theme_box.findData(word)
+            if i >= 0:
+                self.theme_box.setCurrentIndex(i)
 
         if record:
             # Drop any forward history, then add this page
@@ -1340,6 +1523,7 @@ class WordAtlasWindow(QMainWindow):
         self.atlas.db.close()
         self.atlas = atlas
         self.page_view.atlas = atlas
+        self.update_theme_list()            # a kept build carries its own themes
         self.restore_btn.setEnabled(index > 0)
         label = self.atlas.settings.get("label") or "working"
         self.status.setText(f"Build '{label}', made {self.atlas.settings.get('built', '')}")
@@ -1364,10 +1548,14 @@ class WordAtlasWindow(QMainWindow):
             return
         here = os.path.dirname(os.path.abspath(__file__))
         working = os.path.join(here, "atlas_text.py")
+        # A build kept since 0.10.109 kept its themes too (builds/<label>.themes/)
+        kept_themes = os.path.isdir(os.path.join(atlas_text.BUILDS_DIR, label + ".themes"))
         answer = QMessageBox.question(
             self, "Word Atlas",
             f"Replace the working atlas_text.py with the rules kept for build '{label}'?\n"
-            f"The current rules are saved first under builds/ with a time stamp.")
+            + ("Its themes are put back in themes/ as well.\n" if kept_themes else "")
+            + "The current rules" + (" and themes are" if kept_themes else " are")
+            + " saved first under builds/ with a time stamp.")
         if answer != QMessageBox.StandardButton.Yes:
             return
         import shutil
@@ -1375,7 +1563,10 @@ class WordAtlasWindow(QMainWindow):
         backup = os.path.join(atlas_text.BUILDS_DIR, time.strftime("rules_before_restore_%Y%m%d_%H%M%S.rules.py"))
         shutil.copyfile(working, backup)
         shutil.copyfile(rules, working)
-        self.status.setText(f"Rules of '{label}' restored to atlas_text.py; click Rebuild atlas to apply")
+        if kept_themes:
+            atlas_themes.restore_themes(os.path.join(atlas_text.BUILDS_DIR, label))
+        self.status.setText(f"Rules{' and themes' if kept_themes else ''} of '{label}' restored; "
+                            f"click Rebuild atlas to apply")
 
     # -- metadata backup ----------------------------------------------------------------
 
@@ -1496,6 +1687,7 @@ class WordAtlasWindow(QMainWindow):
         self.atlas = atlas
         self.page_view.atlas = self.atlas
         self.fill_build_box()
+        self.update_theme_list()
         if exit_code != 0:
             self.status.setText(f"Rebuild failed (exit code {exit_code}); {where}")
             return False
@@ -1516,12 +1708,17 @@ class WordAtlasWindow(QMainWindow):
         build is over: a page opened meanwhile would read a file that
         is being rewritten.
         """
-        if not any(os.path.basename(str(part)) == "build_atlas.py" for part in command):
+        names = [os.path.basename(str(part)) for part in command]
+        # Loading themes (atlas_themes.py load, or import --load) writes
+        # atlas.db too: the pages let go and reopen afterwards, as for a build
+        themes = "atlas_themes.py" in names and ("load" in names or "--load" in names)
+        if "build_atlas.py" not in names and not themes:
             return
         self.workbench_build = True
         if self.atlas is not None:
             self.atlas.db.close()
-            self.status.setText("Rebuilding atlas.db from the Workbench ...")
+            self.status.setText("Loading themes into atlas.db ..." if themes else
+                                "Rebuilding atlas.db from the Workbench ...")
         self.tabs.setTabEnabled(0, False)
 
     def workbench_finished(self, command, exit_code):

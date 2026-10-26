@@ -45,7 +45,8 @@ Usage:
 
 Every build writes atlas.db (the one the window opens by default).
 With --label it also keeps a copy under builds/<label>.db together with
-builds/<label>.rules.py, the atlas_text.py that produced it, so a former
+builds/<label>.rules.py, the atlas_text.py that produced it, and
+builds/<label>.themes/, the theme files it loaded, so a former
 state can be brought back: switch to the kept build in the window, or
 restore its rules and rebuild.
 
@@ -66,6 +67,8 @@ from atlas_text import (ATLAS_PATH, BUILDS_DIR, ECHO_MAX_TOTAL, FORMULA_LENGTHS,
 # atlas_text.py's: restoring an older build's rules copies an older
 # atlas_text.py over this one, and the lookup must not go back with it
 import atlas_source
+# Themes: hand-made sets of verses loaded into every build (themes/*.json)
+import atlas_themes
 
 # Bible-scale pairs with a count below this are not stored; one meeting
 # is not neighbors, and it keeps the table a sensible size.  Book-scale
@@ -151,6 +154,7 @@ class AtlasBuilder:
         self.write_pairs()
         self.write_ngrams_and_echoes()
         self.write_shadows()
+        self.write_themes()
 
         self.log("creating indexes")
         self.db.executescript(INDEXES)
@@ -172,6 +176,25 @@ class AtlasBuilder:
         shutil.copyfile(os.path.join(os.path.dirname(os.path.abspath(__file__)), "atlas_text.py"),
                         rules_copy)
         self.log(f"kept as {db_copy} with {os.path.basename(rules_copy)}")
+        # The themes go with the build, so going back to it brings them back
+        atlas_themes.keep_themes(os.path.join(BUILDS_DIR, safe), log=self.log)
+
+    # -- themes -------------------------------------------------------------------
+
+    def write_themes(self):
+        """
+        Load every theme file of themes/ (atlas_themes.py) into this build,
+        check each reference against the verses just written, and work out
+        each theme's strip.  The themes are named in the settings, so the
+        build line of every report says which themes the build carries
+        (load_themes writes that setting).
+        """
+        self.db.commit()
+        try:
+            atlas_themes.load_themes(self.atlas_path, log=self.log)
+        except (ValueError, sqlite3.Error) as e:
+            # A build of part of the canon cannot place a theme; say so and go on
+            self.log(f"themes not loaded: {e}")
 
     # -- settings ---------------------------------------------------------------
 

@@ -1079,6 +1079,354 @@ def test_window(only):
         report(name, said.startswith("0 squeezed"), said or "no line from the window")
 
 
+# --- themes ---------------------------------------------------------------------------------
+THEME_FILE = os.path.join(PROGRAM_DIR, "themes", "land_inheritance.json")
+
+THEME_WINDOW_SCRIPT = r"""
+import sys
+from PyQt6.QtWidgets import QApplication
+app = QApplication(sys.argv)
+import word_atlas, atlas_workbench
+from atlas_report import Section
+# A strip of three books' chapters, drawn from stored numbers only
+sec = Section("1. Strip [test]", ["chapter"], kind="strip")
+sec.strip, sec.strip_rows = [], {}
+pos = 0
+for book, n in (("Ruth", 4), ("Joel", 3), ("Jude", 1)):
+    for ch in range(1, n + 1):
+        core = 2 if (book, ch) == ("Joel", 2) else 0
+        sec.strip.append({"position": pos, "book": book, "chapter": ch, "verses": 20, "in_home": book != "Jude",
+                          "core": core, "all": core, "expected_core": 0.3, "expected_all": 0.3,
+                          "lift_core": (core + 2) / 2.3, "lift_all": (core + 2) / 2.3, "section": ""})
+        if core:
+            sec.strip_rows[pos] = len(sec.rows)
+            sec.add([f"{book} {ch}"], refs=["Joel 2:1", "Joel 2:3"])
+        pos += 1
+w = word_atlas.ThemeStripWidget(sec, lambda s, r: None)
+w.grab()
+hot = w.colour(sec.strip[5]).name()      # Joel 2: over ordinary
+plain = w.colour(sec.strip[0]).name()    # Ruth 1: none of the theme
+grey = w.colour(sec.strip[7]).name()     # Jude: outside the home range
+print("strip colours: " + " ".join([hot, plain, grey]))
+d = atlas_workbench.ThemeImportDialog()
+d.list_edit.setText("list.csv"); d.id_edit.setText("t1"); d.name_edit.setText("T one")
+d.home_edit.setText("Old")
+print("import command: " + " ".join(d.command()))
+"""
+
+
+def theme_lines(data):
+    """
+    The verse list a theme file came from, rebuilt from the file itself
+    (every reference as written, with the text given for it), so the
+    tests need no copy of the original list.
+    """
+    lines = []
+    for v in data["verses"]:
+        for ref, text in zip(v["source_refs"], v["texts"]):
+            lines.append(f'{ref},"{text}"')
+    return lines
+
+
+def small_atlas(path):
+    """A scratch atlas holding only books, verses and settings (all a theme needs), copied from atlas.db."""
+    import sqlite3
+    if os.path.exists(path):
+        os.remove(path)
+    db = sqlite3.connect(path)
+    db.execute("ATTACH DATABASE ? AS src", (atlas_pages.ATLAS_PATH,))
+    db.execute("CREATE TABLE books AS SELECT * FROM src.books")
+    db.execute("CREATE TABLE verses AS SELECT verse_id, book, chapter, verse, reference, text FROM src.verses")
+    db.execute("CREATE TABLE settings AS SELECT * FROM src.settings")
+    db.commit()
+    db.execute("DETACH DATABASE src")
+    db.close()
+
+
+def test_themes(atlas, only):
+    """
+    Themes (0.10.109, atlas_themes.py): the land and inheritance list
+    imports to the counts found by hand; a reference the atlas does not
+    hold is reported, never dropped; the strip's numbers add up; the
+    page and the window draw a theme from stored numbers.
+    """
+    import shutil
+    import sqlite3
+    import tempfile
+    import atlas_themes
+    names = ("theme: the land and inheritance list imports at 216 core, 5 borderline, 5 excluded",
+             "theme: with the Zechariah rule the duplicate merges, 215 core",
+             "theme: a verse the atlas does not hold is reported (Zec 2:16)",
+             "theme: the strip's lifts follow the formula and its expected counts add up",
+             "theme: a Bible Search Lite export's header lines are passed over quietly",
+             "theme: a kept build keeps its themes and restores them",
+             "theme: the results file and the pack carry the themes with their colours, ready to draw",
+             "theme: the Theme page builds from the stored numbers",
+             "theme: the window draws the strip and the Workbench composes the import")
+    if only and not any(only in n for n in names):
+        return
+    if not os.path.exists(THEME_FILE):
+        skip(names[0], "themes/land_inheritance.json is missing")
+        return
+    with open(THEME_FILE, encoding="utf-8") as f:
+        data = json.load(f)
+    lines = theme_lines(data)
+    overrides = {"include": {"Jos 21:3": "Levite cities and pasturelands given out of the inheritance"}}
+    tmp = tempfile.mkdtemp(prefix="atlas_themes_test_")
+    try:
+        # The list as first imported, before Zec 2:16 was known to be Zec 2:12
+        old = atlas_themes.ThemeBuilder("land_inheritance", "Land and inheritance", overrides=overrides)
+        del old.renumber["Zec 2:16"]
+        old.read_lines(lines)
+        old.classify()
+        counts = old.counts()
+        name = names[0]
+        if not only or only in name:
+            got = (len(old.verses), counts["core"], counts["borderline"], counts["excluded"])
+            report(name, got == (226, 216, 5, 5), f"{got[0]} verses: {counts}")
+        new = atlas_themes.ThemeBuilder("land_inheritance", "Land and inheritance", overrides=overrides)
+        new.read_lines(lines)
+        new.classify()
+        counts = new.counts()
+        name = names[1]
+        if not only or only in name:
+            merged = new.verses.get("Zec 2:12")
+            got = (len(new.verses), counts["core"], counts["borderline"], counts["excluded"])
+            ok = got == (225, 215, 5, 5) and merged is not None and "Zec 2:16" in merged.source_refs
+            report(name, ok, f"{got[0]} verses: {counts}")
+
+        # The old import loaded into a scratch atlas: Zec 2:16 is reported
+        db_path = os.path.join(tmp, "atlas.db")
+        small_atlas(db_path)
+        folder = os.path.join(tmp, "themes")
+        os.makedirs(folder)
+        with open(os.path.join(folder, "land_inheritance.json"), "w", encoding="utf-8") as f:
+            json.dump(old.to_dict("test"), f)
+        said = []
+        atlas_themes.load_themes(db_path, folder, log=said.append)
+        db = sqlite3.connect(db_path)
+        name = names[2]
+        if not only or only in name:
+            problems = db.execute("SELECT reference FROM theme_problem").fetchall()
+            unmatched = db.execute("SELECT COUNT(*) FROM theme_verse WHERE verse_id IS NULL").fetchone()[0]
+            ok = problems == [("Zec 2:16",)] and unmatched == 1 and any("NOT MATCHED Zec 2:16" in l for l in said)
+            report(name, ok, f"problems {problems}, {unmatched} verse unmatched")
+
+        # The strip: one cell per chapter; expected sums to the counted
+        # total; one chapter's lift worked by hand
+        name = names[3]
+        if not only or only in name:
+            cells = db.execute("SELECT book, chapter, chapter_verses, core, expected_core, lift_core "
+                               "FROM theme_strip ORDER BY position").fetchall()
+            total_core = sum(c[3] for c in cells)
+            expected = sum(c[4] for c in cells)
+            n_verses = sum(c[2] for c in cells)
+            deu4 = next(c for c in cells if c[:2] == ("Deuteronomy", 4))
+            by_hand = (deu4[3] + 2) / (total_core * deu4[2] / n_verses + 2)
+            problems = []
+            if len(cells) != 1189:
+                problems.append(f"{len(cells)} cells")
+            if abs(expected - total_core) > 1e-6:
+                problems.append(f"expected sums to {expected:.3f}, counted {total_core}")
+            if abs(deu4[5] - by_hand) > 1e-9:
+                problems.append(f"Deuteronomy 4 lift {deu4[5]} against {by_hand}")
+            # The unmatched Zec 2:16 is not counted: 216 core in the file, 215 in the strip
+            if total_core != 215:
+                problems.append(f"{total_core} core counted")
+            report(name, not problems, "; ".join(problems) or f"Deuteronomy 4: {deu4[3]} core, lift {deu4[5]:.2f}")
+        db.close()
+
+        # The results file (and the pack, which calls the same function)
+        # takes the theme tables whole, colours and texts included
+        name = names[6]
+        if not only or only in name:
+            import atlas_report
+            results_db = sqlite3.connect(":memory:")
+            atlas_report.ensure_results_schema(results_db)
+            n = atlas_report.write_themes(results_db, db_path)
+            cells = results_db.execute("SELECT COUNT(*), SUM(colour_core LIKE '#%') FROM theme_strip").fetchone()
+            texts = results_db.execute("SELECT COUNT(*) FROM theme_verse WHERE text != ''").fetchone()[0]
+            notes = results_db.execute("SELECT COUNT(*) FROM schema_notes WHERE table_name LIKE 'theme%'").fetchone()[0]
+            ok = n == 1 and cells == (1189, 1189) and texts == 226 and notes > 40
+            report(name, ok, f"{n} theme, {cells[0]} cells with colours, {texts} verse texts, {notes} schema notes")
+            results_db.close()
+
+        name = names[4]
+        if not only or only in name:
+            b = atlas_themes.ThemeBuilder("t", "T")
+            b.read_lines(["Reference,Text,Comment", "Source: Search Results,Exported: 2026-10-24 10:48:24,", ",,",
+                          'Deu 4:1,"the land which the LORD giveth you to inherit",', "not a ref,x"])
+            ok = b.skipped_header == 3 and len(b.verses) == 1 and len(b.warnings) == 1
+            report(name, ok, f"{b.skipped_header} header lines, {len(b.verses)} verse, {len(b.warnings)} warning")
+
+        name = names[5]
+        if not only or only in name:
+            base = os.path.join(tmp, "builds", "lab")
+            os.makedirs(os.path.dirname(base))
+            atlas_themes.keep_themes(base, folder, log=lambda *_: None)
+            os.remove(os.path.join(folder, "land_inheritance.json"))
+            backup = atlas_themes.restore_themes(base, folder)
+            ok = os.path.exists(os.path.join(folder, "land_inheritance.json")) and backup and os.path.isdir(backup)
+            report(name, bool(ok), "kept, then restored over an emptied themes/")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    name = names[7]
+    if not only or only in name:
+        tid = atlas_pages.find_theme(atlas, "land_inheritance")
+        if tid is None:
+            skip(name, "this atlas.db carries no themes yet: rebuild, or run python3 atlas_themes.py load")
+        else:
+            try:
+                rep = atlas_pages.theme_page(atlas, tid)
+                text = atlas_query.render(rep, atlas)
+                strip = rep.sections[0]
+                problems = []
+                if len(strip.strip) != 1189:
+                    problems.append(f"{len(strip.strip)} strip cells")
+                if strip.kind != "strip":
+                    problems.append(f"first section is a {strip.kind}")
+                bad = BAD_WORDS.search(text)
+                if bad:
+                    line = next(l for l in text.splitlines() if bad.group() in l)
+                    problems.append(f"'{bad.group()}' in the text: {line[:80]}")
+                report(name, not problems, "; ".join(problems) or
+                       f"{len(strip.rows)} chapters in the table, {len(text.splitlines())} lines")
+            except Exception:
+                report(name, False, traceback.format_exc().strip().splitlines()[-1])
+
+    name = names[8]
+    if not only or only in name:
+        try:
+            import PyQt6  # noqa: F401
+        except ImportError:
+            skip(name, "PyQt6 is not installed")
+            return
+        env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
+        out = subprocess.run([sys.executable, "-c", THEME_WINDOW_SCRIPT], capture_output=True, text=True,
+                             env=env, cwd=PROGRAM_DIR, timeout=120)
+        said = dict(l.split(": ", 1) for l in out.stdout.splitlines() if ": " in l)
+        problems = []
+        if out.returncode != 0:
+            problems.append(f"exit {out.returncode}: {(out.stderr.strip().splitlines() or ['no output'])[-1][:120]}")
+        else:
+            hot, plain, grey = (said.get("strip colours", "") + "   ").split(" ")[:3]
+            if plain != "#f0efec" or grey != "#c8c8c4" or hot in (plain, grey, ""):
+                problems.append(f"colours {said.get('strip colours')!r}")
+            command = said.get("import command", "")
+            if not command.startswith("import list.csv --id t1 --name T one --require") or \
+                    not command.endswith("--home Old --load"):
+                problems.append(f"import command {command!r}")
+        report(name, not problems, "; ".join(problems))
+
+
+# --- constellations -------------------------------------------------------------------------
+def test_sets(only):
+    """
+    The constellations (atlas_sets.py, 0.10.110 and 0.10.111): a small
+    book keeps a set known to be there; the regnal formula of Kings is a
+    phrase and "the rest of the acts ... written" a frame; Deuteronomy
+    against its testament holds statutes, commandments and keep, which it
+    cannot show against itself; Revelation's opening and close come out as
+    an inclusio; sets that say nothing more than a larger one are folded
+    under it; the tables are written, replaced, and deleted with their run.
+    """
+    import sqlite3
+    import tempfile
+    import atlas_report
+    import atlas_sets
+    names = ("sets: Esther keeps the 127 provinces (hundred, twenty) as a set, marked a phrase",
+             "sets: the regnal formula is a phrase and 'the rest of the acts' (rest, written, book) a frame",
+             "sets: a pair that keeps its order (rest, written) stays a constellation",
+             "sets: Deuteronomy against its testament holds statutes, commandments and keep",
+             "sets: Revelation's beginning, John, word and end are flagged an inclusio",
+             "sets: a set with a larger one of the same support is folded under it",
+             "sets: the tables are written, and a second write of the scope replaces the first")
+    if only and not any(only in n for n in names):
+        return
+    try:
+        text = atlas_sets.Text()
+    except Exception:
+        report(names[0], False, traceback.format_exc().strip().splitlines()[-1])
+        return
+
+    def find(result, roots, norm=None):
+        return [w for n, w in result.sets(norm) if set(w.roots) == set(roots)]
+
+    esther = atlas_sets.ScopeResult(text, "Esther", "window", log=lambda *_: None)
+    name = names[0]
+    if not only or only in name:
+        found = find(esther, {"H3967", "H6242"}, "book")
+        ok = bool(found) and found[0].kind == "phrase" and found[0].places >= 3
+        report(name, ok, f"support {found[0].support}, {found[0].places} places, lift {found[0].lift:.1f}"
+               if found else "not found")
+    name = names[1]
+    if not only or only in name:
+        old = atlas_sets.ScopeResult(text, "Old", "verse", log=lambda *_: None)
+        regnal = find(old, {"H517", "H3389", "H4427", "H8141"})
+        rest = find(old, {"H3499", "H3789", "H5612"})
+        ok = bool(regnal) and regnal[0].kind == "phrase" and bool(rest) and rest[0].kind == "frame"
+        report(name, ok, (f"mother, Jerusalem, reigned, years: {regnal[0].kind}; " if regnal else "regnal not found; ")
+               + (f"rest, written, book: {rest[0].kind}, in order in {rest[0].frame_units} of {rest[0].support} "
+                  f"verses" if rest else "rest, written, book not found"))
+    name = names[2]
+    if not only or only in name:
+        if not (not only or only in names[1]):
+            old = atlas_sets.ScopeResult(text, "Old", "verse", log=lambda *_: None)
+        pair = find(old, {"H3499", "H3789"})
+        ok = bool(pair) and pair[0].kind == "constellation" and pair[0].frame_units > atlas_sets.FRAME_SHARE * pair[0].support
+        report(name, ok, f"rest, written: {pair[0].kind}, in order in {pair[0].frame_units} of {pair[0].support} verses"
+               if pair else "not found")
+    name = names[3]
+    if not only or only in name:
+        deu = atlas_sets.ScopeResult(text, "Deuteronomy", "window", log=lambda *_: None)
+        triple = {"H2706", "H4687", "H8104"}
+        against_testament = find(deu, triple, "testament")
+        against_book = find(deu, triple, "book")
+        ok = bool(against_testament) and not against_book
+        report(name, ok, (f"against the testament: lift {against_testament[0].lift:.1f} in "
+                          f"{against_testament[0].places} places; " if against_testament else "not found; ")
+               + ("against the book: none, as expected" if not against_book else "also against the book"))
+    name = names[4]
+    rev = atlas_sets.ScopeResult(text, "Revelation", "window", log=lambda *_: None)
+    if not only or only in name:
+        frame = find(rev, {"G746", "G2491", "G3056", "G5056"}, "book")
+        ok = bool(frame) and frame[0].inclusio and frame[0].closed
+        report(name, ok, ("; ".join(atlas_sets.span_text(st) for st in frame[0].stretches)
+                          + f", span {frame[0].span} chapters") if frame else "not found")
+    name = names[5]
+    if not only or only in name:
+        folded = [w for _n, w in rev.sets() if not w.closed]
+        ok = bool(folded) and all(w.parent is not None and w.parent.closed and w.parent.support <= w.support
+                                  and set(w.roots) < set(w.parent.roots) and w in w.parent.folded for w in folded)
+        report(name, ok, f"{len(folded)} of {len(rev.sets())} Revelation sets folded")
+    name = names[6]
+    if not only or only in name:
+        with tempfile.TemporaryDirectory() as tmp:
+            db = sqlite3.connect(os.path.join(tmp, "results.db"))
+            atlas_report.ensure_results_schema(db)
+            atlas_sets.write_scope(db, rev, 7)
+            first = db.execute("SELECT COUNT(*) FROM word_sets").fetchone()[0]
+            atlas_sets.write_scope(db, rev, 7)
+            again = db.execute("SELECT COUNT(*) FROM word_sets").fetchone()[0]
+            norms = dict(db.execute("SELECT norm, COUNT(*) FROM word_sets GROUP BY norm"))
+            members = db.execute("SELECT COUNT(*) FROM word_set_members").fetchone()[0]
+            windows = db.execute("SELECT COUNT(*) FROM word_set_windows").fetchone()[0]
+            notes = db.execute("SELECT COUNT(*) FROM schema_notes WHERE table_name LIKE 'word_set%'").fetchone()[0]
+            # Each folded set names its closed set, and each closed set counts what folds under it
+            parents = db.execute("SELECT COUNT(*) FROM word_sets WHERE parent IS NOT NULL").fetchone()[0]
+            folds = db.execute("SELECT COALESCE(SUM(folds), 0) FROM word_sets").fetchone()[0]
+            open_sets = db.execute("SELECT COUNT(*) FROM word_sets WHERE closed = 0").fetchone()[0]
+            # A deleted run takes its sets with it (atlas_results.py prune, the one-run pack)
+            atlas_report.delete_runs(db, [7], vacuum=False)
+            left = db.execute("SELECT COUNT(*) FROM word_sets").fetchone()[0]
+            db.close()
+        ok = (first == again == len(rev.sets()) and set(norms) == {"book", "testament"} and members > first
+              and windows >= first and notes > 25 and left == 0 and parents == folds == open_sets)
+        report(name, ok, f"{first} sets ({norms}), {members} members, {windows} stretches, {notes} schema notes; "
+                         f"{parents} folded sets name their closed set; {left} left after the run is deleted")
+
+
 # --- housekeeping -----------------------------------------------------------------------
 def read(name):
     with open(os.path.join(PROGRAM_DIR, name), encoding="utf-8") as f:
@@ -1141,7 +1489,8 @@ def test_workbench(only):
     elif lines.get("composed") != want:
         problems.append(f"composed {lines.get('composed')!r}")
     else:
-        for m in ("Pages", "Dossiers", "Results", "Builds", "Translations", "Sefaria", "Backup", "Install", "Tests", "Git"):
+        for m in ("Pages", "Dossiers", "Results", "Builds", "Themes", "Translations", "Sefaria", "Backup", "Install",
+                  "Tests", "Git"):
             if m not in lines.get("menus", ""):
                 problems.append(f"no {m} menu")
         if lines.get("usb") != "yes":
@@ -1239,6 +1588,175 @@ def test_usb(only):
             if "0 file(s) copied" not in out.stdout or "left alone" not in out.stdout:
                 problems.append("a second install copied files or replaced an edited one")
     report(name, not problems, "; ".join(problems) or f"{len(manifest['files'])} files")
+
+
+def make_fake_bsl(folder):
+    """A small Bible Search Lite folder: its script, its package, its update list, a bibles.db and the user's own files."""
+    import sqlite3
+    for sub in ("bible_search_ui/ui", "database", "venv"):
+        os.makedirs(os.path.join(folder, *sub.split("/")), exist_ok=True)
+    files = {
+        "bible_search_lite.py": "import sys\nprint('Bible Search Lite')\n",
+        "bible_search.py": "# search\n",
+        "bible_search_ui/__init__.py": "",
+        "bible_search_ui/ui/__init__.py": "",
+        "bible_search_ui/ui/widgets.py": "# widgets\n",
+        "update_files.txt": "# the updater's list\nbible_search_lite.py\nbible_search.py\nVERSION.txt\n"
+                            "bible_search_ui/__init__.py\nbible_search_ui/ui/__init__.py\nbible_search_ui/ui/widgets.py\n",
+        "VERSION.txt": "v9.9.9\n",
+        "LICENSE": "MIT\n",
+        "bible_search_lite.png": "png",
+        "bible_search_lite_config.json": "{\"mine\": true}",
+        "test_something.py": "# a test, never carried\n",
+        "database/subjects.db": "the user's own subjects",
+        "venv/python": "never carried",
+    }
+    for rel, text in files.items():
+        with open(os.path.join(folder, *rel.split("/")), "w", encoding="utf-8") as f:
+            f.write(text)
+    db = sqlite3.connect(os.path.join(folder, "database", "bibles.db"))
+    db.execute("CREATE TABLE translations (id INTEGER PRIMARY KEY, abbreviation TEXT)")
+    db.executemany("INSERT INTO translations (abbreviation) VALUES (?)", [("KJV",), ("ASV",)])
+    db.commit()
+    db.close()
+
+
+def test_usb_bsl(only):
+    """
+    0.10.107: with its box ticked the drive carries Bible Search Lite (the
+    files its update_files.txt names and database/bibles.db, never the
+    user's subjects.db, settings or venv), and the drive's installer
+    offers it and installs it with a starter, a record and a report that
+    checks the database.
+    """
+    name = "guard: the drive carries Bible Search Lite and its bibles.db when ticked, and installs it"
+    if only and only not in name:
+        return
+    import tempfile
+    import atlas_usb
+    problems = []
+    with tempfile.TemporaryDirectory() as tmp:
+        bsl, drive, dest, home = (os.path.join(tmp, d) for d in ("bible-search-lite", "drive", "installed", "home"))
+        for d in (drive, home):
+            os.makedirs(d)
+        make_fake_bsl(bsl)
+        options = atlas_usb.default_options(None, None)
+        if options["bsl"]:
+            problems.append("Bible Search Lite is ticked before anyone asks for it")
+        options.update({"reader": False, "atlas": False, "dataset": None, "atlas_data": [], "wheels": False,
+                        "sync": False, "bsl": True, "bsl_dir": bsl})
+        manifest = atlas_usb.build(drive, options, None, None, log=lambda *a: None)
+        root = atlas_usb.drive_root(drive)
+        held = sorted(rel for rel in manifest["files"])
+        want = ["programs/bible_search_lite/" + n for n in
+                ("LICENSE", "VERSION.txt", "bible_search.py", "bible_search_lite.png", "bible_search_lite.py",
+                 "bible_search_ui/__init__.py", "bible_search_ui/ui/__init__.py", "bible_search_ui/ui/widgets.py",
+                 "database/bibles.db", "update_files.txt")]
+        if held != want:
+            problems.append(f"the drive holds {held}")
+        if manifest.get("bsl", {}).get("version") != "9.9.9" or not manifest["bsl"].get("database"):
+            problems.append(f"the manifest says {manifest.get('bsl')}")
+        with open(os.path.join(root, "README.txt"), encoding="utf-8") as f:
+            if "Bible Search Lite 9.9.9" not in f.read():
+                problems.append("README.txt does not name Bible Search Lite")
+        env = dict(os.environ, HOME=home, USERPROFILE=home, QT_QPA_PLATFORM="offscreen")
+        out = subprocess.run([sys.executable, os.path.join(root, "install.py"), "--list"],
+                             capture_output=True, text=True, env=env, timeout=120)
+        if "Bible Search Lite 9.9.9, with its bibles.db" not in out.stdout:
+            problems.append("install.py --list does not offer Bible Search Lite")
+        out = subprocess.run([sys.executable, os.path.join(root, "install.py"), "--app", "bsl", "--dest", dest,
+                              "--yes", "--no-shortcuts", "--no-pyqt"], capture_output=True, text=True, env=env,
+                             timeout=300)
+        if out.returncode != 0:
+            problems.append(f"the installer ended with {out.returncode}: {out.stdout.strip()[-200:]}")
+        for need in ("bible_search_lite/bible_search_lite.py", "bible_search_lite/bible_search_ui/ui/widgets.py",
+                     "bible_search_lite/database/bibles.db", "start_bible_search_lite.pyw", "installed.json",
+                     "install_report.txt"):
+            if not os.path.exists(os.path.join(dest, *need.split("/"))):
+                problems.append(f"{need} not installed")
+        if os.path.exists(os.path.join(dest, "bible_search_lite", "database", "subjects.db")):
+            problems.append("the user's subjects.db was installed")
+        report_text = out.stdout
+        if "Bible Search Lite 9.9.9" not in report_text or "bibles.db" not in report_text or \
+                "2 translations" not in report_text:
+            problems.append("the install report does not check Bible Search Lite's database")
+        # The starter runs the program from its own folder, where it looks for database/bibles.db
+        run = subprocess.run([sys.executable, os.path.join(dest, "start_bible_search_lite.pyw")],
+                             capture_output=True, text=True, env=env, timeout=60)
+        if "Bible Search Lite" not in run.stdout:
+            problems.append(f"the starter did not run the program: {run.stderr.strip()[-150:]}")
+        # A second install with a subjects.db of the user's own leaves it alone
+        own = os.path.join(dest, "bible_search_lite", "database", "subjects.db")
+        with open(own, "w") as f:
+            f.write("my subjects")
+        subprocess.run([sys.executable, os.path.join(root, "install.py"), "--app", "bsl", "--dest", dest, "--yes",
+                        "--no-shortcuts", "--no-pyqt"], capture_output=True, text=True, env=env, timeout=300)
+        with open(own) as f:
+            if f.read() != "my subjects":
+                problems.append("a second install touched the user's subjects.db")
+    report(name, not problems, "; ".join(problems))
+
+
+def test_usb_pack(only):
+    """
+    0.10.108: the USB window's fresh pack is atlas_pack.py's own (the
+    newest run only, with the passages, the King James text and the
+    sources), and a pack is due only when results.db holds a run the
+    dataset lacks, not when results.db was merely written to later.
+    """
+    name = "guard: the USB window packs with atlas_pack.py and offers a pack only for a newer run"
+    if only and only not in name:
+        return
+    import sqlite3
+    import tempfile
+    import zipfile
+    import atlas_report
+    import atlas_usb
+    import atlas_pack
+    if not (os.path.exists(atlas_pack.METADATA_PATH) and os.path.exists(atlas_pack.SOURCE_PATH)):
+        skip(name, "metadata.db or atlas_source.db not beside the program")
+        return
+    problems = []
+    with tempfile.TemporaryDirectory() as tmp:
+        fake_atlas = os.path.join(tmp, "word_atlas")
+        os.makedirs(os.path.join(fake_atlas, "reports"))
+        results = os.path.join(fake_atlas, "reports", "results.db")
+        db = sqlite3.connect(results)
+        atlas_report.ensure_results_schema(db)
+        for run in (1, 2):
+            db.execute("INSERT INTO runs VALUES (?, ?, 'test', ?, '')", (run, f"0.10.10{run}", f"2026-10-2{run} 10:00:00"))
+            db.execute("INSERT INTO pages (page_id, run_id, name, title, kind, notes) "
+                       "VALUES (?, ?, 'p', 'Book page [Ruth] (KJV)', 'Book', '')", (run, run))
+        db.commit()
+        db.close()
+        if not atlas_usb.results_newer_than(None, fake_atlas):
+            problems.append("no pack offered when there is no dataset at all")
+        lines = []
+        out = atlas_usb.pack_dataset(results, os.path.join(tmp, "out"), log=lines.append, atlas_dir=PROGRAM_DIR)
+        if os.path.basename(out) != "word_atlas_0.10.102_2026-10-22.wadb":
+            problems.append(f"the pack is named {os.path.basename(out)}")
+        with zipfile.ZipFile(out) as z:
+            manifest = json.loads(z.read("manifest.json"))
+        if [r["run_id"] for r in manifest["runs"]] != [2]:
+            problems.append(f"the pack holds runs {[r['run_id'] for r in manifest['runs']]}, not only the newest")
+        for table in ("passages", "kjv_verses", "sources"):
+            if not manifest["tables"].get(table):
+                problems.append(f"the pack has no {table}")
+        # Written to again, with no new run: no pack is due
+        db = sqlite3.connect(results)
+        atlas_report.ensure_results_schema(db)
+        db.close()
+        later = time.time() + 120
+        os.utime(results, (later, later))
+        if atlas_usb.results_newer_than(out, fake_atlas):
+            problems.append("a pack is offered though results.db holds no newer run")
+        db = sqlite3.connect(results)
+        db.execute("INSERT INTO runs VALUES (3, '0.10.103', 'test', '2026-10-23 10:00:00', '')")
+        db.commit()
+        db.close()
+        if not atlas_usb.results_newer_than(out, fake_atlas):
+            problems.append("no pack offered for a newer run")
+    report(name, not problems, "; ".join(problems))
 
 
 def test_dist(only):
@@ -1397,6 +1915,109 @@ def test_source(only):
     report(name, not problems, "; ".join(problems) or "2 of 3 translations taken, the one under copyright left")
 
 
+def test_renderings(only):
+    """
+    The renderings layer (atlas_renderings.py, 0.10.113 and 0.10.114):
+    the American Standard aligned with the King James on Exodus and
+    Hebrews tags most of its content words and renders H3068 (YHWH) as
+    Jehovah, the root's rows summing to one with the (other) row; Hebrews
+    9:5 pairs G2435 with mercy-seat through the two-word unit of Exodus;
+    the renderings summary folds dwelt into dwell; among eight
+    translations Acts 8:37, which the critical text leaves out, is among
+    the five cruxes of Acts; Genesis 10:14, a verse of names, is not a
+    crux; Daniel 4:1, held inside Daniel 3:30 by the Geneva of 1599, is
+    merged there, not lacking; and the four tables are written with
+    their schema notes.
+    """
+    import sqlite3
+    import tempfile
+    import atlas_report
+    names = ("renderings: the ASV aligned on Exodus and Hebrews tags 55 to 90 percent of its content words",
+             "renderings: H3068 in the ASV is rendered jehovah, and the root's rows sum to one",
+             "renderings: Hebrews 9:5 pairs G2435 with the ASV's mercy-seat (the unit of Exodus)",
+             "renderings: the summary folds dwelt, dwell and dwelleth into one word",
+             "renderings: Acts 8:37 is among the five cruxes of Acts, lacking in most of eight translations",
+             "renderings: Genesis 10:14, a verse of names, is not a crux; its names are counted",
+             "renderings: Daniel 4:1 is merged into Daniel 3:30 in the Geneva of 1599, not lacking",
+             "renderings: the four tables are in a results.db with their schema notes")
+    if only and not any(only in n for n in names):
+        return
+    try:
+        import atlas_renderings as R
+        corpus = R.Corpus(only={"ASV", "WEB", "YLT", "DBT", "ERV", "BSB", "ACV", "GN2"}, log=lambda *_: None)
+    except BaseException:
+        # No atlas_source.db beside the program: the layer cannot be tested
+        report(names[0], False, traceback.format_exc().strip().splitlines()[-1])
+        return
+    every = list(corpus.refs)
+    # Two books to align (Exodus, where YHWH and the mercy seat are; Hebrews 9:5)
+    corpus.refs = [r for r in every if corpus.book_of[r] in ("Exodus", "Hebrews")]
+    aligner = R.Aligner(corpus, "ASV", log=lambda *_: None)
+    n_words, n_tagged, renderings, totals = aligner.tag()
+    share = n_tagged / n_words if n_words else 0.0
+    name = names[0]
+    if not only or only in name:
+        report(name, 0.55 <= share <= 0.90, f"{share:.0%} of {n_words:,}")
+    name = names[1]
+    if not only or only in name:
+        rows, _summary = R.renderings_rows("ASV", renderings, totals, {"H3068": "lord"})
+        lord = [r for r in rows if r[0] == "H3068"]
+        lead = max(lord, key=lambda r: r[4]) if lord else None
+        total = sum(r[5] for r in lord)
+        report(name, bool(lead) and lead[3] == "jehovah" and abs(total - 1.0) < 0.01,
+               f"lead {lead[3] if lead else None}, shares sum {total:.3f}")
+    name = names[2]
+    if not only or only in name:
+        # The learned pairings as the cache would hold them, without the file
+        live = R.LivePairs.__new__(R.LivePairs)
+        live.by = {"ASV": {}}
+        for k, w, sc in aligner.trusted_pairs():
+            live.by["ASV"].setdefault(w, []).append((k, sc))
+        ref = "Hebrews 9:5"
+        hits = live.rendering("ASV", corpus.texts["ASV"][ref], set(corpus.kjv_words(ref)), "G2435")
+        report(name, any("mercy" in h and "seat" in h for h in hits), f"{hits}")
+    name = names[3]
+    if not only or only in name:
+        folder = R.Folder({"dwelt", "dwell", "dwelleth", "dwellest", "abode"})
+        counts = {("H3427", "dwelt"): 20, ("H3427", "dwell"): 15, ("H3427", "dwelleth"): 5}
+        _rows, summary = R.renderings_rows("GEN", counts, {"H3427": 40}, {"H3427": "dwell"}, folder)
+        printed, folded = summary[0][4], summary[0][5]
+        report(name, printed == 3 and folded == 1, f"{printed} as printed, {folded} folded")
+    corpus.refs = [r for r in every if corpus.book_of[r] in ("Genesis", "Daniel", "Acts")]
+    d = R.Disagreement(corpus)
+    # rows[ref]: (mean, present, expected, far pair, unique words, excess, outlier, names, merged)
+    name = names[4]
+    if not only or only in name:
+        acts = [r for r in corpus.refs if corpus.book_of[r] == "Acts" and d.rows[r][5] is not None]
+        top = sorted(acts, key=lambda r: -d.rows[r][5])[:5]
+        present, expected = d.rows["Acts 8:37"][1], d.rows["Acts 8:37"][2]
+        report(name, "Acts 8:37" in top and present < expected / 2, f"top {top}; present {present} of {expected}")
+    name = names[5]
+    if not only or only in name:
+        genesis = [r for r in corpus.refs if corpus.book_of[r] == "Genesis" and d.rows[r][5] is not None]
+        top = sorted(genesis, key=lambda r: -d.rows[r][5])[:20]
+        report(name, "Genesis 10:14" not in top and d.rows["Genesis 10:14"][7] >= 2,
+               f"names {d.rows['Genesis 10:14'][7]}, excess {d.rows['Genesis 10:14'][5]}")
+    name = names[6]
+    if not only or only in name:
+        merged = dict(d.rows["Daniel 4:1"][8])
+        report(name, merged.get("GN2") == "Daniel 3:30", f"merged {merged}")
+    name = names[7]
+    if not only or only in name:
+        with tempfile.TemporaryDirectory() as tmp:
+            db = sqlite3.connect(os.path.join(tmp, "results.db"))
+            atlas_report.ensure_results_schema(db)
+            tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+            noted = {r[0] for r in db.execute("SELECT DISTINCT table_name FROM schema_notes")}
+            columns = {r[1] for r in db.execute("PRAGMA table_info(disagreement_verses)")}
+            columns |= {r[1] for r in db.execute("PRAGMA table_info(renderings_summary)")}
+            db.close()
+        wanted = {"renderings", "renderings_summary", "renderings_translations", "disagreement_verses"}
+        new = {"names", "merged", "merged_with", "renderings_folded"}
+        report(name, wanted <= tables and wanted <= noted and new <= columns,
+               ", ".join(sorted((wanted - (tables & noted)) | (new - columns))) or "all four, with the new columns")
+
+
 def test_housekeeping(only):
     version = atlas_pages.VERSION
     name = "housekeeping: one version everywhere"
@@ -1458,6 +2079,11 @@ def main(argv):
         print("guard: the window's two tabs; the workbench's commands; atlas_dist's bundle; atlas_usb's drive and installer")
         print("guard: atlas_source's own text taken out of a bibles.db")
         print("guard: every heat strip has rows for every book; atlas_pack refuses a results.db without schema_notes")
+        print("theme: the land and inheritance counts; a missing verse reported; the strip's sums; the page and window")
+        print("sets: Esther's 127 provinces; the regnal phrase and the 'rest of the acts' frame; Deuteronomy against "
+              "its testament; Revelation's inclusio; closed sets; the tables written and replaced")
+        print("renderings: the ASV tagged; H3068 jehovah; Hebrews 9:5 mercy-seat; dwelt folded into dwell; Acts 8:37 "
+              "a crux; Genesis 10:14 not; Daniel 4:1 merged; the four tables noted")
         print("housekeeping: one version everywhere; no em dash; every module compiles")
         return 0
     started = time.perf_counter()
@@ -1466,10 +2092,15 @@ def main(argv):
     test_workbench(only)
     test_dist(only)
     test_usb(only)
+    test_usb_bsl(only)
+    test_usb_pack(only)
     test_source(only)
     atlas = atlas_pages.Atlas()
     test_guards(atlas, only)
     test_heat_and_pack(atlas, only)
+    test_themes(atlas, only)
+    test_sets(only)
+    test_renderings(only)
     test_window(only)
     test_smoke(atlas, only)
     test_dossier(atlas, only)

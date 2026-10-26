@@ -1,5 +1,5 @@
 -- Word Atlas metadata.db backup (plain SQL; restore with atlas_backup.py)
--- written: 2026-10-20 12:57
+-- written: 2026-10-26 17:31
 BEGIN TRANSACTION;
 CREATE TABLE books (
     book_num       INTEGER PRIMARY KEY,     -- 1 = Genesis ... 66 = Revelation
@@ -15835,40 +15835,40 @@ INSERT INTO "tradition_verse_map" VALUES('Hebrew','Malachi',3,21,4,3,'Mal.4:1-4:
 INSERT INTO "tradition_verse_map" VALUES('Hebrew','Malachi',3,22,4,4,'Mal.4:1-4:6');
 INSERT INTO "tradition_verse_map" VALUES('Hebrew','Malachi',3,23,4,5,'Mal.4:1-4:6');
 INSERT INTO "tradition_verse_map" VALUES('Hebrew','Malachi',3,24,4,6,'Mal.4:1-4:6');
-CREATE TABLE translation_families (abbreviation TEXT PRIMARY KEY, name TEXT, year INTEGER, family TEXT, distance_kjv REAL, note TEXT);
-INSERT INTO "translation_families" VALUES('KJV','King James Bible',1611,'KJV family',0.0,NULL);
-INSERT INTO "translation_families" VALUES('ASV','American Standard Version',1901,'KJV family',0.0994427830907374,NULL);
-INSERT INTO "translation_families" VALUES('DRB','Douay-Rheims Bible',1750,'DRB family',2.56780095091683424e-01,NULL);
-INSERT INTO "translation_families" VALUES('DBT','Darby Bible Translation',1890,'KJV family',1.53449018858532126e-01,NULL);
-INSERT INTO "translation_families" VALUES('ERV','English Revised Version',1885,'KJV family',8.11045805633365812e-02,NULL);
-INSERT INTO "translation_families" VALUES('WEB','World English Bible',2000,'KJV family',1.82862252640479283e-01,NULL);
-INSERT INTO "translation_families" VALUES('YLT','Young''s Literal Translation',1898,'YLT family',2.61417298629130323e-01,NULL);
-INSERT INTO "translation_families" VALUES('WNT','Weymouth New Testament',1903,'WNT family',3.99725290764597618e-01,NULL);
-INSERT INTO "translation_families" VALUES('BIS','Bishops Bible',1568,'BIS family',3.84924818216401454e-01,NULL);
-INSERT INTO "translation_families" VALUES('COV','Coverdale Bible',1535,'COV family',0.528838474920903,NULL);
-INSERT INTO "translation_families" VALUES('GEN','Geneva Bible',1599,'GN2 family',2.94877456726624687e-01,NULL);
-INSERT INTO "translation_families" VALUES('TYN','Tyndale Bible',1534,'TYD family',4.48132115017796261e-01,NULL);
-INSERT INTO "translation_families" VALUES('BST','Brenton Septuagint Translation',1851,'BST family',0.388318509649084,NULL);
-INSERT INTO "translation_families" VALUES('ACV','A Conservative Version',1999,'KJV family',1.52245710714306481e-01,NULL);
-INSERT INTO "translation_families" VALUES('AND','Anderson''s New Testament (1864)',1864,'AND family',1.76584003223232199e-01,NULL);
-INSERT INTO "translation_families" VALUES('BSB','Berean Standard Bible',2016,'BSB family',3.52479302880048583e-01,NULL);
-INSERT INTO "translation_families" VALUES('CPD','Catholic Public Domain Version',2009,'CPD family',3.85507912334809743e-01,NULL);
-INSERT INTO "translation_families" VALUES('DRC','Douay-Rheims Challoner',1752,'DRB family',2.91182607219582778e-01,NULL);
-INSERT INTO "translation_families" VALUES('GN2','Geneva Bible (1599)',1560,'GN2 family',2.89136158377755636e-01,NULL);
-INSERT INTO "translation_families" VALUES('HAW','Haweis New Testament (1795)',1795,'HAW family',2.00468071483010823e-01,NULL);
-INSERT INTO "translation_families" VALUES('JPS','Jewish Publication Society OT',1917,'KJV family',1.65738392892610053e-01,NULL);
-INSERT INTO "translation_families" VALUES('NHE','New Heart English Bible',2010,'KJV family',1.78373880570221854e-01,NULL);
-INSERT INTO "translation_families" VALUES('NHJ','NHEB Jehovah Edition',2010,'KJV family',1.82995481025755801e-01,NULL);
-INSERT INTO "translation_families" VALUES('NHM','NHEB Messianic Edition',2010,'KJV family',1.80555119493044369e-01,NULL);
-INSERT INTO "translation_families" VALUES('NOY','Noyes Translation (1869)',1869,'NOY family',1.87079973115974018e-01,NULL);
-INSERT INTO "translation_families" VALUES('OEB','Open English Bible (US)',2010,'TWE family',4.20960000414147717e-01,NULL);
-INSERT INTO "translation_families" VALUES('OEC','Open English Bible (Commonwealth)',2010,'TWE family',4.20947601337893662e-01,NULL);
-INSERT INTO "translation_families" VALUES('ROT','The Emphasised Bible',1902,'ROT family',2.65123064348453563e-01,NULL);
-INSERT INTO "translation_families" VALUES('TWE','Twentieth Century NT',1904,'TWE family',4.19295866438969433e-01,NULL);
-INSERT INTO "translation_families" VALUES('TYD','Tyndale Bible (1525)',1526,'TYD family',4.28299730953853097e-01,NULL);
-INSERT INTO "translation_families" VALUES('WYC','Wycliffe Bible (1395)',1395,'WYC family',6.49266094914651148e-01,NULL);
-INSERT INTO "translation_families" VALUES('SLT','Smith''s Literal Translation',1876,'SLT family',2.81930004640081777e-01,NULL);
-INSERT INTO "translation_families" VALUES('EDG','Emphatic Diaglott',1864,'EDG family',3.19506636959403289e-01,NULL);
+CREATE TABLE translation_families (abbreviation TEXT PRIMARY KEY, name TEXT, year INTEGER, family TEXT, distance_kjv REAL, note TEXT, edition TEXT);
+INSERT INTO "translation_families" VALUES('KJV','King James Bible',1611,'KJV family',0.0,NULL,NULL);
+INSERT INTO "translation_families" VALUES('ASV','American Standard Version',1901,'KJV family',0.0994427830907374,NULL,NULL);
+INSERT INTO "translation_families" VALUES('DRB','Douay-Rheims Bible',1750,'DRB family',2.56780095091683424e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('DBT','Darby Bible Translation',1890,'KJV family',1.53449018858532126e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('ERV','English Revised Version',1885,'KJV family',8.11045805633365812e-02,NULL,NULL);
+INSERT INTO "translation_families" VALUES('WEB','World English Bible',2000,'KJV family',1.82862252640479283e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('YLT','Young''s Literal Translation',1898,'YLT family',2.61417298629130323e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('WNT','Weymouth New Testament',1903,'WNT family',3.99725290764597618e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('BIS','Bishops Bible',1568,'BIS family',3.84924818216401454e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('COV','Coverdale Bible',1535,'COV family',0.528838474920903,NULL,NULL);
+INSERT INTO "translation_families" VALUES('GEN','Geneva Bible',1587,'GN2 family',2.94877456726624687e-01,NULL,'Described as Geneva Bible (1587) in atlas_source.db. Its New Testament is the Tomson revision, so it is not the 1560 text; whether 1587 or 1599 the database cannot say: edition unverified.');
+INSERT INTO "translation_families" VALUES('TYN','Tyndale Bible',1534,'TYD family',4.48132115017796261e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('BST','Brenton Septuagint Translation',1851,'BST family',0.388318509649084,NULL,NULL);
+INSERT INTO "translation_families" VALUES('ACV','A Conservative Version',1999,'KJV family',1.52245710714306481e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('AND','Anderson''s New Testament (1864)',1864,'AND family',1.76584003223232199e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('BSB','Berean Standard Bible',2016,'BSB family',3.52479302880048583e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('CPD','Catholic Public Domain Version',2009,'CPD family',3.85507912334809743e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('DRC','Douay-Rheims Challoner',1752,'DRB family',2.91182607219582778e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('GN2','Geneva Bible (1599)',1599,'GN2 family',2.89136158377755636e-01,NULL,'Titled Geneva Bible (1599) in atlas_source.db. Its New Testament is the Tomson revision, so it is not the 1560 text; whether 1587 or 1599 the database cannot say: edition unverified.');
+INSERT INTO "translation_families" VALUES('HAW','Haweis New Testament (1795)',1795,'HAW family',2.00468071483010823e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('JPS','Jewish Publication Society OT',1917,'KJV family',1.65738392892610053e-01,NULL,'The 1917 translation in a later edition prepared for Orthodox use: HaShem for the LORD, G-d, L-rd. Not the 1917 printing, which reads the LORD; publisher not named in atlas_source.db (imported from the MIT Bible Database).');
+INSERT INTO "translation_families" VALUES('NHE','New Heart English Bible',2010,'KJV family',1.78373880570221854e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('NHJ','NHEB Jehovah Edition',2010,'KJV family',1.82995481025755801e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('NHM','NHEB Messianic Edition',2010,'KJV family',1.80555119493044369e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('NOY','Noyes Translation (1869)',1869,'NOY family',1.87079973115974018e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('OEB','Open English Bible (US)',2010,'TWE family',4.20960000414147717e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('OEC','Open English Bible (Commonwealth)',2010,'TWE family',4.20947601337893662e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('ROT','The Emphasised Bible',1902,'ROT family',2.65123064348453563e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('TWE','Twentieth Century NT',1904,'TWE family',4.19295866438969433e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('TYD','Tyndale Bible (1525)',1526,'TYD family',4.28299730953853097e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('WYC','Wycliffe Bible (1395)',1395,'WYC family',6.49266094914651148e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('SLT','Smith''s Literal Translation',1876,'SLT family',2.81930004640081777e-01,NULL,NULL);
+INSERT INTO "translation_families" VALUES('EDG','Emphatic Diaglott',1864,'EDG family',3.19506636959403289e-01,NULL,NULL);
 CREATE TABLE translation_spellings (word TEXT PRIMARY KEY, spelled TEXT);
 CREATE TABLE verse_tags (
     book_num    INTEGER NOT NULL REFERENCES books(book_num),

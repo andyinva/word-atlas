@@ -89,8 +89,10 @@ YEARS = {
     "CPDV": 2009, "OEB": 2010, "T4T": 2008, "ULB": 2017, "UST": 2017, "NHEB": 2010, "WMB": 2020,
     "WMBB": 2020, "TWENTIETH": 1904, "TCNT": 1904, "MONTGOMERY": 1924, "MNT": 1924, "GOODSPEED": 1923,
     "MOFFATT": 1926, "FENTON": 1903, "DIAGLOTT": 1864, "ISV": 2011, "NET": 2005, "LEB": 2012,
-    # Bible Search Lite's own abbreviations
-    "DBT": 1890, "BIS": 1568, "COV": 1535, "GEN": 1599, "GN2": 1560, "TYD": 1526, "AND": 1864, "HAW": 1795,
+    # Bible Search Lite's own abbreviations (GEN and GN2 as atlas_source.db
+    # names them, 1587 and 1599: both have the Tomson New Testament, so
+    # neither is the 1560 text; see atlas_renderings.EDITIONS)
+    "DBT": 1890, "BIS": 1568, "COV": 1535, "GEN": 1587, "GN2": 1599, "TYD": 1526, "AND": 1864, "HAW": 1795,
     "DRC": 1752, "LIT": 1985, "MKJ": 1962, "NHE": 2010, "NHJ": 2010, "NHM": 2010, "NOY": 1869, "OEC": 2010,
     "ROT": 1902, "TWE": 1904, "EDG": 1864, "CPD": 2009, "BSB": 2016,
 }
@@ -312,7 +314,7 @@ STEP_TO_KJV = dict(zip(
      "Psalms", "Proverbs", "Ecclesiastes", "Song of Solomon", "Isaiah", "Jeremiah", "Lamentations", "Ezekiel",
      "Daniel", "Hosea", "Joel", "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah",
      "Haggai", "Zechariah", "Malachi"]))
-ALIGN_SAMPLE = 150             # verses of a book tried under each tradition's map when choosing one
+ALIGN_SAMPLE = 150             # verses of a book tried under each tradition's map when choosing one (of those a map renumbers)
 
 
 def build_tradition_maps(tvtms_path, metadata_path=METADATA_PATH, log=print):
@@ -441,22 +443,34 @@ def align_texts(texts, translations, norm, base_tid, maps, log=None):
         chosen = []
         for book, rows in by_book.items():
             base_book = base_rows.get(book)
-            if not base_book or not any((book, c, v) in m for m in maps.values() for (b, c, v) in
-                                        [(book, int(r[0].rsplit(" ", 1)[1].split(":")[0]),
-                                          int(r[0].rsplit(":", 1)[1])) for r in rows[:ALIGN_SAMPLE]]):
+
+            def cv(r):
+                # (chapter, verse) of a row's reference
+                return int(r[0].rsplit(" ", 1)[1].split(":")[0]), int(r[0].rsplit(":", 1)[1])
+
+            # The verses some tradition numbers otherwise: only there can
+            # the maps disagree, so only there are they tried.  (Sampling
+            # the head of the book missed a seam late in it: Job 40 and 41,
+            # where the Hebrew's 40:25 is the King James's 41:1.)
+            touched = [r for r in rows if any((book,) + cv(r) in m for m in maps.values())]
+            if not base_book or not touched:
                 # No tradition numbers this book otherwise: nothing to try
                 new_rows.extend(rows)
                 continue
+            if len(touched) > ALIGN_SAMPLE:
+                step = len(touched) / ALIGN_SAMPLE          # spread over the whole book
+                touched = [touched[int(i * step)] for i in range(ALIGN_SAMPLE)]
             best_name, best_rows, best_score = "as is", rows, None
             for name, mapping in [("as is", {})] + list(maps.items()):
-                candidate = remap_rows(rows, book, mapping) if mapping else rows
-                sample = [r for r in candidate if r[0] in base_book][:ALIGN_SAMPLE]
+                candidate = remap_rows(touched, book, mapping) if mapping else touched
+                sample = [r for r in candidate if r[0] in base_book]
                 if not sample:
                     continue
                 score = sum(closeness([norm.root(w) for w in words_of(t)], base_book[ref])
                             for ref, _, t in sample) / len(sample)
                 if best_score is None or score > best_score + 0.01:
-                    best_name, best_rows, best_score = name, candidate, score
+                    best_name, best_score = name, score
+                    best_rows = remap_rows(rows, book, mapping) if mapping else rows
             new_rows.extend(best_rows)
             if best_name != "as is":
                 chosen.append(f"{book} by the {best_name}")

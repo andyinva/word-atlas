@@ -51,6 +51,7 @@ from pathlib import Path
 EVAL_DIR = Path(__file__).resolve().parent
 ATLAS_DIR = EVAL_DIR.parent
 sys.path.insert(0, str(ATLAS_DIR))
+import atlas_align                                    # noqa: E402  the shared word alignment
 
 MAP_FILE = EVAL_DIR / "results" / "hebrew_greek_map.json.gz"
 
@@ -84,73 +85,16 @@ def hebrew_verses(lxx_path: Path) -> dict:
     return out
 
 
-class WordMap:
-    """IBM Model 1 between Hebrew roots and Septuagint keys."""
+class WordMap(atlas_align.WordMap):
+    """
+    IBM Model 1 between Hebrew roots and Septuagint keys.  The method is
+    atlas_align.WordMap (shared since 0.10.113 with atlas_renderings.py,
+    which learns the English translations' renderings of the King James
+    the same way); this keeps this script's own floors.
+    """
 
     def __init__(self, pairs: list):
-        self.pairs = pairs                       # [(hebrew roots, greek keys)]
-        self.t = {}                              # (greek, hebrew) -> share
-
-    def train(self, rounds: int) -> None:
-        # Start even: every Greek word equally likely from every Hebrew word
-        # it shares a verse with.
-        for heb, grk in self.pairs:
-            for g in grk:
-                for h in heb + [NULL]:
-                    self.t[(g, h)] = 1.0
-        for r in range(rounds):
-            count = defaultdict(float)
-            total = defaultdict(float)
-            for heb, grk in self.pairs:
-                hs = heb + [NULL]
-                for g in grk:
-                    z = sum(self.t[(g, h)] for h in hs)
-                    for h in hs:
-                        c = self.t[(g, h)] / z
-                        count[(g, h)] += c
-                        total[h] += c
-            self.t = {k: v / total[k[1]] for k, v in count.items()}
-            print(f"  round {r + 1} of {rounds}")
-
-    def both_ways(self) -> dict:
-        """
-        hebrew -> {greek: [reverse share, verses]}: for each Greek word, the
-        share of its occurrences that render the Hebrew word (enenlogein
-        renders barak, "bless", nearly every time it occurs, though barak is
-        mostly eulogein), and the verses in which the pairing is made (Kiyyun
-        to Rephan is made once, Amos 5:26: the Septuagint's own rendering,
-        not a habit).  Kept for pairings made in a verse at all.
-        """
-        count = defaultdict(float)
-        g_total = defaultdict(float)
-        support = defaultdict(int)
-        for heb, grk in self.pairs:
-            hs = list(dict.fromkeys(heb)) + [NULL]
-            for g in grk:
-                ps = [self.t.get((g, h), 0.0) for h in hs]
-                z = sum(ps) or 1.0
-                g_total[g] += 1
-                for h, p in zip(hs, ps):
-                    if h != NULL and p:
-                        count[(g, h)] += p / z
-                        if p / z >= SUPPORT_SHARE:
-                            support[(g, h)] += 1
-        out = defaultdict(dict)
-        for (g, h), c in count.items():
-            rev = c / g_total[g]
-            if support[(g, h)] and (rev >= KEEP_SHARE * 5 or self.t.get((g, h), 0.0) >= KEEP_SHARE):
-                out[h][g] = [round(rev, 3), support[(g, h)]]
-        return dict(out)
-
-    def renderings(self) -> dict:
-        """hebrew -> [[greek, share], ...], largest first, shares of KEEP_SHARE or more."""
-        out = defaultdict(list)
-        for (g, h), v in self.t.items():
-            if h != NULL and v >= KEEP_SHARE:
-                out[h].append([g, round(v, 3)])
-        for h in out:
-            out[h].sort(key=lambda x: -x[1])
-        return dict(out)
+        super().__init__(pairs, keep_share=KEEP_SHARE, support_share=SUPPORT_SHARE)
 
 
 def build(rounds: int, out: Path) -> dict:

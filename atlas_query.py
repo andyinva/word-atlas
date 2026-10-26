@@ -20,8 +20,10 @@ Usage:
     python3 atlas_query.py section Psalms: Book II       one section of a book (see atlas_sections.py)
     python3 atlas_query.py section 2 Samuel: The Succession Narrative   a section across a book boundary (CROSS_SECTIONS)
     python3 atlas_query.py passage Harlot city           a named passage of the catalogue (metadata.db)
+    python3 atlas_query.py theme land_inheritance        a theme: its strip of lift per chapter and its verses (themes/)
     python3 atlas_query.py dossier Isaiah, Hebrews, Mark  several dossiers, one file each (--brief for the short form; "all" for every book)
-    python3 atlas_query.py dossier all --results         ... and every page as rows in reports/results.db, one run (atlas_report.py)
+    python3 atlas_query.py dossier all --results         ... and every page as rows in reports/results.db, one run (atlas_report.py),
+                                                         with the constellations of atlas_sets.py under the same run
 
 Any page can be trimmed for reading at a glance:
     --top 8            the first 8 rows of every table
@@ -43,7 +45,7 @@ import sys
 import atlas_report
 from atlas_ask import AskError, parse
 from atlas_pages import (Atlas, book_page, chapter_page, chief_partners, compare_page, kin_page,
-                         passage_page, section_page, testament_page, word_page)
+                         passage_page, section_page, testament_page, theme_page, word_page)
 from atlas_sections import divisions_of, section_date, cross_sections_of_book
 
 
@@ -334,6 +336,13 @@ def main(argv):
                 continue
             prefix = f"[{i}/{len(names)}] " if len(names) > 1 else ""
             print(f"{prefix}(written to {path}, {os.path.getsize(path) // 1000} KB)")
+        if writer is not None and names == list(atlas.books):
+            # The canon run also writes the constellations (atlas_sets.py):
+            # both testaments and every book, under the same run
+            import atlas_sets
+            print("(constellations: atlas_sets.py --all into the same run)")
+            n = atlas_sets.run_all(atlas_sets.Text(), writer.db, run_id, log=lambda *_: None)
+            print(f"({n:,} constellation and phrase sets written)")
         if writer is not None:
             writer.close()
             # Each canon-wide run adds some 400 MB; the diff needs only the
@@ -364,6 +373,9 @@ def main(argv):
         elif command == "passage":
             # a named passage of the catalogue: passage Harlot city
             report = passage_page(atlas, " ".join(argv[2:]).strip())
+        elif command == "theme":
+            # a theme by id or name: theme land_inheritance
+            report = theme_page(atlas, " ".join(argv[2:]).strip())
         elif command == "compare":
             # two books, separated by x or a comma: compare Exodus x Leviticus
             rest = " ".join(argv[2:])

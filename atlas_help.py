@@ -47,7 +47,9 @@ HELP = {
             "ranges in any books, measured as one text.  Word: one word across the Bible, its shadow "
             "map and neighbors.  Kin: the chapters elsewhere most related to a passage.  "
             "Testament: where each word of the Old or New Testament is at home.  Compare: two "
-            "books chapter against chapter, with each chapter's closest chapter in the other book.",
+            "books chapter against chapter, with each chapter's closest chapter in the other book.  "
+            "Theme: a hand-made set of verses (themes/), drawn as a strip of the lift per chapter "
+            "across the canon, with its verses and their roles.",
     "testament": "Old or New, for a Testament page: where each word of the testament is "
                  "most at home, book by book, with a home map and a table that answers, for "
                  "any Strong's number, whose word it is.",
@@ -57,6 +59,11 @@ HELP = {
     "passage_box": "Passage pages only: a named passage of the catalogue (metadata.db) to open: any "
                    "set of verse ranges in any books, such as Ezekiel 16 and 23 with Revelation 17 to "
                    "19, measured as one text.  Add or remove passages with atlas_passages.py.",
+    "theme_box": "Theme pages only: a theme this build carries, a hand-made set of verses that belong "
+                 "together (themes/*.json, loaded by every build).  Import a new one from a verse list on "
+                 "the Workbench tab, Themes menu.",
+    "theme_strip": "Shade the strip by core verses only (unticked), or by core plus borderline verses "
+                   "(ticked).  Borderline verses match the theme's words but stand apart from it.",
     "book2": "The second book of a Compare page: the first book's chapters go down the map, "
              "this book's chapters across.",
     "book": "The book of the Bible the page is about.  For a Word page it is where the "
@@ -407,6 +414,13 @@ PICTURE_HELP = {
                "cell shaded by the weight of the echoes between that chapter and that book "
                "(square-root scale, so the middle shows).  Hover for the number, click a "
                "cell for the verses on both sides, double-click to open the chapter's page.",
+    "theme_strip": "A theme's strip: one cell per chapter of the canon in order, a line per book.  "
+                   "The colour is the lift per chapter: (theme verses + cushion) / (expected + cushion), "
+                   "where expected is what the chapter's length would give it by chance.  Light grey is "
+                   "ordinary (1.0), and a chapter with none of the theme is drawn so; red is over, full red at 4 times or more; blue is under.  Grey cells lie "
+                   "outside the theme's home range.  A short dark tick under a line marks where a section "
+                   "of the book begins.  Hover for the figures, click a cell for its theme verses, "
+                   "double-click for the chapter's page.",
     "bars": "The shadow map: one bar per book in canonical order, the word's occurrences "
             "per 1,000 words, Old Testament in blue and New Testament in orange.  Click a "
             "bar for the word's verses in that book.",

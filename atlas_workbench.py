@@ -129,6 +129,132 @@ class OptionsDialog(QDialog):
         return out
 
 
+class ThemeImportDialog(QDialog):
+    """
+    Import a verse list as a theme (atlas_themes.py import): the list
+    file, the theme's id and name, the patterns every verse must hold
+    (one per line, editable for each theme), an optional overrides file,
+    the home range and the cushion.  command() gives the atlas_themes.py
+    arguments, ready for run_tool.
+    """
+
+    # The land and inheritance theme's patterns, offered as the starting point
+    DEFAULT_PATTERNS = [r"\blands?\b", r"\w*inherit\w*|\bheritages?\b"]
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Import a verse list as a theme")
+        layout = QVBoxLayout(self)
+        note = QLabel("Reads a verse list (a Bible Search Lite export as it comes, or one verse a line: "
+                      "\"Gen 15:7\",\"text\"), sorts every verse into core, borderline or excluded, and "
+                      "writes themes/ID.json.  Every build loads every file of themes/ into atlas.db.")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        form = QFormLayout()
+        # The verse list, with a Browse button
+        self.list_edit = QLineEdit()
+        row = QHBoxLayout()
+        row.addWidget(self.list_edit, 1)
+        browse = QPushButton("Browse...")
+        browse.clicked.connect(lambda: self.browse(self.list_edit, "Verse list (*.csv *.txt);;All files (*)"))
+        row.addWidget(browse)
+        form.addRow("Verse list:", row)
+        self.id_edit = QLineEdit()
+        self.id_edit.setPlaceholderText("letters, digits, _ and -  (land_inheritance)")
+        form.addRow("Theme id:", self.id_edit)
+        self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText("the name the pages show  (Land and inheritance)")
+        form.addRow("Name:", self.name_edit)
+        # The required patterns: one regular expression per line, any case
+        self.patterns_edit = QPlainTextEdit("\n".join(self.DEFAULT_PATTERNS))
+        self.patterns_edit.setFixedHeight(64)
+        self.patterns_edit.setToolTip("Every verse must hold every pattern (regular expressions, any case); a "
+                                      "verse missing one is kept as excluded, with the reason.  \\b marks a "
+                                      "word's edge, so \\blands?\\b keeps 'slanderers' out.")
+        form.addRow("Required patterns\n(one per line):", self.patterns_edit)
+        # The overrides file, optional
+        self.overrides_edit = QLineEdit()
+        self.overrides_edit.setPlaceholderText("optional: renumber, exclude, include and borderline rules")
+        row = QHBoxLayout()
+        row.addWidget(self.overrides_edit, 1)
+        browse = QPushButton("Browse...")
+        browse.clicked.connect(lambda: self.browse(self.overrides_edit, "Overrides (*.json);;All files (*)"))
+        row.addWidget(browse)
+        form.addRow("Overrides file:", row)
+        self.home_edit = QLineEdit()
+        self.home_edit.setPlaceholderText("blank for the whole Bible; Old, New, Deu,Jos or passage:NAME")
+        form.addRow("Home range:", self.home_edit)
+        self.cushion_edit = QLineEdit()
+        self.cushion_edit.setPlaceholderText("blank for 2, as atlas_lift.py")
+        form.addRow("Cushion:", self.cushion_edit)
+        self.load_box = QCheckBox("Load it into atlas.db at once (otherwise the next build does)")
+        self.load_box.setChecked(True)
+        form.addRow("", self.load_box)
+        layout.addLayout(form)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.check_and_accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.resize(640, self.sizeHint().height())
+
+    def browse(self, edit, filters):
+        """Choose a file for one of the path fields."""
+        path, _ = QFileDialog.getOpenFileName(self, "Choose a file", os.path.expanduser("~"), filters)
+        if path:
+            edit.setText(path)
+            # A list chosen with no id yet: offer the file's name as the id
+            if edit is self.list_edit and not self.id_edit.text().strip():
+                stem = os.path.splitext(os.path.basename(path))[0].lower()
+                self.id_edit.setText("".join(c if c.isalnum() or c in "_-" else "_" for c in stem))
+
+    def patterns(self):
+        """The required patterns, one per non-empty line."""
+        return [line.strip() for line in self.patterns_edit.toPlainText().splitlines() if line.strip()]
+
+    def check_and_accept(self):
+        """Refuse an incomplete form, or a pattern that is not a regular expression, before closing."""
+        import re
+        if not os.path.isfile(self.list_edit.text().strip()):
+            QMessageBox.warning(self, "Theme", "Choose the verse list file.")
+            return
+        if not re.match(r"^[A-Za-z0-9_\-]+$", self.id_edit.text().strip()):
+            QMessageBox.warning(self, "Theme", "The id is letters, digits, _ and - only.")
+            return
+        if not self.name_edit.text().strip():
+            QMessageBox.warning(self, "Theme", "Give the theme a name.")
+            return
+        for p in self.patterns():
+            try:
+                re.compile(p)
+            except re.error as e:
+                QMessageBox.warning(self, "Theme", f"Not a regular expression: {p}\n{e}")
+                return
+        cushion = self.cushion_edit.text().strip()
+        if cushion:
+            try:
+                float(cushion)
+            except ValueError:
+                QMessageBox.warning(self, "Theme", "The cushion is a number (2).")
+                return
+        self.accept()
+
+    def command(self):
+        """The atlas_themes.py arguments the form describes."""
+        args = ["import", self.list_edit.text().strip(), "--id", self.id_edit.text().strip(),
+                "--name", self.name_edit.text().strip()]
+        for p in self.patterns():
+            args += ["--require", p]
+        if self.overrides_edit.text().strip():
+            args += ["--overrides", self.overrides_edit.text().strip()]
+        if self.home_edit.text().strip():
+            args += ["--home", self.home_edit.text().strip()]
+        if self.cushion_edit.text().strip():
+            args += ["--cushion", self.cushion_edit.text().strip()]
+        if self.load_box.isChecked():
+            args.append("--load")
+        return args
+
+
 class WorkbenchPanel(QWidget):
     """
     The Workbench tab: a menu bar of commands, the command line they
@@ -242,6 +368,7 @@ class WorkbenchPanel(QWidget):
         self._action(m, "Co&mpare two books...", lambda: self.page("compare"))
         self._action(m, "&Section page...", lambda: self.page("section"))
         self._action(m, "&Passage page...", lambda: self.page("passage"))
+        self._action(m, "T&heme page...", lambda: self.page("theme"))
         m.addSeparator()
         self.page_options = {"top": "", "only": "", "quiet": False}
         self._action(m, "Page &options (rows, sections, notes)...", self.edit_page_options)
@@ -320,6 +447,18 @@ class WorkbenchPanel(QWidget):
         self._action(lxx, "Equivalents: add a pair...", self.lxx_equivalent)
         self._action(lxx, "Equivalents: remove one...", self.lxx_remove)
         self._action(lxx, "Books: prefer a text for a book...", self.lxx_prefer)
+
+        # Themes: hand-made sets of verses (atlas_themes.py, themes/*.json)
+        m = bar.addMenu("T&hemes")
+        self._action(m, "&Import a verse list as a theme...", self.theme_import,
+                     tip="atlas_themes.py import: a verse list -> themes/ID.json")
+        self._action(m, "&Load every theme into atlas.db (atlas_themes.py load)",
+                     lambda: self.run_tool("atlas_themes.py", ["load"]),
+                     tip="a rebuild loads them too; this does it now")
+        self._action(m, "Li&st the themes in atlas.db", lambda: self.run_tool("atlas_themes.py", ["list"]))
+        self._action(m, "Theme &page...", lambda: self.page("theme"))
+        m.addSeparator()
+        self._action(m, "Open the themes &folder", lambda: self.open_folder(os.path.join(PROGRAM_DIR, "themes")))
 
         # Translations: the other English translations as witnesses
         m = bar.addMenu("&Translations")
@@ -632,6 +771,17 @@ class WorkbenchPanel(QWidget):
             text = self.ask_text("Passage page", "Passage name, as the catalogue names it (Harlot city):")
             if text:
                 self.query(["passage", text])
+        elif kind == "theme":
+            text = self.ask_text("Theme page", "Theme id or name (land_inheritance):", "land_inheritance")
+            if text:
+                self.query(["theme", text])
+
+    # --- Themes ---------------------------------------------------------------------------
+    def theme_import(self):
+        """Ask for a verse list and the theme's details, then run atlas_themes.py import."""
+        d = ThemeImportDialog(self)
+        if d.exec():
+            self.run_tool("atlas_themes.py", d.command())
 
     def edit_page_options(self):
         d = OptionsDialog("Page options",

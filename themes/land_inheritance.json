@@ -1,0 +1,10342 @@
+{
+ "schema_version": 1,
+ "theme": {
+  "id": "land_inheritance",
+  "name": "Land and inheritance",
+  "created": "2026-10-24",
+  "source_file": "3663f2a1-1792860158525_Search_Results_20261024_104824.csv",
+  "require_patterns": [
+   "\\blands?\\b",
+   "\\w*inherit\\w*|\\bheritages?\\b"
+  ],
+  "companion_terms": [],
+  "notes": ""
+ },
+ "verses": [
+  {
+   "ref": "Gen 15:7",
+   "book": "Gen",
+   "chapter": 15,
+   "verse": 7,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Gen 15:7"
+   ],
+   "texts": [
+    "And he said unto him, I am the Lord that brought thee out of Ur of the Chaldees, to give thee this land to inherit it."
+   ]
+  },
+  {
+   "ref": "Gen 17:8",
+   "book": "Gen",
+   "chapter": 17,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Gen 17:8"
+   ],
+   "texts": [
+    "And I will give unto thee and to thy seed after thee, the land in which thou art a stranger, all the land of Canaan, for an everlasting inheritance; and I will be their God."
+   ]
+  },
+  {
+   "ref": "Gen 28:4",
+   "book": "Gen",
+   "chapter": 28,
+   "verse": 4,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Gen 28:4"
+   ],
+   "texts": [
+    "And give thee the blessing of Abraham, to thee, and to thy seed with thee; that thou mayest inherit the land wherein thou art a stranger, which God gave unto Abraham."
+   ]
+  },
+  {
+   "ref": "Gen 47:27",
+   "book": "Gen",
+   "chapter": 47,
+   "verse": 27,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Gen 47:27"
+   ],
+   "texts": [
+    "And Israel dwelt in Egypt, in the land of Gesem, and they gained an inheritance upon it; and they increased and multiplied very greatly."
+   ]
+  },
+  {
+   "ref": "Exo 6:8",
+   "book": "Exo",
+   "chapter": 6,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Exo 6:8"
+   ],
+   "texts": [
+    "And I will bring you into the land concerning which I stretched out my hand to give it to Abraam and Isaac and Jacob, and I will give it you for an inheritance: I am the Lord."
+   ]
+  },
+  {
+   "ref": "Exo 23:30",
+   "book": "Exo",
+   "chapter": 23,
+   "verse": 30,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Exo 23:30"
+   ],
+   "texts": [
+    "By little and little I will drive them out from before thee, until thou be increased, and inherit the land."
+   ]
+  },
+  {
+   "ref": "Exo 32:13",
+   "book": "Exo",
+   "chapter": 32,
+   "verse": 13,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Exo 32:13"
+   ],
+   "texts": [
+    "Remember Abraham, Isaac, and Israel, thy servants, to whom thou swarest by thine own self, and saidst unto them, I will multiply your seed as the stars of heaven, and all this land that I have spoken of will I give unto your seed, and they shall inherit it for ever."
+   ]
+  },
+  {
+   "ref": "Lev 20:24",
+   "book": "Lev",
+   "chapter": 20,
+   "verse": 24,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Lev 20:24"
+   ],
+   "texts": [
+    "But I have said unto you, Ye shall inherit their land, and I will give it unto you to possess it, a land that floweth with milk and honey: I am the Lord your God, which have separated you from other people."
+   ]
+  },
+  {
+   "ref": "Lev 27:24",
+   "book": "Lev",
+   "chapter": 27,
+   "verse": 24,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Lev 27:24"
+   ],
+   "texts": [
+    "In the year of the jubilee the field shall return unto the one of whom it was bought, unto whom the inheritance of the land did belong."
+   ]
+  },
+  {
+   "ref": "Lev 27:28",
+   "book": "Lev",
+   "chapter": 27,
+   "verse": 28,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Lev 27:28"
+   ],
+   "texts": [
+    "Nothing that a man sets apart to the LORD from all he owns—whether a man, an animal, or his inherited land—can be sold or redeemed; everything so devoted is most holy to the LORD."
+   ]
+  },
+  {
+   "ref": "Num 14:24",
+   "book": "Num",
+   "chapter": 14,
+   "verse": 24,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 14:24"
+   ],
+   "texts": [
+    "But my servant Chaleb, because there was another spirit in him, and he followed me, I will bring him into the land into which he entered, and his seed shall inherit it."
+   ]
+  },
+  {
+   "ref": "Num 14:31",
+   "book": "Num",
+   "chapter": 14,
+   "verse": 31,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 14:31"
+   ],
+   "texts": [
+    "And your little ones, who ye said should be a prey, them will I bring into the land; and they shall inherit the land, which ye rejected."
+   ]
+  },
+  {
+   "ref": "Num 16:14",
+   "book": "Num",
+   "chapter": 16,
+   "verse": 14,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 16:14"
+   ],
+   "texts": [
+    "Moreover thou hast not brought us into a land that floweth with milk and honey, or given us inheritance of fields and vineyards: wilt thou put out the eyes of these men? we will not come up."
+   ]
+  },
+  {
+   "ref": "Num 18:20",
+   "book": "Num",
+   "chapter": 18,
+   "verse": 20,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 18:20"
+   ],
+   "texts": [
+    "And the Lord spake unto Aaron, Thou shalt have no inheritance in their land, neither shalt thou have any part among them: I am thy part and thine inheritance among the children of Israel."
+   ]
+  },
+  {
+   "ref": "Num 21:35",
+   "book": "Num",
+   "chapter": 21,
+   "verse": 35,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 21:35"
+   ],
+   "texts": [
+    "And he smote him and his sons, and all his people, until he left none of his to be taken alive; and they inherited his land."
+   ]
+  },
+  {
+   "ref": "Num 26:53",
+   "book": "Num",
+   "chapter": 26,
+   "verse": 53,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 26:53"
+   ],
+   "texts": [
+    "Unto these the land shall be divided for an inheritance according to the number of names."
+   ]
+  },
+  {
+   "ref": "Num 26:55",
+   "book": "Num",
+   "chapter": 26,
+   "verse": 55,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 26:55"
+   ],
+   "texts": [
+    "Notwithstanding the land shall be divided by lot: according to the names of the tribes of their fathers they shall inherit."
+   ]
+  },
+  {
+   "ref": "Num 32:5",
+   "book": "Num",
+   "chapter": 32,
+   "verse": 5,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 32:5"
+   ],
+   "texts": [
+    "So they said,“If we have found favor in your sight, let this land be given to your servants for our inheritance. Do not have us cross the Jordan River.”"
+   ]
+  },
+  {
+   "ref": "Num 32:30",
+   "book": "Num",
+   "chapter": 32,
+   "verse": 30,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 32:30"
+   ],
+   "texts": [
+    "But if they will not pass over armed with you to war before the Lord, then shall ye cause to pass over their possessions and their wives and their cattle before you into the land of Chanaan, and they shall inherit with you in the land of Chanaan."
+   ]
+  },
+  {
+   "ref": "Num 32:32",
+   "book": "Num",
+   "chapter": 32,
+   "verse": 32,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 32:32"
+   ],
+   "texts": [
+    "We will pass over armed before the Lord into the land of Canaan, that the possession of our inheritance on this side Jordan may be ours."
+   ]
+  },
+  {
+   "ref": "Num 33:53",
+   "book": "Num",
+   "chapter": 33,
+   "verse": 53,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 33:53"
+   ],
+   "texts": [
+    "And ye shall destroy all the inhabitants of the land, and ye shall dwell in it, for I have given their land to you for an inheritance."
+   ]
+  },
+  {
+   "ref": "Num 33:54",
+   "book": "Num",
+   "chapter": 33,
+   "verse": 54,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 33:54"
+   ],
+   "texts": [
+    "And ye shall divide the land by lot for an inheritance among your families: and to the more ye shall give the more inheritance, and to the fewer ye shall give the less inheritance: every man’s inheritance shall be in the place where his lot falleth; according to the tribes of your fathers ye shall inherit."
+   ]
+  },
+  {
+   "ref": "Num 34:2",
+   "book": "Num",
+   "chapter": 34,
+   "verse": 2,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 34:2"
+   ],
+   "texts": [
+    "Command the children of Israel, and say unto them, When ye come into the land of Canaan; (this is the land that shall fall unto you for an inheritance, even the land of Canaan with the coasts thereof:)"
+   ]
+  },
+  {
+   "ref": "Num 34:13",
+   "book": "Num",
+   "chapter": 34,
+   "verse": 13,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 34:13"
+   ],
+   "texts": [
+    "And Moses commanded the children of Israel, saying, This is the land which ye shall inherit by lot, which the Lord commanded to give unto the nine tribes, and to the half tribe:"
+   ]
+  },
+  {
+   "ref": "Num 34:17",
+   "book": "Num",
+   "chapter": 34,
+   "verse": 17,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 34:17"
+   ],
+   "texts": [
+    "These are the names of the men that shall divide the land unto you for inheritance: Eleazar the priest, and Joshua the son of Nun."
+   ]
+  },
+  {
+   "ref": "Num 34:18",
+   "book": "Num",
+   "chapter": 34,
+   "verse": 18,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 34:18"
+   ],
+   "texts": [
+    "And ye shall take one prince of every tribe, to divide the land by inheritance."
+   ]
+  },
+  {
+   "ref": "Num 34:29",
+   "book": "Num",
+   "chapter": 34,
+   "verse": 29,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 34:29"
+   ],
+   "texts": [
+    "These are they whom the Lord commanded to divide the inheritance unto the children of Israel in the land of Canaan."
+   ]
+  },
+  {
+   "ref": "Num 35:2",
+   "book": "Num",
+   "chapter": 35,
+   "verse": 2,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 35:2"
+   ],
+   "texts": [
+    "“Instruct the Israelites to give the Levites towns to live in from the inheritance the Israelites will possess. You must also give the Levites grazing land around the towns."
+   ]
+  },
+  {
+   "ref": "Num 36:1",
+   "book": "Num",
+   "chapter": 36,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 36:1"
+   ],
+   "texts": [
+    "Women and Land Inheritance Then the heads of the family groups of the Gileadites, the descendant of Machir, the descendant of Manasseh, who were from the Josephite families, approached and spoke before Moses and the leaders who were the heads of the Israelite families."
+   ]
+  },
+  {
+   "ref": "Num 36:2",
+   "book": "Num",
+   "chapter": 36,
+   "verse": 2,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Num 36:2"
+   ],
+   "texts": [
+    "And they said, The Lord commanded my lord to give the land for an inheritance by lot to the children of Israel: and my lord was commanded by the Lord to give the inheritance of Zelophehad our brother unto his daughters."
+   ]
+  },
+  {
+   "ref": "Deu 1:8",
+   "book": "Deu",
+   "chapter": 1,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 1:8"
+   ],
+   "texts": [
+    "Behold, God has delivered the land before you; go in and inherit the land, which I sware to your fathers, Abraam, and Isaac, and Jacob, to give it to them and to their seed after them."
+   ]
+  },
+  {
+   "ref": "Deu 1:21",
+   "book": "Deu",
+   "chapter": 1,
+   "verse": 21,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 1:21"
+   ],
+   "texts": [
+    "behold, the Lord your God has delivered to us the land before you: go up and inherit it as the Lord God of your fathers said to you; fear not, neither be afraid."
+   ]
+  },
+  {
+   "ref": "Deu 1:38",
+   "book": "Deu",
+   "chapter": 1,
+   "verse": 38,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 1:38"
+   ],
+   "texts": [
+    "However, Joshua son of Nun, your assistant, will go. Encourage him, because he will enable Israel to inherit the land."
+   ]
+  },
+  {
+   "ref": "Deu 2:5",
+   "book": "Deu",
+   "chapter": 2,
+   "verse": 5,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 2:5"
+   ],
+   "texts": [
+    "Do not be hostile toward them, because I am not giving you any of their land, not even a footprint, for I have given Mount Seir as an inheritance for Esau."
+   ]
+  },
+  {
+   "ref": "Deu 2:9",
+   "book": "Deu",
+   "chapter": 2,
+   "verse": 9,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 2:9"
+   ],
+   "texts": [
+    "And the Lord said to me, Do not ye quarrel with the Moabites, and do not engage in war with them; for I will not give you of their land for an inheritance, for I have given Aroer to the children of Lot to inherit."
+   ]
+  },
+  {
+   "ref": "Deu 2:12",
+   "book": "Deu",
+   "chapter": 2,
+   "verse": 12,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 2:12"
+   ],
+   "texts": [
+    "And the Chorrhite dwelt in Seir before, and the sons of Esau destroyed them, and utterly consumed them from before them; and they dwelt in their place, as Israel did to the land of his inheritance, which the Lord gave to them."
+   ]
+  },
+  {
+   "ref": "Deu 2:19",
+   "book": "Deu",
+   "chapter": 2,
+   "verse": 19,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 2:19"
+   ],
+   "texts": [
+    "and ye shall draw nigh to the children of Amman: do not quarrel with them, nor wage war with them; for I will not give thee of the land of the children of Amman for an inheritance, because I have given it to the children of Lot for an inheritance."
+   ]
+  },
+  {
+   "ref": "Deu 2:21",
+   "book": "Deu",
+   "chapter": 2,
+   "verse": 21,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 2:21"
+   ],
+   "texts": [
+    "A great nation and populous, and mightier than you, as also the Enakim: yet the Lord destroyed them from before them, and they inherited their land, and they dwelt there instead of them until this day."
+   ]
+  },
+  {
+   "ref": "Deu 2:24",
+   "book": "Deu",
+   "chapter": 2,
+   "verse": 24,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 2:24"
+   ],
+   "texts": [
+    "Now then arise and depart, and pass over the valley of Arnon: behold, I have delivered into thy hands Seon the king of Esebon the Amorite, and his land: begin to inherit it: engage in war with him this day."
+   ]
+  },
+  {
+   "ref": "Deu 2:31",
+   "book": "Deu",
+   "chapter": 2,
+   "verse": 31,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 2:31"
+   ],
+   "texts": [
+    "And the Lord said unto me, Behold, I have begun to give Sihon and his land before thee: begin to possess, that thou mayest inherit his land."
+   ]
+  },
+  {
+   "ref": "Deu 3:12",
+   "book": "Deu",
+   "chapter": 3,
+   "verse": 12,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 3:12"
+   ],
+   "texts": [
+    "And we inherited that land at that time from Aroer, which is by the border of the torrent Arnon, and half the mount of Galaad; and I gave his cities to Ruben and to Gad."
+   ]
+  },
+  {
+   "ref": "Deu 3:18",
+   "book": "Deu",
+   "chapter": 3,
+   "verse": 18,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 3:18"
+   ],
+   "texts": [
+    "And I commanded you at that time, saying: The Lord your God giveth you this land for an inheritance, go ye well appointed before your brethren the children of Israel, all the strong men of you,"
+   ]
+  },
+  {
+   "ref": "Deu 3:20",
+   "book": "Deu",
+   "chapter": 3,
+   "verse": 20,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 3:20"
+   ],
+   "texts": [
+    "until the Lord your God give your brethren rest, as also he has given to you, and they also shall inherit the land, which the Lord our God gives them on the other side of Jordan; then ye shall return, each one to his inheritance which I have given you."
+   ]
+  },
+  {
+   "ref": "Deu 3:28",
+   "book": "Deu",
+   "chapter": 3,
+   "verse": 28,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 3:28"
+   ],
+   "texts": [
+    "But charge Joshua, and encourage him, and strengthen him: for he shall go over before this people, and he shall cause them to inherit the land which thou shalt see."
+   ]
+  },
+  {
+   "ref": "Deu 4:1",
+   "book": "Deu",
+   "chapter": 4,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 4:1"
+   ],
+   "texts": [
+    "And now, Israel, hear the ordinances and judgments, all that I teach you this day to do: that ye may live, and be multiplied, and that ye may go in and inherit the land, which the Lord God of your fathers gives you."
+   ]
+  },
+  {
+   "ref": "Deu 4:5",
+   "book": "Deu",
+   "chapter": 4,
+   "verse": 5,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 4:5"
+   ],
+   "texts": [
+    "Behold, I have shewn you ordinances and judgments as the Lord commanded me, that ye should do so in the land into which ye go to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 4:14",
+   "book": "Deu",
+   "chapter": 4,
+   "verse": 14,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 4:14"
+   ],
+   "texts": [
+    "And the Lord commanded me at that time, to teach you ordinances and judgments, that ye should do them on the land, into which ye go to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 4:20",
+   "book": "Deu",
+   "chapter": 4,
+   "verse": 20,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 4:20"
+   ],
+   "texts": [
+    "But God took you, and led you forth out of the land of Egypt, out of the iron furnace, out of Egypt, to be to him a people of inheritance, as at this day."
+   ]
+  },
+  {
+   "ref": "Deu 4:21",
+   "book": "Deu",
+   "chapter": 4,
+   "verse": 21,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 4:21"
+   ],
+   "texts": [
+    "Furthermore the Lord was angry with me for your sakes, and sware that I should not go over Jordan, and that I should not go in unto that good land, which the Lord thy God giveth thee for an inheritance:"
+   ]
+  },
+  {
+   "ref": "Deu 4:22",
+   "book": "Deu",
+   "chapter": 4,
+   "verse": 22,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 4:22"
+   ],
+   "texts": [
+    "For I am to die in this land, and shall not pass over this Jordan; but ye are to pass over, and shall inherit this good land."
+   ]
+  },
+  {
+   "ref": "Deu 4:26",
+   "book": "Deu",
+   "chapter": 4,
+   "verse": 26,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 4:26"
+   ],
+   "texts": [
+    "I call heaven and earth this day to witness against you, that ye shall surely perish from off the land, into which ye go across Jordan to inherit it there; ye shall not prolong your days upon it, but shall be utterly cut off."
+   ]
+  },
+  {
+   "ref": "Deu 4:38",
+   "book": "Deu",
+   "chapter": 4,
+   "verse": 38,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 4:38"
+   ],
+   "texts": [
+    "To drive out nations from before thee greater and mightier than thou art, to bring thee in, to give thee their land for an inheritance, as it is this day."
+   ]
+  },
+  {
+   "ref": "Deu 4:47",
+   "book": "Deu",
+   "chapter": 4,
+   "verse": 47,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 4:47"
+   ],
+   "texts": [
+    "And they inherited his land, and the land of Og king of Basan, two kings of the Amorites, who were beyond Jordan eastward."
+   ]
+  },
+  {
+   "ref": "Deu 5:31",
+   "book": "Deu",
+   "chapter": 5,
+   "verse": 31,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 5:31"
+   ],
+   "texts": [
+    "but stand thou here with me, and I will tell thee all the commands, and the ordinances, and the judgments, which thou shalt teach them, and let them do so in the land which I give them for an inheritance."
+   ]
+  },
+  {
+   "ref": "Deu 5:33",
+   "book": "Deu",
+   "chapter": 5,
+   "verse": 33,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 5:33"
+   ],
+   "texts": [
+    "according to all the way which the Lord thy God commanded thee to walk in it, that he may give thee rest; and that it may be well with thee, and ye may prolong your days on the land which ye shall inherit."
+   ]
+  },
+  {
+   "ref": "Deu 6:1",
+   "book": "Deu",
+   "chapter": 6,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 6:1"
+   ],
+   "texts": [
+    "And these are the commands, and the ordinances, and the judgments, as many as the Lord our God gave commandment to teach you to do so in the land on which ye enter to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 6:18",
+   "book": "Deu",
+   "chapter": 6,
+   "verse": 18,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 6:18"
+   ],
+   "texts": [
+    "And thou shalt do that which is pleasing and good before the Lord thy God, that it may be well with thee, and that thou mayest go in and inherit the good land, which the Lord sware to your fathers,"
+   ]
+  },
+  {
+   "ref": "Deu 7:1",
+   "book": "Deu",
+   "chapter": 7,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 7:1"
+   ],
+   "texts": [
+    "When the LORD thy God shall bring thee into the land into which thou must enter to inherit it and has cast out many Gentiles before thee, the Hittite and the Girgashite and the Amorite and the Canaanite and the Perizzite and the Hivite and the Jebusite, seven nations greater and mightier than thou;"
+   ]
+  },
+  {
+   "ref": "Deu 8:1",
+   "book": "Deu",
+   "chapter": 8,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 8:1"
+   ],
+   "texts": [
+    "Ye shall observe to do all the commands which I charge you to-day, that ye may live and be multiplied, and enter in and inherit the land, which the Lord your God sware to give to your fathers."
+   ]
+  },
+  {
+   "ref": "Deu 9:4",
+   "book": "Deu",
+   "chapter": 9,
+   "verse": 4,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 9:4"
+   ],
+   "texts": [
+    "Speak not in thine heart, when the Lord thy God has destroyed these nations before thy face, saying, For my righteousness the Lord brought me in to inherit this good land."
+   ]
+  },
+  {
+   "ref": "Deu 9:5",
+   "book": "Deu",
+   "chapter": 9,
+   "verse": 5,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 9:5"
+   ],
+   "texts": [
+    "Not for thy righteousness, nor for the holiness of thy heart, dost thou go in to inherit their land, but because of the wickedness of these nations the Lord will destroy them from before thee, and that he may establish the covenant, which the Lord sware to our fathers, to Abraam, and to Isaac, and to Jacob."
+   ]
+  },
+  {
+   "ref": "Deu 9:6",
+   "book": "Deu",
+   "chapter": 9,
+   "verse": 6,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 9:6"
+   ],
+   "texts": [
+    "And thou shalt know to-day, that it is not for thy righteousnesses the Lord thy God gives thee this good land to inherit, for thou art a stiff-necked people."
+   ]
+  },
+  {
+   "ref": "Deu 9:23",
+   "book": "Deu",
+   "chapter": 9,
+   "verse": 23,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 9:23"
+   ],
+   "texts": [
+    "And when the Lord sent you forth from Cades Barne, saying, Go up and inherit the land which I give to you, then ye disobeyed the word of the Lord your God, and believed him not, and hearkened not to his voice."
+   ]
+  },
+  {
+   "ref": "Deu 9:26",
+   "book": "Deu",
+   "chapter": 9,
+   "verse": 26,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 9:26"
+   ],
+   "texts": [
+    "And I prayed to God, and said, O Lord, King of gods, destroy not thy people and thine inheritance, whom thou didst redeem, whom thou broughtest out of the land of Egypt with thy great power, and with thy strong hand, and with thy high arm."
+   ]
+  },
+  {
+   "ref": "Deu 10:11",
+   "book": "Deu",
+   "chapter": 10,
+   "verse": 11,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 10:11"
+   ],
+   "texts": [
+    "And the Lord said to me, Go, set out before this people, and let them go in and inherit the land, which I sware to their fathers to give to them."
+   ]
+  },
+  {
+   "ref": "Deu 11:8",
+   "book": "Deu",
+   "chapter": 11,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 11:8"
+   ],
+   "texts": [
+    "And ye shall keep all his commandments, as many as I command thee to-day, that ye may live, and be multiplied, and that ye may go in and inherit the land, into which ye go across Jordan to inherit it:"
+   ]
+  },
+  {
+   "ref": "Deu 11:10",
+   "book": "Deu",
+   "chapter": 11,
+   "verse": 10,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 11:10"
+   ],
+   "texts": [
+    "For the land into which thou goest to inherit it, is not as the land of Egypt, whence ye came out, whensoever they sow the seed, and water it with their feet, as a garden of herbs:"
+   ]
+  },
+  {
+   "ref": "Deu 11:11",
+   "book": "Deu",
+   "chapter": 11,
+   "verse": 11,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 11:11"
+   ],
+   "texts": [
+    "but the land into which thou goest to inherit it, is a land of mountains and plains; it shall drink water of the rain of heaven."
+   ]
+  },
+  {
+   "ref": "Deu 11:29",
+   "book": "Deu",
+   "chapter": 11,
+   "verse": 29,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 11:29"
+   ],
+   "texts": [
+    "And it shall come to pass when the Lord thy God shall have brought thee into the land into which thou goest over to inherit it, then thou shalt put blessing on mount Garizin, and the curse upon mount Gæbal."
+   ]
+  },
+  {
+   "ref": "Deu 11:31",
+   "book": "Deu",
+   "chapter": 11,
+   "verse": 31,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 11:31"
+   ],
+   "texts": [
+    "For ye are passing over Jordan, to go in and inherit the land, which the Lord our God gives you to inherit always, and ye shall dwell in it."
+   ]
+  },
+  {
+   "ref": "Deu 12:1",
+   "book": "Deu",
+   "chapter": 12,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 12:1"
+   ],
+   "texts": [
+    "And these are the ordinances and the judgments, which ye shall observe to do in the land, which the Lord God of your fathers gives you for an inheritance, all the days which ye live upon the land."
+   ]
+  },
+  {
+   "ref": "Deu 12:2",
+   "book": "Deu",
+   "chapter": 12,
+   "verse": 2,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 12:2"
+   ],
+   "texts": [
+    "Ye shall utterly destroy all the places in which they served their gods, whose land ye inherit, on the high mountains and on the hills, and under the thick tree."
+   ]
+  },
+  {
+   "ref": "Deu 12:10",
+   "book": "Deu",
+   "chapter": 12,
+   "verse": 10,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 12:10"
+   ],
+   "texts": [
+    "But when ye go over Jordan, and dwell in the land which the Lord your God giveth you to inherit, and when he giveth you rest from all your enemies round about, so that ye dwell in safety;"
+   ]
+  },
+  {
+   "ref": "Deu 12:29",
+   "book": "Deu",
+   "chapter": 12,
+   "verse": 29,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 12:29"
+   ],
+   "texts": [
+    "And if the Lord thy God shall utterly destroy the nations, to whom thou goest in thither to inherit their land, from before thee, and thou shalt inherit it, and dwell in their land;"
+   ]
+  },
+  {
+   "ref": "Deu 15:4",
+   "book": "Deu",
+   "chapter": 15,
+   "verse": 4,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 15:4"
+   ],
+   "texts": [
+    "Save when there shall be no poor among you; for the Lord shall greatly bless thee in the land which the Lord thy God giveth thee for an inheritance to possess it:"
+   ]
+  },
+  {
+   "ref": "Deu 16:20",
+   "book": "Deu",
+   "chapter": 16,
+   "verse": 20,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 16:20"
+   ],
+   "texts": [
+    "That which is altogether just shalt thou follow, that thou mayest live, and inherit the land which the Lord thy God giveth thee."
+   ]
+  },
+  {
+   "ref": "Deu 17:14",
+   "book": "Deu",
+   "chapter": 17,
+   "verse": 14,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 17:14"
+   ],
+   "texts": [
+    "And when thou shalt enter into the land which the Lord thy God gives thee, and shalt inherit it and dwell in it, and shalt say, I will set a ruler over me, as also the other nations round about me;"
+   ]
+  },
+  {
+   "ref": "Deu 18:2",
+   "book": "Deu",
+   "chapter": 18,
+   "verse": 2,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 18:2"
+   ],
+   "texts": [
+    "And there shall not be for them an inheritance of land in the midst of his brothers; rather Yahweh is his inheritance, just as he ⌞promised⌟ to them."
+   ]
+  },
+  {
+   "ref": "Deu 18:14",
+   "book": "Deu",
+   "chapter": 18,
+   "verse": 14,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 18:14"
+   ],
+   "texts": [
+    "For all these nations whose land thou shalt inherit, they will listen to omens and divinations; but the Lord thy God has not permitted thee so to do."
+   ]
+  },
+  {
+   "ref": "Deu 19:1",
+   "book": "Deu",
+   "chapter": 19,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 19:1"
+   ],
+   "texts": [
+    "And when the Lord thy God shall have destroyed the nations, which God gives thee, even the land, and ye shall inherit them, and dwell in their cities, and in their houses,"
+   ]
+  },
+  {
+   "ref": "Deu 19:2",
+   "book": "Deu",
+   "chapter": 19,
+   "verse": 2,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 19:2"
+   ],
+   "texts": [
+    "thou shalt separate three cities for thee in the midst of thy land, which the LORD thy God gives thee to inherit."
+   ]
+  },
+  {
+   "ref": "Deu 19:3",
+   "book": "Deu",
+   "chapter": 19,
+   "verse": 3,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 19:3"
+   ],
+   "texts": [
+    "Thou shalt prepare thee a way, and divide the coasts of thy land, which the Lord thy God giveth thee to inherit, into three parts, that every slayer may flee thither."
+   ]
+  },
+  {
+   "ref": "Deu 19:10",
+   "book": "Deu",
+   "chapter": 19,
+   "verse": 10,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 19:10"
+   ],
+   "texts": [
+    "That innocent blood be not shed in thy land, which the Lord thy God giveth thee for an inheritance, and so blood be upon thee."
+   ]
+  },
+  {
+   "ref": "Deu 19:14",
+   "book": "Deu",
+   "chapter": 19,
+   "verse": 14,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 19:14"
+   ],
+   "texts": [
+    "Thou shalt not remove thy neighbour’s landmark, which they of old time have set in thine inheritance, which thou shalt inherit in the land that the Lord thy God giveth thee to possess it."
+   ]
+  },
+  {
+   "ref": "Deu 20:15",
+   "book": "Deu",
+   "chapter": 20,
+   "verse": 15,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 20:15"
+   ],
+   "texts": [
+    "Thus shalt thou do to all the cities that are very far off from thee, not being of the cities of these nations which the Lord thy God gives thee to inherit their land."
+   ]
+  },
+  {
+   "ref": "Deu 21:1",
+   "book": "Deu",
+   "chapter": 21,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 21:1"
+   ],
+   "texts": [
+    "And if one be found slain with the sword in the land, which the Lord thy God gives thee to inherit, having fallen in the field, and they do not know who has smitten him;"
+   ]
+  },
+  {
+   "ref": "Deu 21:23",
+   "book": "Deu",
+   "chapter": 21,
+   "verse": 23,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 21:23"
+   ],
+   "texts": [
+    "His body shall not remain all night upon the tree, but thou shalt in any wise bury him that day; (for he that is hanged is accursed of God;) that thy land be not defiled, which the Lord thy God giveth thee for an inheritance."
+   ]
+  },
+  {
+   "ref": "Deu 23:20",
+   "book": "Deu",
+   "chapter": 23,
+   "verse": 20,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 23:20"
+   ],
+   "texts": [
+    "Unto a stranger thou may lend upon usury, but unto thy brother thou shalt not lend upon usury that the LORD thy God may bless thee in all the work of thy hands upon the land which thou doest enter in to inherit."
+   ]
+  },
+  {
+   "ref": "Deu 23:21",
+   "book": "Deu",
+   "chapter": 23,
+   "verse": 21,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 23:21"
+   ],
+   "texts": [
+    "Thou mayest lend on usury to a stranger, but to thy brother thou shalt not lend on usury; that the Lord thy God may bless thee in all thy works upon the land, into which thou art entering to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 24:4",
+   "book": "Deu",
+   "chapter": 24,
+   "verse": 4,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 24:4"
+   ],
+   "texts": [
+    "Her former husband, which sent her away, may not take her again to be his wife, after that she is defiled; for that is abomination before the Lord: and thou shalt not cause the land to sin, which the Lord thy God giveth thee for an inheritance."
+   ]
+  },
+  {
+   "ref": "Deu 25:15",
+   "book": "Deu",
+   "chapter": 25,
+   "verse": 15,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 25:15"
+   ],
+   "texts": [
+    "Thou shalt have a true and just weight, and a true and just measure, that thou mayest live long upon the land which the Lord thy God gives thee for an inheritance."
+   ]
+  },
+  {
+   "ref": "Deu 25:19",
+   "book": "Deu",
+   "chapter": 25,
+   "verse": 19,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 25:19"
+   ],
+   "texts": [
+    "Therefore it shall be, when the Lord thy God hath given thee rest from all thine enemies round about, in the land which the Lord thy God giveth thee for an inheritance to possess it, that thou shalt blot out the remembrance of Amalek from under heaven; thou shalt not forget it."
+   ]
+  },
+  {
+   "ref": "Deu 26:1",
+   "book": "Deu",
+   "chapter": 26,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 26:1"
+   ],
+   "texts": [
+    "And it shall be, when thou art come in unto the land which the Lord thy God giveth thee for an inheritance, and possessest it, and dwellest therein;"
+   ]
+  },
+  {
+   "ref": "Deu 28:21",
+   "book": "Deu",
+   "chapter": 28,
+   "verse": 21,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 28:21"
+   ],
+   "texts": [
+    "The Lord cause the pestilence to cleave to thee, until he shall have consumed thee off the land into which thou goest to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 28:63",
+   "book": "Deu",
+   "chapter": 28,
+   "verse": 63,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 28:63"
+   ],
+   "texts": [
+    "And it shall come to pass that as the Lord rejoiced over you to do you good, and to multiply you, so the Lord will rejoice over you to destroy you; and ye shall be quickly removed from the land, into which ye go to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 29:7",
+   "book": "Deu",
+   "chapter": 29,
+   "verse": 7,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 29:7"
+   ],
+   "texts": [
+    "And we took their land, and gave it for an inheritance unto the Reubenites, and to the Gadites, and to the half-tribe of the Manassites."
+   ]
+  },
+  {
+   "ref": "Deu 29:8",
+   "book": "Deu",
+   "chapter": 29,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 29:8"
+   ],
+   "texts": [
+    "And we took their land, and gave it for an inheritance unto the Reubenites, and to the Gadites, and to the half tribe of Manasseh."
+   ]
+  },
+  {
+   "ref": "Deu 30:5",
+   "book": "Deu",
+   "chapter": 30,
+   "verse": 5,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 30:5"
+   ],
+   "texts": [
+    "and Jehovah thy God hath brought thee in unto the land which thy fathers have possessed, and thou hast inherited it, and He hath done thee good, and multiplied thee above thy fathers."
+   ]
+  },
+  {
+   "ref": "Deu 30:16",
+   "book": "Deu",
+   "chapter": 30,
+   "verse": 16,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 30:16"
+   ],
+   "texts": [
+    "If thou wilt hearken to the commands of the Lord thy God, which I command thee this day, to love the Lord thy God, to walk in all his ways, and to keep his ordinances, and his judgments; then ye shall live, and shall be many in number, and the Lord thy God shall bless thee in all the land into which thou goest to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 30:18",
+   "book": "Deu",
+   "chapter": 30,
+   "verse": 18,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 30:18"
+   ],
+   "texts": [
+    "I declare to you this day, that ye shall utterly perish, and ye shall by no means live long upon the land, into which ye go over Jordan to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 31:7",
+   "book": "Deu",
+   "chapter": 31,
+   "verse": 7,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 31:7"
+   ],
+   "texts": [
+    "And Moses called unto Joshua, and said unto him in the sight of all Israel, Be strong and of a good courage: for thou must go with this people unto the land which the Lord hath sworn unto their fathers to give them; and thou shalt cause them to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 31:13",
+   "book": "Deu",
+   "chapter": 31,
+   "verse": 13,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 31:13"
+   ],
+   "texts": [
+    "And their sons who have not known shall hear, and shall learn to fear the Lord thy God all the days that they live upon the land, into which ye go over Jordan to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 32:47",
+   "book": "Deu",
+   "chapter": 32,
+   "verse": 47,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 32:47"
+   ],
+   "texts": [
+    "For this is no vain word to you; for it is your life, and because of this word ye shall live long upon the land, into which ye go over Jordan to inherit it."
+   ]
+  },
+  {
+   "ref": "Deu 32:49",
+   "book": "Deu",
+   "chapter": 32,
+   "verse": 49,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Deu 32:49"
+   ],
+   "texts": [
+    "Climb up into this mountain Abarim, unto mount Nebo, which is in the land of Moab, that is over against Jericho, and behold the land of Canaan, which I give as inheritance unto the sons of Israel,"
+   ]
+  },
+  {
+   "ref": "Jos 1:6",
+   "book": "Jos",
+   "chapter": 1,
+   "verse": 6,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 1:6"
+   ],
+   "texts": [
+    "Be strong and of a good courage: for unto this people shalt thou divide for an inheritance the land, which I sware unto their fathers to give them."
+   ]
+  },
+  {
+   "ref": "Jos 1:11",
+   "book": "Jos",
+   "chapter": 1,
+   "verse": 11,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 1:11"
+   ],
+   "texts": [
+    "Pass through the camp and command the people, saying, Prepare food; for within three days ye shall pass this Jordan, to enter in to inherit the land, which the LORD your God gives you to inherit."
+   ]
+  },
+  {
+   "ref": "Jos 1:15",
+   "book": "Jos",
+   "chapter": 1,
+   "verse": 15,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 1:15"
+   ],
+   "texts": [
+    "until the Lord your God shall have given your brethren rest, as also to you, and they also shall have inherited the land, which the Lord your God gives them; then ye shall depart each one to his inheritance, which Moses gave you beyond Jordan eastward."
+   ]
+  },
+  {
+   "ref": "Jos 11:23",
+   "book": "Jos",
+   "chapter": 11,
+   "verse": 23,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 11:23"
+   ],
+   "texts": [
+    "So Joshua took the whole land, according to all that the Lord said unto Moses; and Joshua gave it for an inheritance unto Israel according to their divisions by their tribes. And the land rested from war."
+   ]
+  },
+  {
+   "ref": "Jos 12:1",
+   "book": "Jos",
+   "chapter": 12,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 12:1"
+   ],
+   "texts": [
+    "And these are the kings of the land, whom the children of Israel slew, and inherited their land beyond Jordan from the east, from the valley of Arnon to the mount of Aermon, and all the land of Araba on the east."
+   ]
+  },
+  {
+   "ref": "Jos 12:6",
+   "book": "Jos",
+   "chapter": 12,
+   "verse": 6,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 12:6"
+   ],
+   "texts": [
+    "Moses, the servant of the LORD, and the Israelites had struck them down and given their land as an inheritance to the Reubenites, the Gadites, and the half-tribe of Manasseh."
+   ]
+  },
+  {
+   "ref": "Jos 12:7",
+   "book": "Jos",
+   "chapter": 12,
+   "verse": 7,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 12:7"
+   ],
+   "texts": [
+    "And these are the kings of the land that Joshua and the Israelites conquered beyond the Jordan to the west, from Baal-gad in the Valley of Lebanon to Mount Halak, which rises toward Seir (according to the allotments to the tribes of Israel, Joshua gave them as an inheritance"
+   ]
+  },
+  {
+   "ref": "Jos 13:1",
+   "book": "Jos",
+   "chapter": 13,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 13:1"
+   ],
+   "texts": [
+    "And Joshua was old and very advanced in years; and the Lord said to Joshua, Thou art advanced in years, and there is much land left to inherit."
+   ]
+  },
+  {
+   "ref": "Jos 13:6",
+   "book": "Jos",
+   "chapter": 13,
+   "verse": 6,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 13:6"
+   ],
+   "texts": [
+    "Of all that dwell in the mountains from Libanus, to the waters of Maserephoth, and all the Sidonians. I am he that will cut them off from before the face of the children of Israel. So let their land come in as a part of the inheritance of Israel, as I have commanded thee."
+   ]
+  },
+  {
+   "ref": "Jos 13:7",
+   "book": "Jos",
+   "chapter": 13,
+   "verse": 7,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 13:7"
+   ],
+   "texts": [
+    "Now therefore divide this land for an inheritance unto the nine tribes, and the half tribe of Manasseh,"
+   ]
+  },
+  {
+   "ref": "Jos 13:14",
+   "book": "Jos",
+   "chapter": 13,
+   "verse": 14,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 13:14"
+   ],
+   "texts": [
+    "However, Moses did not assign land as an inheritance to the Levites; their inheritance is the sacrificial offerings made to the LORD God of Israel, as he instructed them."
+   ]
+  },
+  {
+   "ref": "Jos 13:33",
+   "book": "Jos",
+   "chapter": 13,
+   "verse": 33,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 13:33"
+   ],
+   "texts": [
+    "However, Moses did not assign land as an inheritance to the Levites; their inheritance is the LORD God of Israel, as he instructed them."
+   ]
+  },
+  {
+   "ref": "Jos 14:1",
+   "book": "Jos",
+   "chapter": 14,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 14:1"
+   ],
+   "texts": [
+    "And these are the countries which the children of Israel inherited in the land of Canaan, which Eleazar the priest, and Joshua the son of Nun, and the heads of the fathers of the tribes of the children of Israel, distributed for inheritance to them."
+   ]
+  },
+  {
+   "ref": "Jos 14:4",
+   "book": "Jos",
+   "chapter": 14,
+   "verse": 4,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 14:4"
+   ],
+   "texts": [
+    "For the sons of Joseph were two tribes, Manasse and Ephraim; and there was none inheritance in the land given to the Levites, only cities to dwell in, and their suburbs separated for the cattle, and their cattle."
+   ]
+  },
+  {
+   "ref": "Jos 14:9",
+   "book": "Jos",
+   "chapter": 14,
+   "verse": 9,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 14:9"
+   ],
+   "texts": [
+    "And Moses sware on that day, saying, Surely the land whereon thy feet have trodden shall be thine inheritance, and thy children’s for ever, because thou hast wholly followed the Lord my God."
+   ]
+  },
+  {
+   "ref": "Jos 17:6",
+   "book": "Jos",
+   "chapter": 17,
+   "verse": 6,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 17:6"
+   ],
+   "texts": [
+    "Because the daughters of Manasseh had an inheritance among his sons: and the rest of Manasseh’s sons had the land of Gilead."
+   ]
+  },
+  {
+   "ref": "Jos 18:3",
+   "book": "Jos",
+   "chapter": 18,
+   "verse": 3,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 18:3"
+   ],
+   "texts": [
+    "And Joshua said to the sons of Israel, How long will ye be slack to inherit the land, which the Lord our God has given you?"
+   ]
+  },
+  {
+   "ref": "Jos 18:4",
+   "book": "Jos",
+   "chapter": 18,
+   "verse": 4,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 18:4"
+   ],
+   "texts": [
+    "Give out from among you three men for each tribe: and I will send them, and they shall rise, and go through the land, and describe it according to the inheritance of them; and they shall come again to me."
+   ]
+  },
+  {
+   "ref": "Jos 18:7",
+   "book": "Jos",
+   "chapter": 18,
+   "verse": 7,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 18:7"
+   ],
+   "texts": [
+    "But the Levites will not have an allotted portion among you, for their inheritance is to serve the LORD. Gad, Reuben, and the half-tribe of Manasseh have already received their allotted land east of the Jordan which Moses the LORD’s servant assigned them.”"
+   ]
+  },
+  {
+   "ref": "Jos 19:49",
+   "book": "Jos",
+   "chapter": 19,
+   "verse": 49,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 19:49"
+   ],
+   "texts": [
+    "When they had made an end of dividing the land for inheritance by their coasts, the children of Israel gave an inheritance to Joshua the son of Nun among them:"
+   ]
+  },
+  {
+   "ref": "Jos 19:51",
+   "book": "Jos",
+   "chapter": 19,
+   "verse": 51,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 19:51"
+   ],
+   "texts": [
+    "These are the inheritances, which Eleazar the priest, and Joshua the son of Nun, and the heads of the fathers’housesof the tribes of the children of Israel, distributed for inheritance by lot in Shiloh before Jehovah, at the door of the tent of meeting. So they made an end of dividing the land."
+   ]
+  },
+  {
+   "ref": "Jos 21:3",
+   "book": "Jos",
+   "chapter": 21,
+   "verse": 3,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 21:3"
+   ],
+   "texts": [
+    "So by the command of the LORD, the Israelites gave the Levites these cities and their pasturelands out of their own inheritance:"
+   ]
+  },
+  {
+   "ref": "Jos 21:43",
+   "book": "Jos",
+   "chapter": 21,
+   "verse": 43,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 21:43"
+   ],
+   "texts": [
+    "And Jehovah will give to Israel all the land which he sware to give to their fathers: and they will inherit it and dwell in it."
+   ]
+  },
+  {
+   "ref": "Jos 22:9",
+   "book": "Jos",
+   "chapter": 22,
+   "verse": 9,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 22:9"
+   ],
+   "texts": [
+    "So the sons of Ruben, and the sons of Gad, and the half tribe of Manasse, departed from the children of Israel in Selo in the land of Chanaan, to go away into Galaad, into the land of their possession, which they inherited by the command of the Lord, by the hand of Moses."
+   ]
+  },
+  {
+   "ref": "Jos 22:19",
+   "book": "Jos",
+   "chapter": 22,
+   "verse": 19,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 22:19"
+   ],
+   "texts": [
+    "And now if the land of your possession be too little, cross over to the land of the possession of the Lord, where the tabernacle of the Lord dwells, and receive ye an inheritance among us; and do not become apostates from God, neither do ye apostatize from the Lord, because of your having built an altar apart from the altar of the Lord our God."
+   ]
+  },
+  {
+   "ref": "Jos 23:5",
+   "book": "Jos",
+   "chapter": 23,
+   "verse": 5,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 23:5"
+   ],
+   "texts": [
+    "And the Lord our God, he shall destroy them before us, until they utterly perish; and he shall send against them the wild beasts, until he shall have utterly destroyed them and their kings from before you; and ye shall inherit their land, as the Lord our God said to you."
+   ]
+  },
+  {
+   "ref": "Jos 24:8",
+   "book": "Jos",
+   "chapter": 24,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 24:8"
+   ],
+   "texts": [
+    "And he brought us into the land of the Amorites that dwelt beyond Jordan, and the Lord delivered them into our hands; and ye inherited their land, and utterly destroyed them from before you."
+   ]
+  },
+  {
+   "ref": "Jos 24:30",
+   "book": "Jos",
+   "chapter": 24,
+   "verse": 30,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 24:30"
+   ],
+   "texts": [
+    "And they buried him in the land of his inheritance, at Timnath-serah in the hill country of Ephraim, north of Mount Gaash."
+   ]
+  },
+  {
+   "ref": "Jos 24:32",
+   "book": "Jos",
+   "chapter": 24,
+   "verse": 32,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jos 24:32"
+   ],
+   "texts": [
+    "And the bones of Joseph, which the Israelites had brought up out of Egypt, were buried at Shechem in the plot of land that Jacob had purchased from the sons of Hamor, Shechem’s father, for a hundred pieces of silver. So it became an inheritance for Joseph’s descendants."
+   ]
+  },
+  {
+   "ref": "Jdg 1:18",
+   "book": "Jdg",
+   "chapter": 1,
+   "verse": 18,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jdg 1:18"
+   ],
+   "texts": [
+    "But Judas did not inherit Gaza nor her coasts, nor Ascalon nor her coasts, nor Accaron nor her coasts, nor Azotus nor the lands around it."
+   ]
+  },
+  {
+   "ref": "Jdg 2:6",
+   "book": "Jdg",
+   "chapter": 2,
+   "verse": 6,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jdg 2:6"
+   ],
+   "texts": [
+    "And when Joshua had let the people go, the children of Israel went every man unto his inheritance to possess the land."
+   ]
+  },
+  {
+   "ref": "Jdg 2:9",
+   "book": "Jdg",
+   "chapter": 2,
+   "verse": 9,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jdg 2:9"
+   ],
+   "texts": [
+    "They buried him in the land of his inheritance, at Timnath-heres in the hill country of Ephraim, north of Mount Gaash."
+   ]
+  },
+  {
+   "ref": "Jdg 11:21",
+   "book": "Jdg",
+   "chapter": 11,
+   "verse": 21,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jdg 11:21"
+   ],
+   "texts": [
+    "And the Lord God of Israel delivered Seon and all his people into the hand of Israel, and they smote him; and Israel inherited all the land of the Amorite who dwelt in that land,"
+   ]
+  },
+  {
+   "ref": "Jdg 11:23",
+   "book": "Jdg",
+   "chapter": 11,
+   "verse": 23,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jdg 11:23"
+   ],
+   "texts": [
+    "And now the Lord God of Israel has removed the Amorite from before his people Israel, and shalt thou inherit his land?"
+   ]
+  },
+  {
+   "ref": "Jdg 11:24",
+   "book": "Jdg",
+   "chapter": 11,
+   "verse": 24,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jdg 11:24"
+   ],
+   "texts": [
+    "Wilt thou not inherit those possessions which Chamos thy god shall cause thee to inherit; and shall not we inherit the land of all those whom the Lord our God has removed from before you?"
+   ]
+  },
+  {
+   "ref": "Jdg 18:9",
+   "book": "Jdg",
+   "chapter": 18,
+   "verse": 9,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jdg 18:9"
+   ],
+   "texts": [
+    "And they will say, Arise, and we will go up upon them: for we saw the land, and behold, exceedingly good: and ye being still, ye shall not neglect to go, to come to inherit the land."
+   ]
+  },
+  {
+   "ref": "Jdg 20:6",
+   "book": "Jdg",
+   "chapter": 20,
+   "verse": 6,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jdg 20:6"
+   ],
+   "texts": [
+    "Then I took my concubine, cut her into pieces, and sent her throughout the land of Israel’s inheritance, because they had committed a lewd and disgraceful act in Israel."
+   ]
+  },
+  {
+   "ref": "Rut 4:5",
+   "book": "Rut",
+   "chapter": 4,
+   "verse": 5,
+   "role": "borderline",
+   "reason": "ordinary property inheritance",
+   "source_refs": [
+    "Rut 4:5"
+   ],
+   "texts": [
+    "Then Boaz said, “On the day you buy the land from Naomi and also from Ruth the Moabitess, you must also acquire the widow of the deceased in order to raise up the name of the deceased on his inheritance.”"
+   ]
+  },
+  {
+   "ref": "2Sa 23:11",
+   "book": "2Sa",
+   "chapter": 23,
+   "verse": 11,
+   "role": "borderline",
+   "reason": "field of lentils, not the covenant land",
+   "source_refs": [
+    "2Sa 23:11"
+   ],
+   "texts": [
+    "And after him was Shammah, the son of Agee, the Hararite. And the Philistines were gathered together into a community, where was an inheritance of land full of lentils, and the people had fled before the Philistines."
+   ]
+  },
+  {
+   "ref": "1Ki 8:36",
+   "book": "1Ki",
+   "chapter": 8,
+   "verse": 36,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "1Ki 8:36"
+   ],
+   "texts": [
+    "Then hear thou in heaven, and forgive the sin of thy servants, and of thy people Israel, that thou teach them the good way wherein they should walk, and give rain upon thy land, which thou hast given to thy people for an inheritance."
+   ]
+  },
+  {
+   "ref": "1Ki 8:51",
+   "book": "1Ki",
+   "chapter": 8,
+   "verse": 51,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "1Ki 8:51"
+   ],
+   "texts": [
+    "For they are thy people, and thy inheritance, whom thou hast brought out of the land of Egypt, from the midst of the furnace of iron."
+   ]
+  },
+  {
+   "ref": "1Ki 8:53",
+   "book": "1Ki",
+   "chapter": 8,
+   "verse": 53,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "1Ki 8:53"
+   ],
+   "texts": [
+    "Because thou hast set them apart for an inheritance to thyself out of all the nations of the earth, as thou spokest by the hand of thy servant Moses, when thou broughtest our fathers out of the land of Egypt, O Lord God.—"
+   ]
+  },
+  {
+   "ref": "1Ch 11:13",
+   "book": "1Ch",
+   "chapter": 11,
+   "verse": 13,
+   "role": "borderline",
+   "reason": "field of barley, not the covenant land",
+   "source_refs": [
+    "1Ch 11:13"
+   ],
+   "texts": [
+    "He was with David at Pasdammim, and there the Philistines were gathered together to battle, where there was an inheritance of land full of barley; and as the people fled from before the Philistines,"
+   ]
+  },
+  {
+   "ref": "1Ch 16:18",
+   "book": "1Ch",
+   "chapter": 16,
+   "verse": 18,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "1Ch 16:18"
+   ],
+   "texts": [
+    "Saying, Unto thee will I give the land of Canaan, the lot of your inheritance;"
+   ]
+  },
+  {
+   "ref": "1Ch 21:12",
+   "book": "1Ch",
+   "chapter": 21,
+   "verse": 12,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "1Ch 21:12"
+   ],
+   "texts": [
+    "either three years of famine, or that thou shouldest flee three months from the face of thine enemies, and the sword of thine enemies shall be employed to destroy thee, or that the sword of the Lord and pestilence should be three days in the land, and the angel of the Lord shall be destroying in all the inheritance of Israel. And now consider what I shall answer to him that sent the message."
+   ]
+  },
+  {
+   "ref": "1Ch 28:8",
+   "book": "1Ch",
+   "chapter": 28,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "1Ch 28:8"
+   ],
+   "texts": [
+    "Now therefore in the sight of all Israel the congregation of the Lord, and in the audience of our God, keep and seek for all the commandments of the Lord your God: that ye may possess this good land, and leave it for an inheritance for your children after you for ever."
+   ]
+  },
+  {
+   "ref": "2Ch 6:27",
+   "book": "2Ch",
+   "chapter": 6,
+   "verse": 27,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "2Ch 6:27"
+   ],
+   "texts": [
+    "Then hear thou from heaven, and forgive the sin of thy servants, and of thy people Israel, when thou hast taught them the good way, wherein they should walk; and send rain upon thy land, which thou hast given unto thy people for an inheritance."
+   ]
+  },
+  {
+   "ref": "Ezr 9:11",
+   "book": "Ezr",
+   "chapter": 9,
+   "verse": 11,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezr 9:11"
+   ],
+   "texts": [
+    "which thou hast given us by the hand of thy servants the prophets, saying, The land, into which ye go to inherit it, is a land subject to disturbance by the removal of the people of the nations for their abominations, wherewith they have filled it from one end to the other by their uncleannesses."
+   ]
+  },
+  {
+   "ref": "Ezr 9:12",
+   "book": "Ezr",
+   "chapter": 9,
+   "verse": 12,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezr 9:12"
+   ],
+   "texts": [
+    "Now therefore give not your daughters unto their sons, neither take their daughters unto your sons, nor seek their peace or their wealth for ever: that ye may be strong, and eat the good of the land, and leave it for an inheritance to your children for ever."
+   ]
+  },
+  {
+   "ref": "Neh 9:15",
+   "book": "Neh",
+   "chapter": 9,
+   "verse": 15,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezr 19:15",
+    "Neh 9:15"
+   ],
+   "texts": [
+    "And thou gavest them bread from heaven for their food, and thou broughtest them forth water from a rock for their thirst; and thou badest them go in to inherit the land over which thou stretchedst out thy hand to give it them.",
+    "And thou gavest them bread from heaven for their food, and thou broughtest them forth water from a rock for their thirst; and thou badest them go in to inherit the land over which thou stretchedst out thy hand to give it them."
+   ]
+  },
+  {
+   "ref": "Neh 9:22",
+   "book": "Neh",
+   "chapter": 9,
+   "verse": 22,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezr 19:22",
+    "Neh 9:22"
+   ],
+   "texts": [
+    "Moreover thou gavest them kingdoms, and didst divide nations to them: and they inherited the land of Seon king of Esebon, and the land of Og king of Basan.",
+    "“You gave them kingdoms and peoples, and you allocated them to every corner of the land. They inherited the land of King Sihon of Heshbon and the land of King Og of Bashan."
+   ]
+  },
+  {
+   "ref": "Neh 9:23",
+   "book": "Neh",
+   "chapter": 9,
+   "verse": 23,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Neh 9:23"
+   ],
+   "texts": [
+    "Thou didst multiply their sons as the stars of heaven and didst introduce them into the land, concerning which thou hadst promised to their fathers, that they should go in to inherit it."
+   ]
+  },
+  {
+   "ref": "Neh 9:24",
+   "book": "Neh",
+   "chapter": 9,
+   "verse": 24,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezr 19:24",
+    "Neh 9:24"
+   ],
+   "texts": [
+    "and they inherited it: and thou didst destroy from before them the dwellers in the land of the Chananites, and thou gavest into their hands them and their kings, and the nations of the land, to do unto them as it pleased them.",
+    "And they inherited it: and thou didst destroy from before them the dwellers in the land of the Chananites, and thou gavest into their hands them and their kings, and the nations of the land, to do unto them as it pleased them."
+   ]
+  },
+  {
+   "ref": "Neh 9:25",
+   "book": "Neh",
+   "chapter": 9,
+   "verse": 25,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Neh 9:25"
+   ],
+   "texts": [
+    "And they took strong cities and fertile land and inherited houses full of all goods, hewn cisterns, vineyards and oliveyards and many trees of good fruit; so they ate and were filled and became fat and delighted themselves in thy great goodness."
+   ]
+  },
+  {
+   "ref": "Job 42:15",
+   "book": "Job",
+   "chapter": 42,
+   "verse": 15,
+   "role": "borderline",
+   "reason": "ordinary family inheritance",
+   "source_refs": [
+    "Job 42:15"
+   ],
+   "texts": [
+    "And in all the land were no women found so fair as the daughters of Job: and their father gave them inheritance among their brethren."
+   ]
+  },
+  {
+   "ref": "Psa 25:13",
+   "book": "Psa",
+   "chapter": 25,
+   "verse": 13,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 24:13",
+    "Psa 25:13"
+   ],
+   "texts": [
+    "His soul shall dwell in good things: and his seed shall inherit the land.",
+    "His soul shall dwell at ease; And his seed shall inherit the land."
+   ]
+  },
+  {
+   "ref": "Psa 37:9",
+   "book": "Psa",
+   "chapter": 37,
+   "verse": 9,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 36:9",
+    "Psa 37:9"
+   ],
+   "texts": [
+    "For evil-doers shall be destroyed: but they that wait on the Lord, they shall inherit the land.",
+    "For evil-doers shall be cut off; But those that wait for Jehovah, they shall inherit the land."
+   ]
+  },
+  {
+   "ref": "Psa 37:11",
+   "book": "Psa",
+   "chapter": 37,
+   "verse": 11,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 36:11",
+    "Psa 37:11"
+   ],
+   "texts": [
+    "But the meek shall inherit the land, and shall delight in abundance of peace.",
+    "But the meek shall inherit the land, And shall delight themselves in the abundance of peace."
+   ]
+  },
+  {
+   "ref": "Psa 37:22",
+   "book": "Psa",
+   "chapter": 37,
+   "verse": 22,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 36:22",
+    "Psa 37:22"
+   ],
+   "texts": [
+    "For such as bless him shall inherit the land: but such as curse him shall perish.",
+    "For such as are blessed of him shall inherit the land; And they that are cursed of him shall be cut off."
+   ]
+  },
+  {
+   "ref": "Psa 37:29",
+   "book": "Psa",
+   "chapter": 37,
+   "verse": 29,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 36:29",
+    "Psa 37:29"
+   ],
+   "texts": [
+    "But the just shall inherit the land, and shall dwell therein for evermore.",
+    "The righteous shall inherit the land, and dwell therein for ever."
+   ]
+  },
+  {
+   "ref": "Psa 37:34",
+   "book": "Psa",
+   "chapter": 37,
+   "verse": 34,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 36:34",
+    "Psa 37:34"
+   ],
+   "texts": [
+    "Wait on the Lord, and keep his way, and he shall exalt thee to inherit the land: when the wicked are destroyed, thou shalt see it.",
+    "Wait on the Lord, and keep his way, and he shall exalt thee to inherit the land: when the wicked are cut off, thou shalt see it."
+   ]
+  },
+  {
+   "ref": "Psa 44:3",
+   "book": "Psa",
+   "chapter": 44,
+   "verse": 3,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 43:4",
+    "Psa 44:3"
+   ],
+   "texts": [
+    "For they inherited not the land by their own sword, and their own arm did not deliver them; but thy right hand, and thine arm, and the light of thy countenance, because thou wert well pleased in them.",
+    "For they did not get the land in inheritance by their own sword, neither did their own arm save them, but thy right hand and thine arm, and the light of thy countenance because thy delight was in them."
+   ]
+  },
+  {
+   "ref": "Psa 78:55",
+   "book": "Psa",
+   "chapter": 78,
+   "verse": 55,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 78:55"
+   ],
+   "texts": [
+    "He cast out the nations before them, And divided their land by a measuring-line, as an inheritance, And caused the tribes of Israel to dwell in their tents."
+   ]
+  },
+  {
+   "ref": "Psa 105:11",
+   "book": "Psa",
+   "chapter": 105,
+   "verse": 11,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 104:11",
+    "Psa 105:11"
+   ],
+   "texts": [
+    "saying, To thee will I give the land of Chanaan, the line of your inheritance:",
+    "Saying, Unto thee will I give the land of Canaan, the lot of your inheritance:"
+   ]
+  },
+  {
+   "ref": "Psa 105:44",
+   "book": "Psa",
+   "chapter": 105,
+   "verse": 44,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 104:44",
+    "Psa 105:44"
+   ],
+   "texts": [
+    "and gave them the lands of the heathen; and they inherited the labours of the people;",
+    "And gave them the lands of the heathen: and they inherited the labour of the people;"
+   ]
+  },
+  {
+   "ref": "Psa 135:12",
+   "book": "Psa",
+   "chapter": 135,
+   "verse": 12,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 134:12",
+    "Psa 135:12"
+   ],
+   "texts": [
+    "and gave their land for an inheritance, an inheritance to Israel his people.",
+    "And gave their land for an inheritance, for an inheritance to his people Israel."
+   ]
+  },
+  {
+   "ref": "Psa 136:21",
+   "book": "Psa",
+   "chapter": 136,
+   "verse": 21,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Psa 135:21",
+    "Psa 136:21"
+   ],
+   "texts": [
+    "and gave their land for an inheritance: for his mercy endures for ever:",
+    "And he gave their land for an inheritance: for his mercy endureth for ever."
+   ]
+  },
+  {
+   "ref": "Pro 23:10",
+   "book": "Pro",
+   "chapter": 23,
+   "verse": 10,
+   "role": "excluded",
+   "reason": "missing a required whole word (false match)",
+   "source_refs": [
+    "Pro 23:10"
+   ],
+   "texts": [
+    "Do not remove the old landmark, and do not enter into the inheritance of the fatherless:"
+   ]
+  },
+  {
+   "ref": "Isa 14:2",
+   "book": "Isa",
+   "chapter": 14,
+   "verse": 2,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Isa 14:2"
+   ],
+   "texts": [
+    "And peoples have taken them, And have brought them in unto their place, And the house of Israel have inherited them, On the land of Jehovah, For men-servants and for maid-servants, And they have been captors of their captors, And have ruled over their exactors."
+   ]
+  },
+  {
+   "ref": "Isa 14:21",
+   "book": "Isa",
+   "chapter": 14,
+   "verse": 21,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Isa 14:21"
+   ],
+   "texts": [
+    "Prepare his children for slaughter for the iniquity of their fathers: they shall not rise up, nor inherit the land, nor fill the face of the world with cities."
+   ]
+  },
+  {
+   "ref": "Isa 34:17",
+   "book": "Isa",
+   "chapter": 34,
+   "verse": 17,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Isa 34:17"
+   ],
+   "texts": [
+    "And he shall cast lots for them, and his hand has portioned out their pasture, saying, Ye shall inherit the land for ever: they shall rest on it through all generations."
+   ]
+  },
+  {
+   "ref": "Isa 49:8",
+   "book": "Isa",
+   "chapter": 49,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Isa 49:8"
+   ],
+   "texts": [
+    "Thus saith Jehovah, In an acceptable time have I answered thee, and in a day of salvation have I helped thee; and I will preserve thee, and give thee for a covenant of the people, to raise up the land, to make them inherit the desolate heritages;"
+   ]
+  },
+  {
+   "ref": "Isa 57:13",
+   "book": "Isa",
+   "chapter": 57,
+   "verse": 13,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Isa 57:13"
+   ],
+   "texts": [
+    "When thou criest, let thy companies deliver thee; but the wind shall carry them all away; vanity shall take them: but he that putteth his trust in me shall possess the land, and shall inherit my holy mountain;"
+   ]
+  },
+  {
+   "ref": "Isa 58:14",
+   "book": "Isa",
+   "chapter": 58,
+   "verse": 14,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Isa 58:14"
+   ],
+   "texts": [
+    "Then, shalt thou rest thine own exquisite delight upon Yahweh, …And I will cause thee to ride over the high places of the land,—And will feed thee with the inheritance of Jacob thy father, For the mouth of Yahweh, hath spoken."
+   ]
+  },
+  {
+   "ref": "Isa 60:21",
+   "book": "Isa",
+   "chapter": 60,
+   "verse": 21,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Isa 60:21"
+   ],
+   "texts": [
+    "Thy people also shall be all righteous: they shall inherit the land for ever, the branch of my planting, the work of my hands, that I may be glorified."
+   ]
+  },
+  {
+   "ref": "Isa 61:7",
+   "book": "Isa",
+   "chapter": 61,
+   "verse": 7,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Isa 61:7"
+   ],
+   "texts": [
+    "Thus shall they inherit the land a second time, and everlasting joy shall be upon their head."
+   ]
+  },
+  {
+   "ref": "Isa 65:9",
+   "book": "Isa",
+   "chapter": 65,
+   "verse": 9,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Isa 65:9"
+   ],
+   "texts": [
+    "And I will bring forth a seed out of Jacob and out of Judah an inheritor of my mountains; and my elect shall possess the land for an inheritance, and my servants shall dwell there."
+   ]
+  },
+  {
+   "ref": "Jer 2:7",
+   "book": "Jer",
+   "chapter": 2,
+   "verse": 7,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 2:7"
+   ],
+   "texts": [
+    "And I brought you into the land of Carmel, to eat the fruit thereof, and the best things thereof: ad when ye entered in, you defiled my land, and made my inheritance an abomination."
+   ]
+  },
+  {
+   "ref": "Jer 3:18",
+   "book": "Jer",
+   "chapter": 3,
+   "verse": 18,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 3:18"
+   ],
+   "texts": [
+    "In those days the house of Judah shall walk with the house of Israel, and they shall come together out of the land of the north to the land that I have given for an inheritance unto your fathers."
+   ]
+  },
+  {
+   "ref": "Jer 3:19",
+   "book": "Jer",
+   "chapter": 3,
+   "verse": 19,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 3:19"
+   ],
+   "texts": [
+    "But I said: How shall I put thee among the children, and give thee a lovely land, the goodly inheritance of the armies of the Gentiles? And I said: Thou shalt call me father and shalt cease to walk after me."
+   ]
+  },
+  {
+   "ref": "Jer 12:7",
+   "book": "Jer",
+   "chapter": 12,
+   "verse": 7,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 12:7"
+   ],
+   "texts": [
+    "I have forsaken my house, I have left my inheritance: I have given my dear soul into the land of her enemies."
+   ]
+  },
+  {
+   "ref": "Jer 12:14",
+   "book": "Jer",
+   "chapter": 12,
+   "verse": 14,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 12:14"
+   ],
+   "texts": [
+    "Thus saith the Lord against all mine evil neighbours, that touch the inheritance which I have caused my people Israel to inherit; Behold, I will pluck them out of their land, and pluck out the house of Judah from among them."
+   ]
+  },
+  {
+   "ref": "Jer 12:15",
+   "book": "Jer",
+   "chapter": 12,
+   "verse": 15,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 12:15"
+   ],
+   "texts": [
+    "And when I shall have plucked them out, I will return, and have mercy on them: and I will bring them back, every man to his inheritance, and every man to his land."
+   ]
+  },
+  {
+   "ref": "Jer 16:18",
+   "book": "Jer",
+   "chapter": 16,
+   "verse": 18,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 16:18"
+   ],
+   "texts": [
+    "And first I will recompense their iniquity and their sin double; because they have defiled my land, they have filled mine inheritance with the carcases of their detestable and abominable things."
+   ]
+  },
+  {
+   "ref": "Jer 17:4",
+   "book": "Jer",
+   "chapter": 17,
+   "verse": 4,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 17:4"
+   ],
+   "texts": [
+    "And thou shalt be left stripped of thy inheritance, which I gave thee: and I will make thee serve thy enemies in a land which thou knowest not: because thou hast kindled a fire in my wrath, it shall burn for ever."
+   ]
+  },
+  {
+   "ref": "Jer 17:6",
+   "book": "Jer",
+   "chapter": 17,
+   "verse": 6,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 17:6"
+   ],
+   "texts": [
+    "And he was as ruins in the sterile region, and he shall not see when good shall come; he inherited the arid places in the desert, a salt land, and it shall not be inhabited."
+   ]
+  },
+  {
+   "ref": "Jer 30:3",
+   "book": "Jer",
+   "chapter": 30,
+   "verse": 3,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 30:3"
+   ],
+   "texts": [
+    "For behold, the days coming, says Jehovah, and I turned back the captivity of my people Israel and Judah, said Jehovah: and I turned them back to the land which I gave to their fathers, and they shall inherit it."
+   ]
+  },
+  {
+   "ref": "Jer 32:8",
+   "book": "Jer",
+   "chapter": 32,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 32:8"
+   ],
+   "texts": [
+    "So Hanamel mine uncle’s son came to me in the court of the guard according to the word of Jehovah, and said unto me, Buy my field, I pray thee, that is in Anathoth, which is in the land of Benjamin; for the right of inheritance is thine, and the redemption is thine; buy it for thyself. Then I knew that this was the word of Jehovah."
+   ]
+  },
+  {
+   "ref": "Jer 32:43",
+   "book": "Jer",
+   "chapter": 32,
+   "verse": 43,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 32:43"
+   ],
+   "texts": [
+    "And they shall possess inheritance in this land, of which ye say, It is desolate without man or beast; it is given into the hands of the Chaldeans."
+   ]
+  },
+  {
+   "ref": "Jer 37:12",
+   "book": "Jer",
+   "chapter": 37,
+   "verse": 12,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 37:12"
+   ],
+   "texts": [
+    "that Jeremiah was going forth from Jerusalem, to go into the land of Benjamin, to receive thence his inheritance among the people."
+   ]
+  },
+  {
+   "ref": "Jer 49:1",
+   "book": "Jer",
+   "chapter": 49,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Jer 49:1"
+   ],
+   "texts": [
+    "Judgment Against Ammon The LORD spoke about the Ammonites.“Do you think there are not any people of the nation of Israel remaining? Do you think there are not any of them remaining to reinherit their land? Is that why you people who worship the god Milcom have taken possession of the territory of Gad and live in his cities?"
+   ]
+  },
+  {
+   "ref": "Ezk 11:15",
+   "book": "Ezk",
+   "chapter": 11,
+   "verse": 15,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 11:15"
+   ],
+   "texts": [
+    "Son of man, thy brethren, and the men of thy captivity, and all the house of Israel are come to the full, to whom the inhabitants of Jerusalem said, Keep ye far away from the Lord: the land is given to us for an inheritance."
+   ]
+  },
+  {
+   "ref": "Ezk 11:16",
+   "book": "Ezk",
+   "chapter": 11,
+   "verse": 16,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 11:16"
+   ],
+   "texts": [
+    "it is ours, the land hath been given for an inheritance; therefore say: Thus said the Lord Jehovah: Because I put them afar off among nations, And because I scattered them through lands, I also am to them for a little sanctuary, In lands whither they have gone in."
+   ]
+  },
+  {
+   "ref": "Ezk 33:24",
+   "book": "Ezk",
+   "chapter": 33,
+   "verse": 24,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 33:24"
+   ],
+   "texts": [
+    "Son of man, they that inhabit those wastes of the land of Israel speak, saying, Abraham was one, and he inherited the land: but we are many; the land is given us for inheritance."
+   ]
+  },
+  {
+   "ref": "Ezk 33:25",
+   "book": "Ezk",
+   "chapter": 33,
+   "verse": 25,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 33:25"
+   ],
+   "texts": [
+    "Therefore say to them: Thus saith the Lord God, You that eat with the blood and lift up your eyes to your uncleannesses, and that shed blood: shall you possess the land by inheritance?"
+   ]
+  },
+  {
+   "ref": "Ezk 33:26",
+   "book": "Ezk",
+   "chapter": 33,
+   "verse": 26,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 33:26"
+   ],
+   "texts": [
+    "You stood on your swords, you have committed abominations, and every one hath defiled his neighbour's wife; and shall you possess the land by inheritance?"
+   ]
+  },
+  {
+   "ref": "Ezk 35:10",
+   "book": "Ezk",
+   "chapter": 35,
+   "verse": 10,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 35:10"
+   ],
+   "texts": [
+    "Because thou hast said: The two nations, and the two lands shall be mine, and I will possess them by inheritance: whereas the Lord was there."
+   ]
+  },
+  {
+   "ref": "Ezk 36:5",
+   "book": "Ezk",
+   "chapter": 36,
+   "verse": 5,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 36:5"
+   ],
+   "texts": [
+    "Therefore thus saith the Lord God: In the fire of my zeal I have spoken of the rest of the nations, and of all Edom, who have taken my land to themselves, for an inheritance with joy, and with all the heart, and with the mind: and have cast it out to lay it waste."
+   ]
+  },
+  {
+   "ref": "Ezk 45:1",
+   "book": "Ezk",
+   "chapter": 45,
+   "verse": 1,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 45:1"
+   ],
+   "texts": [
+    "Moreover, when ye shall divide by lot the land for inheritance, ye shall offer an oblation unto the Lord, an holy portion of the land: the length shall be the length of five and twenty thousand reeds, and the breadth shall be ten thousand. This shall be holy in all the borders thereof round about."
+   ]
+  },
+  {
+   "ref": "Ezk 45:8",
+   "book": "Ezk",
+   "chapter": 45,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 45:8"
+   ],
+   "texts": [
+    "And he shall have it for a possession in Israel: and the princes of Israel shall no more oppress my people; but the house of Israel shall inherit the land according to their tribes."
+   ]
+  },
+  {
+   "ref": "Ezk 47:13",
+   "book": "Ezk",
+   "chapter": 47,
+   "verse": 13,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 47:13"
+   ],
+   "texts": [
+    "Thus saith the Lord God; This shall be the border, whereby ye shall inherit the land according to the twelve tribes of Israel: Joseph shall have two portions."
+   ]
+  },
+  {
+   "ref": "Ezk 47:14",
+   "book": "Ezk",
+   "chapter": 47,
+   "verse": 14,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 47:14"
+   ],
+   "texts": [
+    "And ye shall inherit it, one as well as another: concerning the which I lifted up mine hand to give it unto your fathers: and this land shall fall unto you for inheritance."
+   ]
+  },
+  {
+   "ref": "Ezk 48:29",
+   "book": "Ezk",
+   "chapter": 48,
+   "verse": 29,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Ezk 48:29"
+   ],
+   "texts": [
+    "This is the land which ye shall divide by lot unto the tribes of Israel for inheritance, and these are their portions, saith the Lord God."
+   ]
+  },
+  {
+   "ref": "Joe 3:2",
+   "book": "Joe",
+   "chapter": 3,
+   "verse": 2,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Joe 3:2"
+   ],
+   "texts": [
+    "I will gather together all nations, and will bring them down into the valley of Josaphat: and I will plead with them there for my people, and for my inheritance Israel, whom they have scattered among the nations, and have parted my land."
+   ]
+  },
+  {
+   "ref": "Amo 2:10",
+   "book": "Amo",
+   "chapter": 2,
+   "verse": 10,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Amo 2:10"
+   ],
+   "texts": [
+    "And I brought you up out of the land of Egypt, and led you about in the desert forty years, that ye should inherit the land of the Amorites."
+   ]
+  },
+  {
+   "ref": "Oba 1:19",
+   "book": "Oba",
+   "chapter": 1,
+   "verse": 19,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Oba 1:19"
+   ],
+   "texts": [
+    "And they that dwell in the south shall inherit the mount of Esau, and they in the plain the Philistines: and they shall inherit the mount of Ephraim, and the plain of Samaria, and Benjamin, and the land of Galaad."
+   ]
+  },
+  {
+   "ref": "Oba 1:20",
+   "book": "Oba",
+   "chapter": 1,
+   "verse": 20,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Oba 1:20"
+   ],
+   "texts": [
+    "And this shall be the domain of the captivity of the children of Israel, the land of the Chananites as far as Sarepta; and the captives of Jerusalem shall inherit as far as Ephratha; they shall inherit the cities of the south."
+   ]
+  },
+  {
+   "ref": "Mic 2:2",
+   "book": "Mic",
+   "chapter": 2,
+   "verse": 2,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Mic 2:2"
+   ],
+   "texts": [
+    "They confiscate the fields they desire, and seize the houses they want. They defraud people of their homes, and deprive people of the land they have inherited."
+   ]
+  },
+  {
+   "ref": "Mic 7:14",
+   "book": "Mic",
+   "chapter": 7,
+   "verse": 14,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Mic 7:14"
+   ],
+   "texts": [
+    "Tend thy people with thy rod, the sheep of thine inheritance, those that inhabit by themselves the thicket in the midst of Carmel: they shall feed in the land of Basan, and in the land of Galaad, as in the days of old."
+   ]
+  },
+  {
+   "ref": "Zec 2:12",
+   "book": "Zec",
+   "chapter": 2,
+   "verse": 12,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Zec 2:12",
+    "Zec 2:16"
+   ],
+   "texts": [
+    "And the Lord shall inherit Judah his portion in the holy land, and shall choose Jerusalem again.",
+    "And the Lord shall inherit Juda his portion in the holy land, and he will yet choose Jerusalem."
+   ]
+  },
+  {
+   "ref": "Zec 8:12",
+   "book": "Zec",
+   "chapter": 8,
+   "verse": 12,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Zec 8:12"
+   ],
+   "texts": [
+    "But I will shew peace: the vine shall yield her fruit, and the land shall yield her produce, and the heaven shall give its dew: and I will give as an inheritance all these things to the remnant of my people."
+   ]
+  },
+  {
+   "ref": "Mal 1:3",
+   "book": "Mal",
+   "chapter": 1,
+   "verse": 3,
+   "role": "excluded",
+   "reason": "missing a required whole word (false match)",
+   "source_refs": [
+    "Mal 1:3"
+   ],
+   "texts": [
+    "but Esau I have hated, and I have made his mountains a wasteland and left his inheritance to the desert jackals.”"
+   ]
+  },
+  {
+   "ref": "Mat 5:5",
+   "book": "Mat",
+   "chapter": 5,
+   "verse": 5,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Mat 5:5"
+   ],
+   "texts": [
+    "Happy the meek--because they shall inherit the land."
+   ]
+  },
+  {
+   "ref": "Mat 19:29",
+   "book": "Mat",
+   "chapter": 19,
+   "verse": 29,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Mat 19:29"
+   ],
+   "texts": [
+    "And every one that hath forsaken houses, or brethren, or sisters, or father, or mother, or wife, or children, or lands, for my name’s sake, shall receive an hundredfold, and shall inherit everlasting life."
+   ]
+  },
+  {
+   "ref": "Luk 12:13",
+   "book": "Luk",
+   "chapter": 12,
+   "verse": 13,
+   "role": "excluded",
+   "reason": "missing a required whole word (false match)",
+   "source_refs": [
+    "Luk 12:13"
+   ],
+   "texts": [
+    "The Parable of the Rich Landowner Then someone from the crowd said to him,“Teacher, tell my brother to divide the inheritance with me.”"
+   ]
+  },
+  {
+   "ref": "Luk 15:13",
+   "book": "Luk",
+   "chapter": 15,
+   "verse": 13,
+   "role": "borderline",
+   "reason": "ordinary family inheritance",
+   "source_refs": [
+    "Luk 15:13"
+   ],
+   "texts": [
+    "A few days later the younger son got together all that he had, and went away into a distant land; and there he squandered his inheritance by leading a dissolute life."
+   ]
+  },
+  {
+   "ref": "Act 7:5",
+   "book": "Act",
+   "chapter": 7,
+   "verse": 5,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Act 7:5"
+   ],
+   "texts": [
+    "But he gave him no inheritance in it, no, not a single square yard of ground. And yet He promised to bestow the land as a permanent possession on him and his posterity after him--and promised this at a time when Abraham was childless."
+   ]
+  },
+  {
+   "ref": "Act 13:19",
+   "book": "Act",
+   "chapter": 13,
+   "verse": 19,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Act 13:19"
+   ],
+   "texts": [
+    "And when he had destroyed seven nations in the land of Canaan, he gave them their land for an inheritance, for about four hundred and fifty years:"
+   ]
+  },
+  {
+   "ref": "1Co 6:10",
+   "book": "1Co",
+   "chapter": 6,
+   "verse": 10,
+   "role": "excluded",
+   "reason": "missing a required whole word (false match)",
+   "source_refs": [
+    "1Co 6:10"
+   ],
+   "texts": [
+    "nor thieves, nor covetous, nor drunkards, nor slanderers, nor extortioners, will inherit the Kingdom of God."
+   ]
+  },
+  {
+   "ref": "Heb 11:8",
+   "book": "Heb",
+   "chapter": 11,
+   "verse": 8,
+   "role": "core",
+   "reason": "",
+   "source_refs": [
+    "Heb 11:8"
+   ],
+   "texts": [
+    "Through faith Abraham, upon being called to leave home and go into a land which he was soon to receive for an inheritance, obeyed; and he went out, not knowing where he was going to."
+   ]
+  },
+  {
+   "ref": "1Pe 3:9",
+   "book": "1Pe",
+   "chapter": 3,
+   "verse": 9,
+   "role": "excluded",
+   "reason": "missing a required whole word (false match)",
+   "source_refs": [
+    "1Pe 3:9"
+   ],
+   "texts": [
+    "not repaying evil with evil, nor slander with slander, but, to the contrary, repaying with blessings. For to this you have been called, so that you may possess the inheritance of a blessing."
+   ]
+  }
+ ],
+ "strip": {
+  "unit": "chapter",
+  "columns": [
+   "book",
+   "chapter",
+   "core",
+   "all"
+  ],
+  "cells": [
+   [
+    "Gen",
+    1,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    2,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    3,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    4,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    5,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    6,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    7,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    8,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    9,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    10,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    11,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    12,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    13,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    14,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    15,
+    1,
+    1
+   ],
+   [
+    "Gen",
+    16,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    17,
+    1,
+    1
+   ],
+   [
+    "Gen",
+    18,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    19,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    20,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    21,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    22,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    23,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    24,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    25,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    26,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    27,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    28,
+    1,
+    1
+   ],
+   [
+    "Gen",
+    29,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    30,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    31,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    32,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    33,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    34,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    35,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    36,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    37,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    38,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    39,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    40,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    41,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    42,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    43,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    44,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    45,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    46,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    47,
+    1,
+    1
+   ],
+   [
+    "Gen",
+    48,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    49,
+    0,
+    0
+   ],
+   [
+    "Gen",
+    50,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    1,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    2,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    3,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    4,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    5,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    6,
+    1,
+    1
+   ],
+   [
+    "Exo",
+    7,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    8,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    9,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    10,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    11,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    12,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    13,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    14,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    15,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    16,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    17,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    18,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    19,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    20,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    21,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    22,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    23,
+    1,
+    1
+   ],
+   [
+    "Exo",
+    24,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    25,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    26,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    27,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    28,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    29,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    30,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    31,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    32,
+    1,
+    1
+   ],
+   [
+    "Exo",
+    33,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    34,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    35,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    36,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    37,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    38,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    39,
+    0,
+    0
+   ],
+   [
+    "Exo",
+    40,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    1,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    2,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    3,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    4,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    5,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    6,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    7,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    8,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    9,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    10,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    11,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    12,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    13,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    14,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    15,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    16,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    17,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    18,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    19,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    20,
+    1,
+    1
+   ],
+   [
+    "Lev",
+    21,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    22,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    23,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    24,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    25,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    26,
+    0,
+    0
+   ],
+   [
+    "Lev",
+    27,
+    2,
+    2
+   ],
+   [
+    "Num",
+    1,
+    0,
+    0
+   ],
+   [
+    "Num",
+    2,
+    0,
+    0
+   ],
+   [
+    "Num",
+    3,
+    0,
+    0
+   ],
+   [
+    "Num",
+    4,
+    0,
+    0
+   ],
+   [
+    "Num",
+    5,
+    0,
+    0
+   ],
+   [
+    "Num",
+    6,
+    0,
+    0
+   ],
+   [
+    "Num",
+    7,
+    0,
+    0
+   ],
+   [
+    "Num",
+    8,
+    0,
+    0
+   ],
+   [
+    "Num",
+    9,
+    0,
+    0
+   ],
+   [
+    "Num",
+    10,
+    0,
+    0
+   ],
+   [
+    "Num",
+    11,
+    0,
+    0
+   ],
+   [
+    "Num",
+    12,
+    0,
+    0
+   ],
+   [
+    "Num",
+    13,
+    0,
+    0
+   ],
+   [
+    "Num",
+    14,
+    2,
+    2
+   ],
+   [
+    "Num",
+    15,
+    0,
+    0
+   ],
+   [
+    "Num",
+    16,
+    1,
+    1
+   ],
+   [
+    "Num",
+    17,
+    0,
+    0
+   ],
+   [
+    "Num",
+    18,
+    1,
+    1
+   ],
+   [
+    "Num",
+    19,
+    0,
+    0
+   ],
+   [
+    "Num",
+    20,
+    0,
+    0
+   ],
+   [
+    "Num",
+    21,
+    1,
+    1
+   ],
+   [
+    "Num",
+    22,
+    0,
+    0
+   ],
+   [
+    "Num",
+    23,
+    0,
+    0
+   ],
+   [
+    "Num",
+    24,
+    0,
+    0
+   ],
+   [
+    "Num",
+    25,
+    0,
+    0
+   ],
+   [
+    "Num",
+    26,
+    2,
+    2
+   ],
+   [
+    "Num",
+    27,
+    0,
+    0
+   ],
+   [
+    "Num",
+    28,
+    0,
+    0
+   ],
+   [
+    "Num",
+    29,
+    0,
+    0
+   ],
+   [
+    "Num",
+    30,
+    0,
+    0
+   ],
+   [
+    "Num",
+    31,
+    0,
+    0
+   ],
+   [
+    "Num",
+    32,
+    3,
+    3
+   ],
+   [
+    "Num",
+    33,
+    2,
+    2
+   ],
+   [
+    "Num",
+    34,
+    5,
+    5
+   ],
+   [
+    "Num",
+    35,
+    1,
+    1
+   ],
+   [
+    "Num",
+    36,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    1,
+    3,
+    3
+   ],
+   [
+    "Deu",
+    2,
+    7,
+    7
+   ],
+   [
+    "Deu",
+    3,
+    4,
+    4
+   ],
+   [
+    "Deu",
+    4,
+    9,
+    9
+   ],
+   [
+    "Deu",
+    5,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    6,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    7,
+    1,
+    1
+   ],
+   [
+    "Deu",
+    8,
+    1,
+    1
+   ],
+   [
+    "Deu",
+    9,
+    5,
+    5
+   ],
+   [
+    "Deu",
+    10,
+    1,
+    1
+   ],
+   [
+    "Deu",
+    11,
+    5,
+    5
+   ],
+   [
+    "Deu",
+    12,
+    4,
+    4
+   ],
+   [
+    "Deu",
+    13,
+    0,
+    0
+   ],
+   [
+    "Deu",
+    14,
+    0,
+    0
+   ],
+   [
+    "Deu",
+    15,
+    1,
+    1
+   ],
+   [
+    "Deu",
+    16,
+    1,
+    1
+   ],
+   [
+    "Deu",
+    17,
+    1,
+    1
+   ],
+   [
+    "Deu",
+    18,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    19,
+    5,
+    5
+   ],
+   [
+    "Deu",
+    20,
+    1,
+    1
+   ],
+   [
+    "Deu",
+    21,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    22,
+    0,
+    0
+   ],
+   [
+    "Deu",
+    23,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    24,
+    1,
+    1
+   ],
+   [
+    "Deu",
+    25,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    26,
+    1,
+    1
+   ],
+   [
+    "Deu",
+    27,
+    0,
+    0
+   ],
+   [
+    "Deu",
+    28,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    29,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    30,
+    3,
+    3
+   ],
+   [
+    "Deu",
+    31,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    32,
+    2,
+    2
+   ],
+   [
+    "Deu",
+    33,
+    0,
+    0
+   ],
+   [
+    "Deu",
+    34,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    1,
+    3,
+    3
+   ],
+   [
+    "Jos",
+    2,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    3,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    4,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    5,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    6,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    7,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    8,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    9,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    10,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    11,
+    1,
+    1
+   ],
+   [
+    "Jos",
+    12,
+    3,
+    3
+   ],
+   [
+    "Jos",
+    13,
+    5,
+    5
+   ],
+   [
+    "Jos",
+    14,
+    3,
+    3
+   ],
+   [
+    "Jos",
+    15,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    16,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    17,
+    1,
+    1
+   ],
+   [
+    "Jos",
+    18,
+    3,
+    3
+   ],
+   [
+    "Jos",
+    19,
+    2,
+    2
+   ],
+   [
+    "Jos",
+    20,
+    0,
+    0
+   ],
+   [
+    "Jos",
+    21,
+    2,
+    2
+   ],
+   [
+    "Jos",
+    22,
+    2,
+    2
+   ],
+   [
+    "Jos",
+    23,
+    1,
+    1
+   ],
+   [
+    "Jos",
+    24,
+    3,
+    3
+   ],
+   [
+    "Jdg",
+    1,
+    1,
+    1
+   ],
+   [
+    "Jdg",
+    2,
+    2,
+    2
+   ],
+   [
+    "Jdg",
+    3,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    4,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    5,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    6,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    7,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    8,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    9,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    10,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    11,
+    3,
+    3
+   ],
+   [
+    "Jdg",
+    12,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    13,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    14,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    15,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    16,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    17,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    18,
+    1,
+    1
+   ],
+   [
+    "Jdg",
+    19,
+    0,
+    0
+   ],
+   [
+    "Jdg",
+    20,
+    1,
+    1
+   ],
+   [
+    "Jdg",
+    21,
+    0,
+    0
+   ],
+   [
+    "Rut",
+    1,
+    0,
+    0
+   ],
+   [
+    "Rut",
+    2,
+    0,
+    0
+   ],
+   [
+    "Rut",
+    3,
+    0,
+    0
+   ],
+   [
+    "Rut",
+    4,
+    0,
+    1
+   ],
+   [
+    "1Sa",
+    1,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    2,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    3,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    4,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    5,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    6,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    7,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    8,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    9,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    10,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    11,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    12,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    13,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    14,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    15,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    16,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    17,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    18,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    19,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    20,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    21,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    22,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    23,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    24,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    25,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    26,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    27,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    28,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    29,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    30,
+    0,
+    0
+   ],
+   [
+    "1Sa",
+    31,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    1,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    2,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    3,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    4,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    5,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    6,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    7,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    8,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    9,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    10,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    11,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    12,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    13,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    14,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    15,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    16,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    17,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    18,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    19,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    20,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    21,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    22,
+    0,
+    0
+   ],
+   [
+    "2Sa",
+    23,
+    0,
+    1
+   ],
+   [
+    "2Sa",
+    24,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    1,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    2,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    3,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    4,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    5,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    6,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    7,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    8,
+    3,
+    3
+   ],
+   [
+    "1Ki",
+    9,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    10,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    11,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    12,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    13,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    14,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    15,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    16,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    17,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    18,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    19,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    20,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    21,
+    0,
+    0
+   ],
+   [
+    "1Ki",
+    22,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    1,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    2,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    3,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    4,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    5,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    6,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    7,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    8,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    9,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    10,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    11,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    12,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    13,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    14,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    15,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    16,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    17,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    18,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    19,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    20,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    21,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    22,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    23,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    24,
+    0,
+    0
+   ],
+   [
+    "2Ki",
+    25,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    1,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    2,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    3,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    4,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    5,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    6,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    7,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    8,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    9,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    10,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    11,
+    0,
+    1
+   ],
+   [
+    "1Ch",
+    12,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    13,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    14,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    15,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    16,
+    1,
+    1
+   ],
+   [
+    "1Ch",
+    17,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    18,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    19,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    20,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    21,
+    1,
+    1
+   ],
+   [
+    "1Ch",
+    22,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    23,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    24,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    25,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    26,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    27,
+    0,
+    0
+   ],
+   [
+    "1Ch",
+    28,
+    1,
+    1
+   ],
+   [
+    "1Ch",
+    29,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    1,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    2,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    3,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    4,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    5,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    6,
+    1,
+    1
+   ],
+   [
+    "2Ch",
+    7,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    8,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    9,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    10,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    11,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    12,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    13,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    14,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    15,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    16,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    17,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    18,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    19,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    20,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    21,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    22,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    23,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    24,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    25,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    26,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    27,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    28,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    29,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    30,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    31,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    32,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    33,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    34,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    35,
+    0,
+    0
+   ],
+   [
+    "2Ch",
+    36,
+    0,
+    0
+   ],
+   [
+    "Ezr",
+    1,
+    0,
+    0
+   ],
+   [
+    "Ezr",
+    2,
+    0,
+    0
+   ],
+   [
+    "Ezr",
+    3,
+    0,
+    0
+   ],
+   [
+    "Ezr",
+    4,
+    0,
+    0
+   ],
+   [
+    "Ezr",
+    5,
+    0,
+    0
+   ],
+   [
+    "Ezr",
+    6,
+    0,
+    0
+   ],
+   [
+    "Ezr",
+    7,
+    0,
+    0
+   ],
+   [
+    "Ezr",
+    8,
+    0,
+    0
+   ],
+   [
+    "Ezr",
+    9,
+    2,
+    2
+   ],
+   [
+    "Ezr",
+    10,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    1,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    2,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    3,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    4,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    5,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    6,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    7,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    8,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    9,
+    5,
+    5
+   ],
+   [
+    "Neh",
+    10,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    11,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    12,
+    0,
+    0
+   ],
+   [
+    "Neh",
+    13,
+    0,
+    0
+   ],
+   [
+    "Est",
+    1,
+    0,
+    0
+   ],
+   [
+    "Est",
+    2,
+    0,
+    0
+   ],
+   [
+    "Est",
+    3,
+    0,
+    0
+   ],
+   [
+    "Est",
+    4,
+    0,
+    0
+   ],
+   [
+    "Est",
+    5,
+    0,
+    0
+   ],
+   [
+    "Est",
+    6,
+    0,
+    0
+   ],
+   [
+    "Est",
+    7,
+    0,
+    0
+   ],
+   [
+    "Est",
+    8,
+    0,
+    0
+   ],
+   [
+    "Est",
+    9,
+    0,
+    0
+   ],
+   [
+    "Est",
+    10,
+    0,
+    0
+   ],
+   [
+    "Job",
+    1,
+    0,
+    0
+   ],
+   [
+    "Job",
+    2,
+    0,
+    0
+   ],
+   [
+    "Job",
+    3,
+    0,
+    0
+   ],
+   [
+    "Job",
+    4,
+    0,
+    0
+   ],
+   [
+    "Job",
+    5,
+    0,
+    0
+   ],
+   [
+    "Job",
+    6,
+    0,
+    0
+   ],
+   [
+    "Job",
+    7,
+    0,
+    0
+   ],
+   [
+    "Job",
+    8,
+    0,
+    0
+   ],
+   [
+    "Job",
+    9,
+    0,
+    0
+   ],
+   [
+    "Job",
+    10,
+    0,
+    0
+   ],
+   [
+    "Job",
+    11,
+    0,
+    0
+   ],
+   [
+    "Job",
+    12,
+    0,
+    0
+   ],
+   [
+    "Job",
+    13,
+    0,
+    0
+   ],
+   [
+    "Job",
+    14,
+    0,
+    0
+   ],
+   [
+    "Job",
+    15,
+    0,
+    0
+   ],
+   [
+    "Job",
+    16,
+    0,
+    0
+   ],
+   [
+    "Job",
+    17,
+    0,
+    0
+   ],
+   [
+    "Job",
+    18,
+    0,
+    0
+   ],
+   [
+    "Job",
+    19,
+    0,
+    0
+   ],
+   [
+    "Job",
+    20,
+    0,
+    0
+   ],
+   [
+    "Job",
+    21,
+    0,
+    0
+   ],
+   [
+    "Job",
+    22,
+    0,
+    0
+   ],
+   [
+    "Job",
+    23,
+    0,
+    0
+   ],
+   [
+    "Job",
+    24,
+    0,
+    0
+   ],
+   [
+    "Job",
+    25,
+    0,
+    0
+   ],
+   [
+    "Job",
+    26,
+    0,
+    0
+   ],
+   [
+    "Job",
+    27,
+    0,
+    0
+   ],
+   [
+    "Job",
+    28,
+    0,
+    0
+   ],
+   [
+    "Job",
+    29,
+    0,
+    0
+   ],
+   [
+    "Job",
+    30,
+    0,
+    0
+   ],
+   [
+    "Job",
+    31,
+    0,
+    0
+   ],
+   [
+    "Job",
+    32,
+    0,
+    0
+   ],
+   [
+    "Job",
+    33,
+    0,
+    0
+   ],
+   [
+    "Job",
+    34,
+    0,
+    0
+   ],
+   [
+    "Job",
+    35,
+    0,
+    0
+   ],
+   [
+    "Job",
+    36,
+    0,
+    0
+   ],
+   [
+    "Job",
+    37,
+    0,
+    0
+   ],
+   [
+    "Job",
+    38,
+    0,
+    0
+   ],
+   [
+    "Job",
+    39,
+    0,
+    0
+   ],
+   [
+    "Job",
+    40,
+    0,
+    0
+   ],
+   [
+    "Job",
+    41,
+    0,
+    0
+   ],
+   [
+    "Job",
+    42,
+    0,
+    1
+   ],
+   [
+    "Psa",
+    1,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    2,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    3,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    4,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    5,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    6,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    7,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    8,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    9,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    10,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    11,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    12,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    13,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    14,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    15,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    16,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    17,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    18,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    19,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    20,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    21,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    22,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    23,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    24,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    25,
+    1,
+    1
+   ],
+   [
+    "Psa",
+    26,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    27,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    28,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    29,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    30,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    31,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    32,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    33,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    34,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    35,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    36,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    37,
+    5,
+    5
+   ],
+   [
+    "Psa",
+    38,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    39,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    40,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    41,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    42,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    43,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    44,
+    1,
+    1
+   ],
+   [
+    "Psa",
+    45,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    46,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    47,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    48,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    49,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    50,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    51,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    52,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    53,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    54,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    55,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    56,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    57,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    58,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    59,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    60,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    61,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    62,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    63,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    64,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    65,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    66,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    67,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    68,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    69,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    70,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    71,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    72,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    73,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    74,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    75,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    76,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    77,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    78,
+    1,
+    1
+   ],
+   [
+    "Psa",
+    79,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    80,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    81,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    82,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    83,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    84,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    85,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    86,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    87,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    88,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    89,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    90,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    91,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    92,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    93,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    94,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    95,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    96,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    97,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    98,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    99,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    100,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    101,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    102,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    103,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    104,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    105,
+    2,
+    2
+   ],
+   [
+    "Psa",
+    106,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    107,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    108,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    109,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    110,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    111,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    112,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    113,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    114,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    115,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    116,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    117,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    118,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    119,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    120,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    121,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    122,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    123,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    124,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    125,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    126,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    127,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    128,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    129,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    130,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    131,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    132,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    133,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    134,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    135,
+    1,
+    1
+   ],
+   [
+    "Psa",
+    136,
+    1,
+    1
+   ],
+   [
+    "Psa",
+    137,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    138,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    139,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    140,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    141,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    142,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    143,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    144,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    145,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    146,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    147,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    148,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    149,
+    0,
+    0
+   ],
+   [
+    "Psa",
+    150,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    1,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    2,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    3,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    4,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    5,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    6,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    7,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    8,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    9,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    10,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    11,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    12,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    13,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    14,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    15,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    16,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    17,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    18,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    19,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    20,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    21,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    22,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    23,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    24,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    25,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    26,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    27,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    28,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    29,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    30,
+    0,
+    0
+   ],
+   [
+    "Pro",
+    31,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    1,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    2,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    3,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    4,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    5,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    6,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    7,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    8,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    9,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    10,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    11,
+    0,
+    0
+   ],
+   [
+    "Ecc",
+    12,
+    0,
+    0
+   ],
+   [
+    "Son",
+    1,
+    0,
+    0
+   ],
+   [
+    "Son",
+    2,
+    0,
+    0
+   ],
+   [
+    "Son",
+    3,
+    0,
+    0
+   ],
+   [
+    "Son",
+    4,
+    0,
+    0
+   ],
+   [
+    "Son",
+    5,
+    0,
+    0
+   ],
+   [
+    "Son",
+    6,
+    0,
+    0
+   ],
+   [
+    "Son",
+    7,
+    0,
+    0
+   ],
+   [
+    "Son",
+    8,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    1,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    2,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    3,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    4,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    5,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    6,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    7,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    8,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    9,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    10,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    11,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    12,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    13,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    14,
+    2,
+    2
+   ],
+   [
+    "Isa",
+    15,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    16,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    17,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    18,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    19,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    20,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    21,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    22,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    23,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    24,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    25,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    26,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    27,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    28,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    29,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    30,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    31,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    32,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    33,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    34,
+    1,
+    1
+   ],
+   [
+    "Isa",
+    35,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    36,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    37,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    38,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    39,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    40,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    41,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    42,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    43,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    44,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    45,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    46,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    47,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    48,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    49,
+    1,
+    1
+   ],
+   [
+    "Isa",
+    50,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    51,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    52,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    53,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    54,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    55,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    56,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    57,
+    1,
+    1
+   ],
+   [
+    "Isa",
+    58,
+    1,
+    1
+   ],
+   [
+    "Isa",
+    59,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    60,
+    1,
+    1
+   ],
+   [
+    "Isa",
+    61,
+    1,
+    1
+   ],
+   [
+    "Isa",
+    62,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    63,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    64,
+    0,
+    0
+   ],
+   [
+    "Isa",
+    65,
+    1,
+    1
+   ],
+   [
+    "Isa",
+    66,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    1,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    2,
+    1,
+    1
+   ],
+   [
+    "Jer",
+    3,
+    2,
+    2
+   ],
+   [
+    "Jer",
+    4,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    5,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    6,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    7,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    8,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    9,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    10,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    11,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    12,
+    3,
+    3
+   ],
+   [
+    "Jer",
+    13,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    14,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    15,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    16,
+    1,
+    1
+   ],
+   [
+    "Jer",
+    17,
+    2,
+    2
+   ],
+   [
+    "Jer",
+    18,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    19,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    20,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    21,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    22,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    23,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    24,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    25,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    26,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    27,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    28,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    29,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    30,
+    1,
+    1
+   ],
+   [
+    "Jer",
+    31,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    32,
+    2,
+    2
+   ],
+   [
+    "Jer",
+    33,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    34,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    35,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    36,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    37,
+    1,
+    1
+   ],
+   [
+    "Jer",
+    38,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    39,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    40,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    41,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    42,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    43,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    44,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    45,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    46,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    47,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    48,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    49,
+    1,
+    1
+   ],
+   [
+    "Jer",
+    50,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    51,
+    0,
+    0
+   ],
+   [
+    "Jer",
+    52,
+    0,
+    0
+   ],
+   [
+    "Lam",
+    1,
+    0,
+    0
+   ],
+   [
+    "Lam",
+    2,
+    0,
+    0
+   ],
+   [
+    "Lam",
+    3,
+    0,
+    0
+   ],
+   [
+    "Lam",
+    4,
+    0,
+    0
+   ],
+   [
+    "Lam",
+    5,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    1,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    2,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    3,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    4,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    5,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    6,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    7,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    8,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    9,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    10,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    11,
+    2,
+    2
+   ],
+   [
+    "Ezk",
+    12,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    13,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    14,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    15,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    16,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    17,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    18,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    19,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    20,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    21,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    22,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    23,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    24,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    25,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    26,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    27,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    28,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    29,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    30,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    31,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    32,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    33,
+    3,
+    3
+   ],
+   [
+    "Ezk",
+    34,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    35,
+    1,
+    1
+   ],
+   [
+    "Ezk",
+    36,
+    1,
+    1
+   ],
+   [
+    "Ezk",
+    37,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    38,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    39,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    40,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    41,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    42,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    43,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    44,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    45,
+    2,
+    2
+   ],
+   [
+    "Ezk",
+    46,
+    0,
+    0
+   ],
+   [
+    "Ezk",
+    47,
+    2,
+    2
+   ],
+   [
+    "Ezk",
+    48,
+    1,
+    1
+   ],
+   [
+    "Dan",
+    1,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    2,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    3,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    4,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    5,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    6,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    7,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    8,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    9,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    10,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    11,
+    0,
+    0
+   ],
+   [
+    "Dan",
+    12,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    1,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    2,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    3,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    4,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    5,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    6,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    7,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    8,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    9,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    10,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    11,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    12,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    13,
+    0,
+    0
+   ],
+   [
+    "Hos",
+    14,
+    0,
+    0
+   ],
+   [
+    "Joe",
+    1,
+    0,
+    0
+   ],
+   [
+    "Joe",
+    2,
+    0,
+    0
+   ],
+   [
+    "Joe",
+    3,
+    1,
+    1
+   ],
+   [
+    "Amo",
+    1,
+    0,
+    0
+   ],
+   [
+    "Amo",
+    2,
+    1,
+    1
+   ],
+   [
+    "Amo",
+    3,
+    0,
+    0
+   ],
+   [
+    "Amo",
+    4,
+    0,
+    0
+   ],
+   [
+    "Amo",
+    5,
+    0,
+    0
+   ],
+   [
+    "Amo",
+    6,
+    0,
+    0
+   ],
+   [
+    "Amo",
+    7,
+    0,
+    0
+   ],
+   [
+    "Amo",
+    8,
+    0,
+    0
+   ],
+   [
+    "Amo",
+    9,
+    0,
+    0
+   ],
+   [
+    "Oba",
+    1,
+    2,
+    2
+   ],
+   [
+    "Jon",
+    1,
+    0,
+    0
+   ],
+   [
+    "Jon",
+    2,
+    0,
+    0
+   ],
+   [
+    "Jon",
+    3,
+    0,
+    0
+   ],
+   [
+    "Jon",
+    4,
+    0,
+    0
+   ],
+   [
+    "Mic",
+    1,
+    0,
+    0
+   ],
+   [
+    "Mic",
+    2,
+    1,
+    1
+   ],
+   [
+    "Mic",
+    3,
+    0,
+    0
+   ],
+   [
+    "Mic",
+    4,
+    0,
+    0
+   ],
+   [
+    "Mic",
+    5,
+    0,
+    0
+   ],
+   [
+    "Mic",
+    6,
+    0,
+    0
+   ],
+   [
+    "Mic",
+    7,
+    1,
+    1
+   ],
+   [
+    "Nah",
+    1,
+    0,
+    0
+   ],
+   [
+    "Nah",
+    2,
+    0,
+    0
+   ],
+   [
+    "Nah",
+    3,
+    0,
+    0
+   ],
+   [
+    "Hab",
+    1,
+    0,
+    0
+   ],
+   [
+    "Hab",
+    2,
+    0,
+    0
+   ],
+   [
+    "Hab",
+    3,
+    0,
+    0
+   ],
+   [
+    "Zep",
+    1,
+    0,
+    0
+   ],
+   [
+    "Zep",
+    2,
+    0,
+    0
+   ],
+   [
+    "Zep",
+    3,
+    0,
+    0
+   ],
+   [
+    "Hag",
+    1,
+    0,
+    0
+   ],
+   [
+    "Hag",
+    2,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    1,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    2,
+    1,
+    1
+   ],
+   [
+    "Zec",
+    3,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    4,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    5,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    6,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    7,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    8,
+    1,
+    1
+   ],
+   [
+    "Zec",
+    9,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    10,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    11,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    12,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    13,
+    0,
+    0
+   ],
+   [
+    "Zec",
+    14,
+    0,
+    0
+   ],
+   [
+    "Mal",
+    1,
+    0,
+    0
+   ],
+   [
+    "Mal",
+    2,
+    0,
+    0
+   ],
+   [
+    "Mal",
+    3,
+    0,
+    0
+   ],
+   [
+    "Mal",
+    4,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    1,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    2,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    3,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    4,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    5,
+    1,
+    1
+   ],
+   [
+    "Mat",
+    6,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    7,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    8,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    9,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    10,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    11,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    12,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    13,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    14,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    15,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    16,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    17,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    18,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    19,
+    1,
+    1
+   ],
+   [
+    "Mat",
+    20,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    21,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    22,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    23,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    24,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    25,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    26,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    27,
+    0,
+    0
+   ],
+   [
+    "Mat",
+    28,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    1,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    2,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    3,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    4,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    5,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    6,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    7,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    8,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    9,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    10,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    11,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    12,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    13,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    14,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    15,
+    0,
+    0
+   ],
+   [
+    "Mar",
+    16,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    1,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    2,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    3,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    4,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    5,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    6,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    7,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    8,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    9,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    10,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    11,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    12,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    13,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    14,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    15,
+    0,
+    1
+   ],
+   [
+    "Luk",
+    16,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    17,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    18,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    19,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    20,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    21,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    22,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    23,
+    0,
+    0
+   ],
+   [
+    "Luk",
+    24,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    1,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    2,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    3,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    4,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    5,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    6,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    7,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    8,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    9,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    10,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    11,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    12,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    13,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    14,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    15,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    16,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    17,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    18,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    19,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    20,
+    0,
+    0
+   ],
+   [
+    "Joh",
+    21,
+    0,
+    0
+   ],
+   [
+    "Act",
+    1,
+    0,
+    0
+   ],
+   [
+    "Act",
+    2,
+    0,
+    0
+   ],
+   [
+    "Act",
+    3,
+    0,
+    0
+   ],
+   [
+    "Act",
+    4,
+    0,
+    0
+   ],
+   [
+    "Act",
+    5,
+    0,
+    0
+   ],
+   [
+    "Act",
+    6,
+    0,
+    0
+   ],
+   [
+    "Act",
+    7,
+    1,
+    1
+   ],
+   [
+    "Act",
+    8,
+    0,
+    0
+   ],
+   [
+    "Act",
+    9,
+    0,
+    0
+   ],
+   [
+    "Act",
+    10,
+    0,
+    0
+   ],
+   [
+    "Act",
+    11,
+    0,
+    0
+   ],
+   [
+    "Act",
+    12,
+    0,
+    0
+   ],
+   [
+    "Act",
+    13,
+    1,
+    1
+   ],
+   [
+    "Act",
+    14,
+    0,
+    0
+   ],
+   [
+    "Act",
+    15,
+    0,
+    0
+   ],
+   [
+    "Act",
+    16,
+    0,
+    0
+   ],
+   [
+    "Act",
+    17,
+    0,
+    0
+   ],
+   [
+    "Act",
+    18,
+    0,
+    0
+   ],
+   [
+    "Act",
+    19,
+    0,
+    0
+   ],
+   [
+    "Act",
+    20,
+    0,
+    0
+   ],
+   [
+    "Act",
+    21,
+    0,
+    0
+   ],
+   [
+    "Act",
+    22,
+    0,
+    0
+   ],
+   [
+    "Act",
+    23,
+    0,
+    0
+   ],
+   [
+    "Act",
+    24,
+    0,
+    0
+   ],
+   [
+    "Act",
+    25,
+    0,
+    0
+   ],
+   [
+    "Act",
+    26,
+    0,
+    0
+   ],
+   [
+    "Act",
+    27,
+    0,
+    0
+   ],
+   [
+    "Act",
+    28,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    1,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    2,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    3,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    4,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    5,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    6,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    7,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    8,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    9,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    10,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    11,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    12,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    13,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    14,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    15,
+    0,
+    0
+   ],
+   [
+    "Rom",
+    16,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    1,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    2,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    3,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    4,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    5,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    6,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    7,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    8,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    9,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    10,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    11,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    12,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    13,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    14,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    15,
+    0,
+    0
+   ],
+   [
+    "1Co",
+    16,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    1,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    2,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    3,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    4,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    5,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    6,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    7,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    8,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    9,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    10,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    11,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    12,
+    0,
+    0
+   ],
+   [
+    "2Co",
+    13,
+    0,
+    0
+   ],
+   [
+    "Gal",
+    1,
+    0,
+    0
+   ],
+   [
+    "Gal",
+    2,
+    0,
+    0
+   ],
+   [
+    "Gal",
+    3,
+    0,
+    0
+   ],
+   [
+    "Gal",
+    4,
+    0,
+    0
+   ],
+   [
+    "Gal",
+    5,
+    0,
+    0
+   ],
+   [
+    "Gal",
+    6,
+    0,
+    0
+   ],
+   [
+    "Eph",
+    1,
+    0,
+    0
+   ],
+   [
+    "Eph",
+    2,
+    0,
+    0
+   ],
+   [
+    "Eph",
+    3,
+    0,
+    0
+   ],
+   [
+    "Eph",
+    4,
+    0,
+    0
+   ],
+   [
+    "Eph",
+    5,
+    0,
+    0
+   ],
+   [
+    "Eph",
+    6,
+    0,
+    0
+   ],
+   [
+    "Php",
+    1,
+    0,
+    0
+   ],
+   [
+    "Php",
+    2,
+    0,
+    0
+   ],
+   [
+    "Php",
+    3,
+    0,
+    0
+   ],
+   [
+    "Php",
+    4,
+    0,
+    0
+   ],
+   [
+    "Col",
+    1,
+    0,
+    0
+   ],
+   [
+    "Col",
+    2,
+    0,
+    0
+   ],
+   [
+    "Col",
+    3,
+    0,
+    0
+   ],
+   [
+    "Col",
+    4,
+    0,
+    0
+   ],
+   [
+    "1Th",
+    1,
+    0,
+    0
+   ],
+   [
+    "1Th",
+    2,
+    0,
+    0
+   ],
+   [
+    "1Th",
+    3,
+    0,
+    0
+   ],
+   [
+    "1Th",
+    4,
+    0,
+    0
+   ],
+   [
+    "1Th",
+    5,
+    0,
+    0
+   ],
+   [
+    "2Th",
+    1,
+    0,
+    0
+   ],
+   [
+    "2Th",
+    2,
+    0,
+    0
+   ],
+   [
+    "2Th",
+    3,
+    0,
+    0
+   ],
+   [
+    "1Ti",
+    1,
+    0,
+    0
+   ],
+   [
+    "1Ti",
+    2,
+    0,
+    0
+   ],
+   [
+    "1Ti",
+    3,
+    0,
+    0
+   ],
+   [
+    "1Ti",
+    4,
+    0,
+    0
+   ],
+   [
+    "1Ti",
+    5,
+    0,
+    0
+   ],
+   [
+    "1Ti",
+    6,
+    0,
+    0
+   ],
+   [
+    "2Ti",
+    1,
+    0,
+    0
+   ],
+   [
+    "2Ti",
+    2,
+    0,
+    0
+   ],
+   [
+    "2Ti",
+    3,
+    0,
+    0
+   ],
+   [
+    "2Ti",
+    4,
+    0,
+    0
+   ],
+   [
+    "Tit",
+    1,
+    0,
+    0
+   ],
+   [
+    "Tit",
+    2,
+    0,
+    0
+   ],
+   [
+    "Tit",
+    3,
+    0,
+    0
+   ],
+   [
+    "Phm",
+    1,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    1,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    2,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    3,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    4,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    5,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    6,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    7,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    8,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    9,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    10,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    11,
+    1,
+    1
+   ],
+   [
+    "Heb",
+    12,
+    0,
+    0
+   ],
+   [
+    "Heb",
+    13,
+    0,
+    0
+   ],
+   [
+    "Jas",
+    1,
+    0,
+    0
+   ],
+   [
+    "Jas",
+    2,
+    0,
+    0
+   ],
+   [
+    "Jas",
+    3,
+    0,
+    0
+   ],
+   [
+    "Jas",
+    4,
+    0,
+    0
+   ],
+   [
+    "Jas",
+    5,
+    0,
+    0
+   ],
+   [
+    "1Pe",
+    1,
+    0,
+    0
+   ],
+   [
+    "1Pe",
+    2,
+    0,
+    0
+   ],
+   [
+    "1Pe",
+    3,
+    0,
+    0
+   ],
+   [
+    "1Pe",
+    4,
+    0,
+    0
+   ],
+   [
+    "1Pe",
+    5,
+    0,
+    0
+   ],
+   [
+    "2Pe",
+    1,
+    0,
+    0
+   ],
+   [
+    "2Pe",
+    2,
+    0,
+    0
+   ],
+   [
+    "2Pe",
+    3,
+    0,
+    0
+   ],
+   [
+    "1Jo",
+    1,
+    0,
+    0
+   ],
+   [
+    "1Jo",
+    2,
+    0,
+    0
+   ],
+   [
+    "1Jo",
+    3,
+    0,
+    0
+   ],
+   [
+    "1Jo",
+    4,
+    0,
+    0
+   ],
+   [
+    "1Jo",
+    5,
+    0,
+    0
+   ],
+   [
+    "2Jo",
+    1,
+    0,
+    0
+   ],
+   [
+    "3Jo",
+    1,
+    0,
+    0
+   ],
+   [
+    "Jud",
+    1,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    1,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    2,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    3,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    4,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    5,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    6,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    7,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    8,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    9,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    10,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    11,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    12,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    13,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    14,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    15,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    16,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    17,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    18,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    19,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    20,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    21,
+    0,
+    0
+   ],
+   [
+    "Rev",
+    22,
+    0,
+    0
+   ]
+  ]
+ }
+}

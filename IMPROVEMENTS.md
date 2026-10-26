@@ -7,7 +7,7 @@ with the version that carried them. Add to it whenever a review or a
 conversation raises something; the manual's version history records
 what shipped, this records what has not.
 
-Last updated 2026-10-21, at version 0.10.106.
+Last updated 2026-10-26, at version 0.10.114.
 
 ## Standing work
 
@@ -1420,6 +1420,14 @@ and 12% for halves paired at random.
 - Separate instruments for inclusio and chiasm: the inclusio test
   scores the frame alone against the frames of other windows, not the
   whole mirror.
+- Inclusio found without a hypothesis (0.10.111). The constellation
+  search (atlas_sets.py) flags a set whose every stretch lies in the
+  first or last 15% of a book: Revelation's beginning, John, word and end
+  gather in chapter 1, 20 to 21 and 22, the frame this trial looked for
+  with chiasm scoring and could not find. Deuteronomy's frame (1 to 4 and
+  29 to 34) and Isaiah's (1 and 65 to 66) are flagged the same way. Read
+  those before taking the chiasm work up again: the frame alone may be
+  what was worth finding.
 - The same-book window null without the rotation null, which cannot
   reach 0.05 under 20 units and builds symmetry out of a frame by
   pairing its two ends across the seam.
@@ -1722,7 +1730,415 @@ with everything through 0.10.37 pushed. The catalogue goes as
 metadata_backup.sql; lxx.db, atlas.db, bibles.db, atlas_source.db and
 strongs.csv never go, and the README says what a visitor must supply.
 
+## Themes (0.10.109, 2026-10-24)
+
+The theme layer is in: `atlas_themes.py`, `themes/land_inheritance.json`,
+the Theme page with its strip, the Workbench's Themes menu, and the
+themes kept with a labelled build. What is left:
+
+**The Reader side (done, Reader 0.3.20).** The theme tables go into
+`results.db` with every canon run and into every `.wadb`; the Reader's
+Themes tab draws the strip from the stored colours and figures only.
+
+**A search by Strong's root for more theme verses (idea).** The
+companion terms have a home (`theme_term`, keyed by Strong's number and
+root) but nothing searches them yet. For land and inheritance:
+H3423 (yarash, possess or inherit), H5159 (nachalah, inheritance),
+H5157 (nachal, to inherit), H776 (erets, land), G2816 (kleronomeo),
+G2817 (kleronomia), G2819 (kleros). A later step would list the verses
+holding these roots that the theme does not yet hold, as candidates to
+add by hand, never added on their own. It would also find the verses a
+translation-mixed list misses: 149 of the 221 kept verses do not hold
+both "land" and an "inherit" word in the King James wording, since the
+list was gathered across translations.
+
+**A strip by verse (idea).** The strip is per chapter now; a strip of
+one cell per verse inside a book (the heat strips' scale) would show
+where in Deuteronomy 4 the theme sits. Wait until a theme asks for it.
+
+**Absence as a finding (idea).** A chapter with none of the theme is
+drawn plain, since with the cushion its lift is only a little under 1.
+A large theme could make a long empty chapter worth marking blue; decide
+when there is a second theme to compare.
+
+**Conflicting roles (waiting).** Two themes may give one verse
+different roles, or two lists one verse twice under two numberings (as
+Zec 2:12 and 2:16 were). Within one file the first entry is kept and the
+second reported; across themes each theme keeps its own roles, which is
+as it should be. Revisit if a theme ever needs to borrow another's.
+
+## Constellations: sets of words that travel together (2026-10-26)
+
+**What (done in 0.10.110; see Done below).** A new module, `atlas_sets.py`, finds sets of two to
+five roots that occur together in the same window of ten verses far
+more often than their separate rates predict, over each testament and
+within each book, by the standard frequent itemset search (Apriori):
+a set is kept when it clears a support floor and a lift floor, and a
+set of size n is tried only when every subset of size n minus 1 was
+kept, which is where the search stops. Sets whose roots all stand
+inside one formula in most of their windows are marked `phrase` and
+listed apart, so the result is the constellations that are not
+phrases (covenant, keep, commandments, statutes across a chapter), not
+the formula table again. Keyness (G2 of observed against expected) is
+the sort order. Three tables through `atlas_report`'s schema so they
+pack: `word_sets`, `word_set_members`, `word_set_windows`; the windows
+keep the one-click rule. The full request, with the settings and the
+order of work, is `reports/Analysis/CONSTELLATIONS_REQUEST.md`.
+
+**Where it came from.** Andrew's proposal of walking the priority
+list of `import_priority.py` from the top and gathering the
+associations of the first word, then the first two, then the first
+three, until the associations lose value. The reviewer's rough trial
+at the verse scale (0.10.103 dataset, 300 Hebrew roots, support 15,
+lift 3) found 979 pairs, 92 triples and 7 fours in a few minutes, the
+fours being the regnal formula of Kings and the census of Numbers:
+the method works, the diminishing value is visible in the falling
+counts, and at the verse scale it rediscovers phrases, which is why
+the window scale and the phrase filter are in the request.
+
+**After the tables are read (idea).** A strip per set on the heat chart,
+and a Constellations page in the main program, once the Reader's tab
+(0.3.22, which also carries the word association view through its root
+box) has been used for a while. The reviewer will write the manual's
+section on constellations once the tab exists.
+
+**Done (0.10.110, 2026-10-26).** `atlas_sets.py` with its settings at
+the head, the Apriori search on bit masks of the units, the phrase rule
+and the three tables (`word_sets`, `word_set_members`,
+`word_set_windows`, with their schema_notes). `python3 atlas_sets.py
+Old`, `Genesis`, `--scale verse|chapter`, `--places N`, `--all`; the
+canon run (`dossier all --results`) calls `--all` under its own run, and
+the pack carries the tables with that run. The verse scale reproduces
+the reviewer's trial (300 roots, support 15, lift 3: 954 pairs, 174
+triples, 28 fours against the trial's 979, 92 and 7, with Lord GOD,
+tabernacle and congregation, written and book, silver and gold, and the
+regnal four marked phrases). Two changes from the request, both
+reported: the phrase rule joins overlapping formulas into one formula
+run, since no formula is longer than five units and the regnal four
+could otherwise never be a phrase; and a floor on separate places
+(MIN_PLACES: 6 over a testament, 3 in a book), since overlapping windows
+let one passage carry any set (with the request's floors alone Leviticus
+kept 3,479 pairs, 7,547 triples, 11,362 fours and 14,199 fives). With the
+floor, at the window scale: Genesis 665, 132, 18, 2; Leviticus 331, 81,
+4, 0; Deuteronomy 520, 117, 26, 6; Isaiah 1,019, 61, 0; Romans 42, 1;
+Revelation 60, 10, 2. `--all` writes 37,982 sets (13,340 of them the Old
+Testament's) in about 30 seconds, some 20 MB. Tests in test_atlas.py:
+Esther's 127 provinces, the regnal formula a phrase, the tables written
+and replaced and deleted with their run.
+
+**The reviewer's four decisions, done in 0.10.111 (2026-10-26).**
+(1) The places floor stays at 6 over a testament and 3 in a book. (2)
+Nominated roots: every root of the stored word lists (metadata.db
+word_lists: ransom, rest, character, mercy and truth, fruit, flesh) and
+of the themes' companion terms is admitted whatever its frequency, and
+the report names them (56 Hebrew roots came in so, among them redeem
+H6299, ransom H3724 and redemption H6306). The named passages hold verse
+ranges and no roots, so the Ransom and rest passage's study enters
+through its two word lists; the feeling words (865 roots) are left out.
+(3) A book is measured against its testament as well as against itself,
+with a norm column (book or testament) and the report printing both.
+Against the testament the book takes the testament's own sets and keeps
+those it holds at least three times as often as the testament does
+(expected = the book's units times the set's testament rate): the
+product of the testament's single-root shares was tried first and every
+combination of a book's own words cleared it (Deuteronomy kept 43,849
+triples before it was stopped). Deuteronomy now shows statutes,
+commandments and keep (lift 7.0 in 6 places) and keep with statutes,
+heart with commandments, possess with destroyed. (4) A third kind,
+frame: not a phrase, and the roots in one same order within 12 content
+words in more than half the units. The span is counted in content words,
+not all words, because "the rest of the acts of ... are they not written
+in the book" runs 15 to 25 words; so counted, rest and written are a
+frame in 43 of their 44 verses. Added beside them: closed sets (no
+larger kept set with the same support), printed with the smaller sets
+folded under them and counted apart; span (chapters from first stretch
+to last); and the inclusio flag. `--all` writes 56,371 sets in about a
+minute, some 30 MB; the six-book report with both norms is
+reports/sets_six_books_two_norms_closed.txt.
+
+**Done (0.10.112 and Reader 0.3.22, 2026-10-26): step two.** The
+reviewer accepted the six changes of 0.10.111. A frame now needs three
+roots or more; a pair that keeps its order stays a constellation, its
+in-order share shown. Frames over the canon fell from 4,147 to 737
+against the book (430 closed) and to 798 against the testament (537
+closed); in the six books, against the book and against the testament:
+Genesis 22 and 3, Leviticus 13 and 97, Deuteronomy 20 and 13, Isaiah 5
+and 2, Romans 0 and 0, Revelation 0 and 1. Under a book's testament
+counts the report prints a home line when the book holds more than half
+of its testament's closed sets of a size (in the six books: Revelation,
+64% of the New Testament's closed sets of 3); Leviticus holds about a
+third of the Old Testament's closed sets of 4 and 5, so it gets no line,
+and no floor was added. word_sets gained in_order, folds and parent so
+the Reader lists a set's folded sets and its in-order share without
+working anything out; tables of an earlier version are made afresh.
+atlas_pack.py leaves the place for a cap (SET_CAP_MB = 40: above it the
+closed sets only, 300 per book, norm and size) and records the sets in
+the manifest; not built, since the tables are some 31 MB before
+compression. The Reader's Constellations tab (reader_constellations.py):
+scope, norm, kind, size, closed only and a root box (a word or a Strong's
+number: every set it belongs to); the grid, sortable, cut at 500 rows;
+the chosen set's strip along the book, its places with their King James
+text, and the sets folded under it; save as text and copy; help notes
+for every control and column; the Claude panel told of the three tables,
+with three starter questions. The Reader's sample was remade with the
+constellations of the New Testament, Ezra, 1 Kings and Revelation and the
+King James text they need (3.9 MB); the tests that ask how an old file
+looks open the sample stripped to its pages.
+
+**Open after 0.10.111 (waiting, for Andrew and the reviewer).**
+(1) Leviticus against its testament keeps sets of every size (true, and
+to stay so: the reviewer asked for a home line, not a floor) (599, 1,293,
+1,382, 703): the Old Testament's own cultic sets are nearly all at home
+in Leviticus, so the counts do not fall there; the closed counts (498,
+931, 973, 703) barely help. A higher concentration floor for the larger
+sizes, or listing only the closed sets of five, are the choices. (2)
+Frames are many in the books: done in 0.10.112 (three roots or more). (3) The
+inclusio rule (every stretch in the first or last 15%, one at each end)
+flags 30 sets in Deuteronomy and 21 in Isaiah, most of them right; read
+them before the rule is trusted for the structure trial.
+
+## Renderings: the English translations aligned and compared (2026-10-26)
+
+**What (done in 0.10.113, below).** A layer, `atlas_renderings.py`, that aligns each public
+domain translation in `atlas_source.db` with the King James verse by
+verse (the word map code of `hebrew_readings.py`, made a shared
+function) and through the King James tags gives every translation an
+approximate Strong's tagging; from it, a `renderings` table of how
+each translator rendered each root and how often, which is the
+companion of the translation workbench's priority list; and from the
+same alignment a disagreement measure per verse (mean Jaccard
+distance on content tokens across the translations present, with the
+share of translations lacking the verse as a second measure), drawn
+as two heat strips, `disagreement` and `missing`, in the standard heat
+run, and a `disagreement_verses` table whose top is the list of
+cruxes. Counts and alignments only, never text; the six copyrighted
+translations never take part. The full request, with the settings,
+the first tests (the name of God, kaphar and hilasterion, almah at
+Isaiah 7:14, the known cruxes) and the order of work, is
+`reports/Analysis/RENDERINGS_REQUEST.md`.
+
+**Where it came from.** Andrew's question whether `bibles.db` could be
+mined for relations among its translations. Four were proposed: the
+family tree of the translations by shared wording, the disagreement
+map, the renderings per root, and the drift of words by translation
+date. The second and third are in the request because the map falls
+out of the alignment; the tree and the drift wait (idea) until the
+alignment has been read.
+
+**After the tables are read (idea).** A Renderings tab in the Reader
+(a root typed, its spread across the translations in date order); the
+family tree with each translation's departures from its parent; word
+rates by date.
+
+**Done (0.10.113, 2026-10-26).** The word map of the quotation
+readings is now `atlas_align.py` (WordMap, and TwoWayMap for the three
+rules: both ways at a share of 0.05, two verses, no name behind a
+common word); `Eval_data/hebrew_greek_map.py` uses it and prints the
+same as before. `atlas_renderings.py align` aligned the 32 public
+domain translations with the King James in 38 minutes: 33 rows with the
+King James itself (97%, its own tags). The King James's words are keyed
+word and root together ("lord|H136", "lord|H3068"), so "Lord GOD" goes
+to "Lord Jehovah" word by word. Tagged shares, in date order: Wycliffe
+41%, Tyndale 52% (both), Coverdale 47%, Geneva 1560 59%, Bishops' 54%,
+Geneva 1599 59%, Douay-Rheims 62% (both), Haweis 64%, Brenton 59%,
+Anderson 66%, Emphatic Diaglott 64%, Noyes 64%, Smith 67%, Revised 74%, Darby
+71%, Young 67%, American Standard 74%, Rotherham 63%, Weymouth 44%,
+Twentieth Century 44%, JPS 77%, ACV 71%, WEB 69%, Catholic Public
+Domain 55%, the three NHEB 68 to 69%, OEB 45% (both), Berean Standard
+57%. The main nineteenth and twentieth century translations sit in the
+expected 60 to 80%; Middle English and the free modern renderings fall
+below it, which is what the share is printed for. Trusted pairings run
+from 3,731 (Twentieth Century NT) to 11,667 (Revised); roots kept per
+translation from 655 to 2,532; the renderings table holds 160,110 rows
+and renderings_summary 62,356. `strips` measures 31,102 verses in about 40 seconds and writes 267
+spots at z 2.
+
+Two changes to the request, both for the reviewer to confirm. (1)
+Compared on spellings, every top crux was a verse where Wycliffe or
+Coverdale spells otherwise; the words are now compared through the
+alignment (a word paired with a tagged King James word counts as the
+root), and even so Wycliffe stands far from everyone on every verse. So
+the cruxes are sorted by **excess**: each pair's distance less that
+pair's mean distance over the Bible, a pair of which one has the verse
+and the other lacks it counted as sharing nothing. mean_distance is
+kept as asked; excess and the outlier (the translation furthest beyond
+its usual distance from the rest) are two added columns. (2) A root too
+rare for the table (hilasterion, almah) is counted afresh from the
+learned pairings kept in renderings_cache.db, with a word paired under
+another root accepted when its own key never met the two-verse rule.
+
+The first tests (reports/renderings_*.txt). H3068: LORD in most;
+Jehovah in Darby, Young, the American Standard, Smith, the ACV, the NHEB
+Jehovah edition and three quarters of Noyes; Yahweh in Rotherham and
+the WEB; the JPS text in atlas_source.db reads HaShem, not LORD or the
+Eternal. H3722: atonement in nearly all; pray in the Douay and the
+Catholic Public Domain, expiate in Smith, propitiatory-covering in
+Rotherham; reconcile in Tyndale and Coverdale. G2434: propitiation
+through the American Standard, atoning in Weymouth, the WEB and after;
+G2435: propitiation or atoning at Romans 3:25, while the mercy seat of
+Hebrews 9:5 pairs in none (two words, "mercy seat", against the King
+James's one). Isaiah 7:14: virgin in every translation but Noyes
+(damsel) and the JPS (young woman), shown as the words unpaired in the
+verse. The cruxes: the verses the critical text leaves out come high
+(Luke 17:36 sixth of 31,102, Acts 15:34 45th, Acts 24:7, Acts 28:29,
+Mark 15:28 within the top 200, Matthew 17:21, Mark 9:44, Mark 11:26,
+Luke 23:17 within the top 520, Acts 8:37 at 1,637), with the American
+Standard the outlier on most and the Revised on Luke 17:36 and Acts
+8:37; Psalm 22:16 (2,356, the JPS the outlier) and John 7:53 (2,584)
+are in the top tenth; 1 John 5:7 is at 4,259. Missed: Isaiah 7:14
+(15,092: one word of twelve differs, which a Jaccard distance barely
+feels; the verse report is the instrument there), Romans 16:24 (10,982:
+the verse is short and the translations having it agree), and Mark
+16:9-20 and John 7:53-8:11 as passages (median ranks about 10,000 and
+12,000): every translation here prints them, the Revised and American
+Standard in brackets, and brackets and notes are not words. The top of
+the list is otherwise the obscure Hebrew of Job, the finery of Isaiah
+3, Proverbs and Hosea 5:2, where translators truly part.
+
+Fixed on the way. (a) atlas_translations.align_texts sampled the head
+of each book when choosing a tradition's numbering, so a seam late in a
+book was missed (Job 40:25 is the King James's 41:1 in the JPS and the
+Geneva); it now tries the maps only on the verses they renumber, spread
+over the book. Every Vulgate, Septuagint and Hebrew numbered
+translation came closer to the King James: the JPS from 0.849 to 0.899
+mean closeness and 22,999 to 23,022 verses, Brenton 0.612 to 0.671,
+the Challoner Douay 0.709 to 0.745. The translations column built by
+atlas_translations.py gains from it at its next build. (b) A verse
+whose words are all stop words ("For he that is not against us is for
+us", Mark 9:40) counted as missing; it is present.
+
+**Waiting (for the reviewer).** (1) Accept excess as the crux order, or
+ask for another normalisation. (2) Whether a missing verse should weigh
+more than the pairs that have it agree (Romans 16:24, Matthew 18:11
+rank low because the translations keeping them agree on them). (3)
+Hebrews 9:5: let the cache pair two words with one ("mercy seat" with
+"mercyseat"). (4) The numbering edges still seen in the missing list
+(Daniel 4:1-3, Job 40:1-5, Exodus 40:14 and others in a fifth of the
+Old Testament translations) are verses joined or dropped by a
+tradition's map; read them against the texts. (5) The pack copies results.db
+whole, so it now carries the four tables and the two strips: about 27
+MB more before compression, most of it the renderings table (160,110
+rows). Keep them, or leave renderings out until the Reader has its
+tab. (6) metadata.db dates GN2 to 1560 while
+atlas_source.db titles it "Geneva Bible (1599)", and GEN to 1599: one
+of the two Geneva rows needs its title or its date put right.
+
+**Done (0.10.114 and Reader 0.3.23, 2026-10-26): step two.** The
+reviewer confirmed the two changes of 0.10.113 (the cruxes sorted by
+excess; a rare root counted from the saved pairings). Four refinements:
+
+(1) Proper names are set aside from the distance on the alignment's
+rule, with a word used once and capitalised; `disagreement_verses.names`
+counts the King James's names in the verse (18,798 verses have one,
+God and the LORD among them, since they are capitalised). A verse left
+with fewer than three King James words once its names are gone, and
+lacking in no translation, gets no excess (MIN_CRUX_WORDS; 1,278
+verses): without that floor Genesis 26:35 ("a grief of mind unto Isaac
+and to Rebekah") and Isaiah 45:15 headed the list on two words each.
+Genesis's top ten lost 10:14 and 15:19 (now unranked; they were 613th
+and 234th), and Job, Proverbs and Isaiah 3 stay at the top.
+
+(2) Merged against lacking: a verse a translation lacks is merged when
+more than half of the King James verse's content words stand in that
+translation's verse before or after it, and more there than in the
+King James's own neighbour. 137 verses, 200 translation-verses, most
+in Wycliffe (60), the Challoner Douay (25), the 1599 Geneva (24) and
+the Catholic Public Domain (20); `merged` and `merged_with` record them,
+the missing strip and report count only the lacking, and
+reports/renderings_merged.txt (sent to Andrew) lists them by book with
+whether a TVTMS map names the verse. Daniel 4:1 is merged into 3:30 in
+the Geneva; Psalm 13:6 into 13:5 in the JPS and Brenton. Still lacking,
+and not division: Daniel 4:1-3 in the JPS (atlas_source.db's JPS has no
+Hebrew 3:31-33: an import loss), Song of Solomon 1:1 in the Latin
+family (the Vulgate has no title verse), and the Old Testament verses
+whose neighbour shares too few words to pass the half.
+
+(3) Two-word units: the King James's absorbed words are joined to the
+word beside them that carries the same number ("mercy seat", "burnt
+offering", "right hand", "thus saith") and aligned whole; a translation
+word that goes to the unit takes the word beside it when the unit
+renders to it with a share of 0.05 or more. 4,323 renderings rows are
+two words. Before and after (reports/renderings_units_before_after.txt):
+H5930 in the WEB went from offering 46%, burnt 39% to burnt offering
+54%; H5439 round about 64 to 75% where it was split as about and round;
+H3225 right hand 75 to 86% in place of right alone; the Geneva's
+burnt offring 40%. Hebrews 9:5 pairs G2435 with mercy seat in every
+translation that prints it (Coverdale's mercyseate, the Bishops' mercie
+seate, the American Standard's mercy-seat, the WEB's mercy seat), a
+word or two adjacent words that spell the King James word counting as
+its rendering in the live count.
+
+(4) Variety by word: renderings_summary.renderings_folded counts the
+renderings with endings and spellings folded (the atlas's spelling table
+and stemmer, a short table of irregular past forms, the early final e),
+and the translation report leads with it: the Geneva now opens with
+H6213 (32 words, 50 as printed), H3318, H559, H6965, where it opened
+with dwell's 28 spellings.
+
+Part 2: the JPS in atlas_source.db reads HaShem (5,523 verses), G-d and
+L-rd: a later edition of the 1917 translation prepared for Orthodox
+use, publisher not named. The two Genevas both carry the Tomson New
+Testament ("The booke of the generation", Matthew 1:1), so neither is
+the 1560 text; the database labels GN2 1599 and GEN 1587 and cannot say
+more, so both print "edition unverified". metadata.db's
+translation_families gains an edition column (`atlas_renderings.py
+editions`; GN2's year 1560 is now 1599 and GEN's 1599 is 1587), and
+ATTRIBUTION.md says the same. Part 3: renderings_cruxes.txt is headed
+as the map of the hard Hebrew and Greek and ends with the table by book
+(Job 7.5 times its share of the top 500, Proverbs 3.3, 2 Corinthians
+3.2, Lamentations 2.3, Hosea 2.2, Psalms 2.0, Isaiah 1.9; books expected
+to hold fewer than two listed apart). Part 4: the Reader's strip notes
+and the Claude panel's guide, with two starter questions.
+
+**Waiting (for the reviewer), step two.** (1) God, the LORD and the
+Saviour are names by the capital rule, so they leave the distance;
+keep that, or exempt the divine names. (2) Romans 16:24 now ranks low
+(19,842): with its names gone the translations keeping it agree on
+"grace" and "amen", and that agreement outweighs those lacking it.
+Weighting a lacking verse more is still the open question (4 of
+0.10.113). (3) The JPS's missing Daniel 3:31-33 is a gap in the
+source; a fresh import of that text would mend it. (4) Isaiah 7:14 and
+Mark 16:9-20 are missed as before (one word; brackets).
+
 ## The USB drive (0.10.88)
+
+**The window's fresh pack (fixed 0.10.108; Reader 0.3.19).** The first
+drive made with Bible Search Lite ticked (2026-10-22, from the Reader)
+carried all three programs, but its dataset was 250 MB, two runs and
+4,382 pages, without passages, King James text or sources: the "Pack a
+fresh dataset first" box was ticked, and atlas_usb.pack_dataset was the
+0.10.73-era copy that zipped results.db whole. It also wrote over
+reports/word_atlas_0.10.103_2026-10-20.wadb, the 128 MB one-run pack.
+pack_dataset now runs atlas_dir's atlas_pack.py as its own process (a
+built Reader refuses, having no Python), with --results and --out, and
+logs its lines. The box was offered because results.db was dated later
+than the pack; it had been written to (the sources table refreshed)
+with no new run. results_newer_than now compares the newest run's start
+with the runs the dataset's manifest lists. One guard. To put right:
+python3 atlas_pack.py, then Update the drive.
+
+**Bible Search Lite on the drive (done 0.10.107; Reader 0.3.18).** A
+third box in the USB window, unticked at first. atlas_usb finds the
+program as bible-search-lite beside this program's folder
+(find_bsl_dir; Find... or --bsl-dir otherwise) and carries the files its
+own updater keeps (update_files.txt), with LICENSE, README.md,
+requirements.txt, VERSION.txt and its icons, under
+programs/bible_search_lite/, and database/bibles.db in a group of its
+own (bsl_data). Never carried: subjects.db, user_data.db, the settings
+file, the venv, the tests, the backups of bibles.db. The installer's
+menu lists the programs the drive holds and "All of them" (--app bsl,
+--app all; --app both still means the Reader and Word Atlas); Bible
+Search Lite goes into bible_search_lite/ with a starter (which runs it
+from its own folder, where it looks for database/bibles.db), and menu
+or Start menu and Desktop entries with its png or ico icon. The install
+report checks that bibles.db opens and counts its translations. A
+subjects.db of the user's own is never replaced. bibles.db holds
+translations still under copyright, so the box's note says it is for
+your own computers. One guard (a stand-in Bible Search Lite carried,
+installed, started, and installed again over a subjects.db of its own).
+Tried 2026-10-23: a drive made on a blank Lexar stick carried all
+three programs and the 128 MB one-run dataset, and installed and ran
+on another Windows 11 computer without trouble.
 
 **The Windows side, untried (next).** `Install-Windows.bat`, the
 Start menu and Desktop shortcuts, and the PyQt6 unpacked from the
@@ -1745,7 +2161,7 @@ system would be added.
 
 ## DONE
 
-2026-10-03 the repository public with 0.10.37 pushed. 0.10.106 no button narrower than its label (the style's fixed minimum removed, fit_buttons), Rebuild atlas beside the Build box; the Reader's least width brought to about 770 pixels (Reader 0.3.17). 0.10.105 the Atlas tab's notes, section notes and footers wrap to the visible width of the page pane. 0.10.104 one run per pack (--latest-only the default, --all-runs to keep every run); atlas_results.py prune (keep the newest two runs, vacuum), suggested by the canon-wide rerun from the third run; ATTRIBUTION.md says the pack as a whole is non-commercial. 0.10.103 the sources table (results.db, the pack, schema_notes) from ATTRIBUTION.md, the adaptation wording in the OpenBible and Sefaria footers, the Septuagint's license confirmed; the Reader's About box shows the table (Reader 0.3.14). 0.10.102 the USB installer's install report (install_report.txt, installed_files.json, --check), a built Reader finding its source folder for the drive and its datasets kept off it; the Reader's updates from GitHub (Reader 0.3.13). 0.10.101 the heat strips in the results file: atlas_heat.py writes heat_strips, heat_windows and heat_spots on every run, run_heat.py --all draws every word list and a fifth report of every context and voice so it fills them for every book and strip, and Eval_data/ransom_rest_report.py reads its strip tables from them (the same windows as the run of 2026-10-18); schema_notes; atlas_pack.py carries the named passages and the King James text with its tags, packs no other file, and refuses a results file without schema_notes; book pages gain 7v and 7p from the grammar layer (atlas_morph.py, now run by the two builders; atlas_grammar.py); section 5's "deepest at" prints '.' for a word with no deepest chapter; two guards; the canon-wide rerun of the dossiers. 0.10.100 run_heat.py --all (every book). 0.10.99 run_heat.py --one (the four text reports in one file) and --no-svg. 0.10.98 run_heat.py's fourth report (heat_<book>_names); number labels by whole words and the Hebrew teens counted once; "divine" renamed "mercy and truth". 0.10.97 the word-list strips counted from lxx.db with the gloss rules (they agree with the trial spot for spot); spots sharing half a window joined. 0.10.96 atlas_heat.py --names (nations, persons, home, numbers; date and feast marks), --norm group and group:NAME, the four word-list strips with --families (atlas_feelings.py lists, metadata.db word_lists); the counting rules in atlas_pos.py, filled by the two builders; three guards. 0.10.95 test_atlas.py: a guard that pos_experiment.py's numbers and dates add up to the number words of every book (skipped when lxx.db has no filled pos column); no page changes. 0.10.94 build_tahot.py: the Aramaic function words that stand alone are stop words (825 tokens in Daniel 2 to 7, Ezra 4 to 7 and Jeremiah 10:11 had been stored as content words); no page reads the Hebrew text's stop flag yet, so no table changes (five book pages compared line for line); it takes `python3 build_tahot.py`, then `python3 atlas_pos.py`; the trial tools atlas_pos.py, pos_experiment.py and word_code_experiment.py came in beside it (see the parts of speech section). 0.10.93 the USB window's lines kept within the pane (the Choose button was pushed out of sight); bibles.db no longer offered for the drive. 0.10.92 atlas_source.py: Word Atlas's own Bible text taken out of bibles.db (the King James, its tags, the translations free of copyright), read first by every build and carried by the USB drive. 0.10.91 openbible_import.py, the cross references refreshed from the source (written in another session as 0.10.88 and joined to this line of work here). 0.10.90 a Reader bundle takes every program file in the Reader's folder, not a fixed list. 0.10.89 the drive's installer puts the Reader's dataset in the Reader's own datasets folder; the drive guard offline and without the disk flush. 0.10.88 the Workbench a tab of the window, the Reader's tools on its own Tools tab, and a USB drive that installs either program with its data on Windows or Linux (atlas_usb.py). 0.10.87 the idiom question sets the Greek-held rows apart and counts distinct echoes. 0.10.86 the divine name and shall folded in the translations matcher, the best pair named, the Greek-confirmed pairs out of the idiom tally, content words beside 'whole in Greek'. 0.10.85 atlas_dist.py and the Install menu: bundles for a new install of the Reader or of Word Atlas. 0.10.84 the Workbench, every command under one menu. 0.10.83 the translations numbered another way remapped by trial against TVTMS's Hebrew, Latin and Greek maps; the index built on 33 translations. 0.10.82 the reviewer's read of 0.10.81 (articles counted when shared, common-stock runs, 'cited, N roots' rows); the copyrighted translations excluded. 0.10.81 the rabbinic library's pairs as a second web (sefaria_links.py; the cited column and footers on 4 and 6; `atlas_results.py cited`). 0.10.80 the other English translations as witnesses to the English echoes (atlas_translations.py; translations and families columns on 4 and 4f; `atlas_results.py idiom`). 0.10.79 4f's 'whole in Greek', articles stepped over, root counts. 0.10.78 4f's three-way Greek test. 0.10.77 4f's listed four-word echoes; `atlas_results.py unlisted`, a results query that samples the unlisted echo rows for grading by hand. 0.10.76 listings counted once, 4 and 4e reconciled, three-word Greek runs on listed pairs. 0.10.75 the cross references as a check on the echo tables (listed column, footers, results question). 0.10.74 the packed file named after its run. 0.10.73 atlas_pack.py and the Word Atlas Reader (its own repository). 0.10.72 figure-like text columns right-aligned. 0.10.71 the window's double-click crash. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
+2026-10-03 the repository public with 0.10.37 pushed. 0.10.108 the USB window's fresh pack made by atlas_pack.py itself, and offered only for a newer run (Reader 0.3.19). 0.10.107 the USB drive carries Bible Search Lite and its bibles.db when ticked, and its installer installs it (Reader 0.3.18). 0.10.106 no button narrower than its label (the style's fixed minimum removed, fit_buttons), Rebuild atlas beside the Build box; the Reader's least width brought to about 770 pixels (Reader 0.3.17). 0.10.105 the Atlas tab's notes, section notes and footers wrap to the visible width of the page pane. 0.10.104 one run per pack (--latest-only the default, --all-runs to keep every run); atlas_results.py prune (keep the newest two runs, vacuum), suggested by the canon-wide rerun from the third run; ATTRIBUTION.md says the pack as a whole is non-commercial. 0.10.103 the sources table (results.db, the pack, schema_notes) from ATTRIBUTION.md, the adaptation wording in the OpenBible and Sefaria footers, the Septuagint's license confirmed; the Reader's About box shows the table (Reader 0.3.14). 0.10.102 the USB installer's install report (install_report.txt, installed_files.json, --check), a built Reader finding its source folder for the drive and its datasets kept off it; the Reader's updates from GitHub (Reader 0.3.13). 0.10.101 the heat strips in the results file: atlas_heat.py writes heat_strips, heat_windows and heat_spots on every run, run_heat.py --all draws every word list and a fifth report of every context and voice so it fills them for every book and strip, and Eval_data/ransom_rest_report.py reads its strip tables from them (the same windows as the run of 2026-10-18); schema_notes; atlas_pack.py carries the named passages and the King James text with its tags, packs no other file, and refuses a results file without schema_notes; book pages gain 7v and 7p from the grammar layer (atlas_morph.py, now run by the two builders; atlas_grammar.py); section 5's "deepest at" prints '.' for a word with no deepest chapter; two guards; the canon-wide rerun of the dossiers. 0.10.100 run_heat.py --all (every book). 0.10.99 run_heat.py --one (the four text reports in one file) and --no-svg. 0.10.98 run_heat.py's fourth report (heat_<book>_names); number labels by whole words and the Hebrew teens counted once; "divine" renamed "mercy and truth". 0.10.97 the word-list strips counted from lxx.db with the gloss rules (they agree with the trial spot for spot); spots sharing half a window joined. 0.10.96 atlas_heat.py --names (nations, persons, home, numbers; date and feast marks), --norm group and group:NAME, the four word-list strips with --families (atlas_feelings.py lists, metadata.db word_lists); the counting rules in atlas_pos.py, filled by the two builders; three guards. 0.10.95 test_atlas.py: a guard that pos_experiment.py's numbers and dates add up to the number words of every book (skipped when lxx.db has no filled pos column); no page changes. 0.10.94 build_tahot.py: the Aramaic function words that stand alone are stop words (825 tokens in Daniel 2 to 7, Ezra 4 to 7 and Jeremiah 10:11 had been stored as content words); no page reads the Hebrew text's stop flag yet, so no table changes (five book pages compared line for line); it takes `python3 build_tahot.py`, then `python3 atlas_pos.py`; the trial tools atlas_pos.py, pos_experiment.py and word_code_experiment.py came in beside it (see the parts of speech section). 0.10.93 the USB window's lines kept within the pane (the Choose button was pushed out of sight); bibles.db no longer offered for the drive. 0.10.92 atlas_source.py: Word Atlas's own Bible text taken out of bibles.db (the King James, its tags, the translations free of copyright), read first by every build and carried by the USB drive. 0.10.91 openbible_import.py, the cross references refreshed from the source (written in another session as 0.10.88 and joined to this line of work here). 0.10.90 a Reader bundle takes every program file in the Reader's folder, not a fixed list. 0.10.89 the drive's installer puts the Reader's dataset in the Reader's own datasets folder; the drive guard offline and without the disk flush. 0.10.88 the Workbench a tab of the window, the Reader's tools on its own Tools tab, and a USB drive that installs either program with its data on Windows or Linux (atlas_usb.py). 0.10.87 the idiom question sets the Greek-held rows apart and counts distinct echoes. 0.10.86 the divine name and shall folded in the translations matcher, the best pair named, the Greek-confirmed pairs out of the idiom tally, content words beside 'whole in Greek'. 0.10.85 atlas_dist.py and the Install menu: bundles for a new install of the Reader or of Word Atlas. 0.10.84 the Workbench, every command under one menu. 0.10.83 the translations numbered another way remapped by trial against TVTMS's Hebrew, Latin and Greek maps; the index built on 33 translations. 0.10.82 the reviewer's read of 0.10.81 (articles counted when shared, common-stock runs, 'cited, N roots' rows); the copyrighted translations excluded. 0.10.81 the rabbinic library's pairs as a second web (sefaria_links.py; the cited column and footers on 4 and 6; `atlas_results.py cited`). 0.10.80 the other English translations as witnesses to the English echoes (atlas_translations.py; translations and families columns on 4 and 4f; `atlas_results.py idiom`). 0.10.79 4f's 'whole in Greek', articles stepped over, root counts. 0.10.78 4f's three-way Greek test. 0.10.77 4f's listed four-word echoes; `atlas_results.py unlisted`, a results query that samples the unlisted echo rows for grading by hand. 0.10.76 listings counted once, 4 and 4e reconciled, three-word Greek runs on listed pairs. 0.10.75 the cross references as a check on the echo tables (listed column, footers, results question). 0.10.74 the packed file named after its run. 0.10.73 atlas_pack.py and the Word Atlas Reader (its own repository). 0.10.72 figure-like text columns right-aligned. 0.10.71 the window's double-click crash. 0.10.70 the results questions refined, the seams acted on, 7d's no-rest decline. 0.10.69 atlas_results.py. 0.10.68 the reporting module and the results database. 0.10.67 page lengths in the list, section list on cross-book pages. 0.10.66 contents by line in dossiers, section lists on book pages. 0.10.65 the cross-book control, the Rest-row Delta, five word counts mended. 0.10.64 cross-book sections. 0.10.63 test_atlas.py. 0.10.62 content-word grade, seams footer, lemma keys read in the tokens' form. 0.10.61 one-word gaps bridged in 4e. 0.10.60 4f. 0.10.59 build_gnt files words by King James verse; the unconfirmed footer from the echoes table. 0.10.58 the layer's first review (grade, unmapped Rahlfs verses, unconfirmed-by-Greek footer). 0.10.57 the Septuagint layer: 1e, 1f, 4e; the Compare page's refrains tie broken by the phrase. 0.10.56 the names test mended (first-word tail, en dash). 0.10.55 the TAHOT imported; 1c and 7d for the Old Testament. 0.10.54 the names test counted once; --time. 0.10.53 1d's run ceiling. 0.10.52 the canon-wide read's four fixes. 0.10.51 the Greek New Testament imported (build_gnt.py); tags
 splits. 0.10.50 1d a language at a time for Daniel and Ezra. 0.10.49 a run figure for the once-here share. 0.10.48 1c and 1d refusals and the sibling caution. 0.10.47 nearest beyond the kind under 1c and 1d. 0.10.46 1d's run figures cached. 0.10.45 1d's run columns. 0.10.44 vocabulary richness (1d); Hebrews in parts. 0.10.43 the kind's own size yardsticks. 0.10.42 nine-in-ten yardsticks and a no-pronoun Delta. 0.10.41 cautions and a size yardstick on 1c and 7d; three more
 letters in parts. 0.10.40 the function-word layer, 1c and 7d (New Testament). 0.10.39 section 7's leading words floored and ended early. 0.10.38 2 Corinthians, Galatians and Ephesians in parts. 0.10.37 Romans and 1 Corinthians in parts. 0.10.36 --quiet keeps a rowless section's note. 0.10.35 1b's occurrence floor scales with the book (one per 1,500
 words, 3 to 5). 0.10.34 1b stops at a keyness floor (6.63); three occurrences for a

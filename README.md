@@ -17,6 +17,13 @@ a chapter's kin, a testament, or two books chapter against chapter.
 Every number on every page can be traced to the verses that produced it
 with one click.
 
+A **theme** is a set of verses gathered by hand (the first is land and
+inheritance), kept as a file in `themes/` and loaded by every build.
+Its page draws a strip of the canon, one cell per chapter, coloured by
+how far the chapter holds more of the theme than its length would give
+it (`python atlas_query.py theme land_inheritance`; the manual's section
+14b; new themes from the Workbench's Themes menu or `atlas_themes.py import`).
+
 ## Running it
 
     cd ~/projects/word_atlas

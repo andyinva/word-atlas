@@ -53,3 +53,6 @@ Eval_data/vocab/
 
 # Safety copies of lxx.db made before a trial (163 MB, never committed)
 lxx.db.before*
+
+# The learned pairings of atlas_renderings.py align (about 20 MB, made afresh by align, never committed)
+renderings_cache.db

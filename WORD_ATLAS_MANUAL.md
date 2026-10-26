@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.106. Andrew Hopkins, with Claude.
+For version 0.10.114. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -292,6 +292,7 @@ python atlas_query.py book Joel
 python atlas_query.py chapter Joel 2
 python atlas_query.py section Psalms: Book II
 python atlas_query.py passage Harlot city
+python atlas_query.py theme land_inheritance
 python atlas_query.py word day
 python atlas_query.py word day Joel
 python atlas_query.py kin Ezekiel 47
@@ -460,6 +461,40 @@ Search Lite's whole database, is not on the list (it was until
 holds translations still under copyright. Rest the pointer on any of them in the window to read the
 same note.
 
+**Bible Search Lite on the drive (0.10.107).** The window has a third
+box, **Bible Search Lite**, unticked until you tick it. It finds the
+program in `bible-search-lite` beside Word Atlas's folder (Find... for
+another place) and carries the files its own updater keeps, listed in
+its `update_files.txt`, with its licence, icon and version file, and its
+`database/bibles.db` (about 440 MB). Its `subjects.db`, its settings file
+and its venv are yours and never go: the program makes them afresh on
+its first start on the other computer. The installer then offers it
+beside the other two (or "All of them"), installs it into
+`bible_search_lite` in the install folder with a starter and a menu or
+Start menu and Desktop entry carrying its own icon, and the install
+report says whether `bibles.db` opens and how many translations it
+holds. A `subjects.db` already on that computer is never replaced.
+`bibles.db` holds translations still under copyright beside the free
+ones (the reason it left the list of Word Atlas's databases in
+0.10.93), so the box is for your own computers: check before handing
+such a drive to someone else. From the command line,
+`python3 atlas_usb.py build DRIVE --bsl` (and `--bsl-dir FOLDER`), and
+on the drive `python3 install.py --app bsl` (or `--app all`).
+
+**Where things are on the drive.** Everything goes into the one folder
+`WordAtlas` at the top of the drive, so nothing else on the drive is
+touched. The three programs are inside it, each in a folder of its own
+under `WordAtlas/programs/` (`word_atlas_reader`, `word_atlas`,
+`bible_search_lite`), with the datasets and databases under
+`WordAtlas/data/` and the installer files at the top of `WordAtlas`.
+
+**A fresh pack (0.10.108).** When `results.db` holds a run the chosen
+dataset lacks, the window offers to pack a fresh one first. It runs
+`atlas_pack.py` from the Word Atlas folder, so the dataset is the same
+as one packed by hand: the newest run only, with the passages, the King
+James text and the sources table. A built copy of the Reader cannot run
+it (it has no Python); pack in Word Atlas instead.
+
 **Bringing it up to date.** Press the same button another day. The
 drive keeps a list of what it holds (`usb_manifest.json`: every file
 with its size, date and checksum), and only files that differ are
@@ -565,6 +600,15 @@ copies the chosen kept build's rules back over `atlas_text.py`, saving
 the current rules first under `builds/` with a time stamp, so the next
 rebuild returns to that state. The `builds/` folder is not in git.
 
+Every build also loads the themes (section 14b): each file in the
+`themes/` folder goes into the new `atlas.db`, and the build line under
+every report's title ends with the themes it carries ("Themes:
+land_inheritance (215 core)."). A labelled build keeps a copy of the
+folder as `builds/<label>.themes/`, and Restore rules puts that copy
+back in `themes/` too (the current themes are first kept under
+`builds/` with a time stamp), so going back to a kept build brings back
+the themes it was made with.
+
 Not every rule needs a rebuild. The rules in `atlas_pages.py` (the
 parallel rule, the floors under the lists, the refrain and doublet
 distances, the table sizes) and the tables in `atlas_sections.py` are
@@ -611,6 +655,11 @@ English ones.
 | `atlas_source.db` | What `atlas_source.py make` writes beside the program: read first by the build, the translations index and the USB drive; never committed |
 | `atlas_translations.py` | The other English translations as witnesses to the echoes found by wording: `build` writes `translations_index.db` from `atlas_source.db` (else `translations.db`, an older export of Bible Search Lite's text tables, else `bibles.db`); `survey` measures the translations' distance from the King James and proposes families; behind the `translations` and `families` columns and footers of sections 4 and 4f |
 | `translations.db` | An older export of the four text tables of Bible Search Lite's `bibles.db` (books, translations, verses, verse_texts), never committed; `atlas_source.db` carries the translations from 0.10.92 and is read before it, so it can be deleted; `translations_index.db` is what `build` makes of it, never committed either |
+| `atlas_sets.py` | Constellations (section 28e): sets of two to five roots that travel together, by the frequent itemset search; `--all` writes every scope into `results.db` |
+| `atlas_renderings.py` | Renderings (section 28f): each public domain translation aligned with the King James, its renderings of every root counted, and the disagreement of the translations measured verse by verse into two heat strips |
+| `atlas_align.py` | The word alignment shared by `atlas_renderings.py` and `Eval_data/hebrew_greek_map.py`: IBM Model 1 read both ways, the two-verse rule and the proper-name ban |
+| `atlas_themes.py` | Themes (section 14b): `import` turns a verse list into a theme file, `load` loads every file of `themes/` into `atlas.db` with the reference check and the strip, `list` shows them; every build calls it |
+| `themes/` | The theme files, one JSON file a theme (`land_inheritance.json`); kept in git, and copied beside a labelled build |
 | `atlas_listed.py` | The cross references (OpenBible.info on the Treasury of Scripture Knowledge, from bibles.db) behind the `listed` column and footers of sections 4, 4e and 6 |
 | `atlas_results.py` | Questions across the canon asked of reports/results.db, each answer saved as a text file under reports/ (section 19) |
 | `atlas_pack.py` | Packs a copy of reports/results.db, with the named passages and the King James text added, and a manifest into one `.wadb` file for the Word Atlas Reader, the separate viewer for readers who have the dataset and not the program; refuses a results file without schema_notes (section 19) |
@@ -1525,6 +1574,94 @@ mixes Hebrew and Greek roots in one table, each measured against its
 own testament. A passage of whole chapters of one book is better
 served by a section, which gets every table; the passage page is for
 a verse range, or for a study across books.
+
+## 14b. The Theme page
+
+A theme is a finding made by hand: a set of verses that belong
+together, the words that define it, and a role for every verse. The
+first is "Land and inheritance", made from a Bible Search Lite search.
+Each verse is one of three:
+
+- **core**: a verse the theme is about;
+- **borderline**: a verse that matches but stands apart (ordinary
+  family inheritance beside the covenant land, a field of lentils),
+  kept and counted separately so it can be left in or out;
+- **excluded**: a verse the search found that is not the theme (a
+  false match such as "slanderers"), kept with its reason and never
+  counted.
+
+A theme lives as one file in the `themes/` folder
+(`themes/land_inheritance.json`), and every build loads every file
+there into `atlas.db` (section 9). Each reference is checked against
+the atlas's verses; one the atlas does not hold is reported, at the
+build, on the page (section 5) and by `atlas_themes.py load`, and never
+dropped silently. The land and inheritance list wrote Zechariah 2:12
+twice, once in the Hebrew numbering as 2:16; a renumber rule now joins
+the two, so the theme holds 225 verses: 215 core, 5 borderline, 5
+excluded.
+
+**Making a theme.** On the Workbench tab, Themes menu, Import a verse
+list as a theme: choose the list (a Bible Search Lite export as it
+comes, header lines and all, or one verse a line as `"Gen 15:7","text"`),
+give an id and a name, and edit the required patterns: regular
+expressions every core verse must hold, one per line (`\blands?\b` keeps
+"slanderers" and "landmark" out). An overrides file adds renumber,
+exclude, include and borderline rules of its own. The same on the
+command line:
+
+```
+python atlas_themes.py import LIST.csv --id my_theme --name "My theme" --require "\bword\b" --load
+python atlas_themes.py load        every file in themes/ into atlas.db now
+python atlas_themes.py list        the themes in atlas.db with their counts
+```
+
+**The page.** Page box Theme, then the theme from its box; or
+`theme land_inheritance` on the command line. The page opens with the
+counts, the home range and the formula, then:
+
+1. **The strip.** One cell per chapter of the canon, in canonical
+   order, one line per book. The colour is the lift per chapter, as
+   the heat strips colour: light grey is ordinary, red over, blue
+   under; full red at a lift of 4 or more. A chapter with none of the
+   theme is plain. A short dark tick under a line marks where a section
+   of the book begins (section 28), so the strip reads a section at a
+   time; chapters outside the theme's home range are grey. The box
+   above it switches between core verses and core plus borderline.
+   Point at a cell for its figures, click it for its verses, and
+   double-click for the chapter page. The table beneath lists the
+   chapters holding a theme verse.
+2. **By book** and 3. **by section**: the same counts summed over a
+   book or a section, with the lift of the whole range.
+4. **Verses**: every verse with its role, its reason, and the
+   reference as the list wrote it when another numbering was turned
+   into the King James one.
+5. **Not matched**: references the atlas could not place.
+6. **Companion terms**: words that go with the theme, kept by Strong's
+   number and root; not searched yet.
+
+**The lift per chapter** is the lift of `atlas_lift.py`:
+
+```
+lift = (observed + cushion) / (expected + cushion)
+expected = theme verses in the home range x chapter verses / home range verses
+```
+
+with a cushion of 2, so one verse in a short chapter cannot make a huge
+number. Observed is the core verses (or core plus borderline) in the
+chapter. 1.0 is ordinary for the theme. The **home range** is the
+whole Bible unless the theme file says `"home": "Old"` or `"New"`, a
+list of books, or `"passage:NAME"` (a named passage); a file may set
+its own `"cushion"`. Both the raw counts and the lifts are kept in
+`atlas.db` (tables `theme`, `theme_verse`, `theme_strip`, `theme_term`
+and `theme_problem`). Each strip cell's colour, its section and each
+verse's King James text are stored too, worked out once when the theme
+is loaded.
+
+**In the Reader.** Every canon run (`dossier all --results`) copies the
+theme tables into `results.db`, and `atlas_pack.py` copies them fresh
+from `atlas.db` into every `.wadb`, as it does the passages. The
+Reader's Themes tab draws the strip and lists the verses from those
+stored rows and computes nothing; no chart file goes with them.
 
 ## 15. The Word page
 
@@ -2861,6 +2998,166 @@ books that have no English (Sirach, Wisdom, the Maccabees), which the
 index already holds and 4e already echoes (Judith 33 behind
 Revelation, Wisdom 9 behind Luke 1:75), but which have no page of
 their own.
+
+## 28e. Constellations: sets of words that travel together
+
+The pairs table holds how strongly two roots keep company. A
+constellation is a set of two to five roots that occur together in one
+stretch of text far more often than their separate rates predict:
+words that gather in a passage without standing in one sentence.
+`atlas_sets.py` finds them by the standard frequent itemset search
+(Apriori, Agrawal and Srikant 1994).
+
+The unit is a window of ten verses moving a verse at a time inside a
+book, as in the heat strips (`--scale verse` and `--scale chapter` for
+the others). A set occurs in a window when every one of its roots has a
+token there. Its **support** is the number of windows it occurs in; its
+**expected** count is the windows times the product of each root's share
+of the windows; its **lift** is support over expected, and its keyness
+is Dunning's G2 of the two, the sort order. The roots that may take part
+are the 600 commonest content Strong's numbers of the testament with at
+least 40 verses, without the particles listed at the head of the module,
+and every root **nominated** by a stored word list (ransom, rest,
+character, mercy and truth, fruit, flesh) or a theme's companion terms,
+whatever its frequency; the report names the nominated roots.
+A set is kept when it reaches the floors (support 20 windows over a
+testament and 8 in a book; lift 3 for pairs, 10 for triples, 30 for four
+and five; G2 10.8) and gathers in at least 6 separate **places** over a
+testament, 3 in a book (its windows joined where they touch). A set of n
+roots is tried only when all its sets of n - 1 were kept, so the counts
+fall from size to size and the search stops where it stops paying.
+
+A set whose roots stand inside one **formula run** in more than half its
+windows is a **phrase** and is listed apart. A formula run is a stretch
+of a verse covered by formulas that overlap, so the regnal formula of
+Kings counts as one run although no formula is longer than five units.
+A set of three roots or more that is not a phrase but whose roots come in
+one same order within twelve content words in more than half its windows
+is a **frame**: a
+formula with gaps, such as "the rest of the acts of ... are they not
+written in the book". The rest are **constellations**.
+
+A book is measured twice. Against itself (norm `book`) the search runs on
+the book's own windows. Against its testament (norm `testament`) the
+book takes the testament's sets and keeps those it holds at least three
+times as often as the testament does, so the words that pervade a book
+(statutes, commandments and keep in Deuteronomy) stand out there, where
+the book against itself cannot show them.
+
+A set is **closed** when no larger kept set has the same support; the
+report prints the closed sets, each with the smaller sets folded under
+it. A set's **span** is the chapters from its first stretch to its last,
+and a set whose every stretch lies in the first or last 15% of a book,
+with one at each end, is flagged an **inclusio**: Revelation's
+beginning, John, word and end, in chapters 1, 20 to 21 and 22.
+
+```
+python atlas_sets.py Old
+python atlas_sets.py Genesis --top 20
+python atlas_sets.py Old --scale verse
+python atlas_sets.py --all
+```
+
+The report prints the settings, the counts kept at each size, the top
+sets of each size with their support, lift, keyness and first places,
+then the phrases. Every run writes its scope to `reports/results.db`
+(`word_sets`, `word_set_members`, `word_set_windows`) under the newest
+run; the canon run writes every scope under its own run, and the pack
+carries them. IMPROVEMENTS.md lists the floors still to be settled.
+
+## 28f. Renderings: the English translations aligned and compared
+
+The translations column (section 28a) shows what the other English
+translations say. `atlas_renderings.py` reads the same public domain
+translations, the ones `atlas_translations.py` indexes (the six under
+copyright never take part), and does two things with them.
+
+**The renderings.** Each translation is aligned with the King James
+verse by verse by the standard alignment method of machine translation
+(IBM Model 1, in `atlas_align.py`, the code the Septuagint readings of
+`Eval_data/hebrew_greek_map.py` use). Words are lowered, apostrophes
+straightened and stop words set aside; no stems, so a rendering is
+reported as the translator spelled it. A pairing is trusted only when
+it holds in both directions, is made in at least two verses, and does
+not put a proper name behind a common word. Each content word of the
+translation then takes the Strong's number of the King James word it
+pairs with, so every translation has an approximate tagging, and for
+every root the program can say how each translator rendered it and how
+often. The **tagged share**, the part of a translation's content words
+that received a number, is printed at the head of every report as the
+measure of how far to trust the layer: about seven in ten for the
+Revised, American Standard, Darby and JPS, about two in five for
+Wycliffe's Middle English and the free modern New Testaments.
+
+**The disagreement map.** For every verse, the distance between two
+translations is one minus the share of content words they share, the
+words compared through the alignment (a word paired with a tagged King
+James word counts as its root, so Wycliffe's "merci" and the King
+James's "mercy" are one word). The verse's **mean distance** is the
+mean over every pair that has the verse. Some pairs always stand far
+apart, Wycliffe from everyone, so the verse's **excess** subtracts from
+each pair's distance that pair's mean distance over the whole Bible,
+and a pair of which one has the verse and the other lacks it counts as
+sharing nothing. The cruxes are the verses of greatest excess: where
+the Hebrew is obscure (Job, the finery of Isaiah 3, Proverbs) and where
+the manuscripts differ (Acts 8:37, Romans 16:24). The **outlier** is the
+translation standing furthest beyond its usual distance from the rest.
+Two heat strips of kind translations, disagreement (the excess) and
+missing (the share of translations having the book but lacking the
+verse), go into the heat tables with windows of ten verses and z
+against the testament, so the Reader's Heat tab draws them unchanged;
+`run_heat.py --all` writes them after the books.
+
+**Since 0.10.114.** Proper names are set aside from the distance on the
+rule that bars them from the alignment (and a word used once,
+capitalised, with them), so a verse of names (Genesis 10:14, the
+Caphtorim spelled eleven ways) is no crux; `disagreement_verses.names`
+counts them, and a verse left with fewer than three words once its
+names are gone gets no excess. A verse a translation lacks is tested
+against that translation's verse before and after: when more than half
+of the King James verse's content words stand in a neighbour, and more
+there than in the King James's own neighbour, the verse is **merged**
+(a difference of verse division, Daniel 4:1 inside Daniel 3:30), not
+lacking; only the lacking count in the missing strip, and `merged`
+lists the merged verses by book with whether a TVTMS map names them.
+The King James's absorbed words (mercy seat, burnt offering, right
+hand, chief priests) are aligned as one unit against up to two adjacent
+words of the translation, so a rendering may be two words ("right
+hand"). The summary counts renderings as printed and as words
+(`renderings_folded`: endings and spellings folded by the atlas's
+spelling table and stemmer, dwelt, dwell and dwelleth one), and the
+translation report leads with the roots rendered by the most different
+words. The editions the database leaves in doubt are recorded by
+`editions` in metadata.db (translation_families.edition) and printed in
+place of the year: the JPS held is a later edition of the 1917
+translation reading HaShem, and the two Genevas' editions are
+unverified. The cruxes report is headed as what it is, the verses on
+which the translators have disagreed most, and ends with a table by
+book: each book's verses among the top 500 against its share of them.
+
+```
+python atlas_renderings.py align
+python atlas_renderings.py strips
+python atlas_renderings.py root H3722
+python atlas_renderings.py root --word atonement
+python atlas_renderings.py verse "Isaiah 7:14" --root H5959
+python atlas_renderings.py translation Geneva
+python atlas_renderings.py cruxes --top 50
+python atlas_renderings.py cruxes --missing
+python atlas_renderings.py book Isaiah
+python atlas_renderings.py merged
+python atlas_renderings.py editions
+```
+
+`align` learns every map, both ways, and takes the better part of an
+hour; it writes `renderings`, `renderings_summary` and
+`renderings_translations` into `reports/results.db`, and keeps the
+learned pairings in `renderings_cache.db` beside the program (never
+packed). `strips` writes `disagreement_verses` and the two strips in a
+minute or two. A root too rare for the renderings table (hilasterion,
+almah) is counted afresh from the cache over its few verses. Nothing in
+the tables is text: roots, single words with their counts, distances
+and references.
 
 ## 29. What the atlas cannot see
 
@@ -5113,6 +5410,22 @@ screens and this manual.
 | Kin | Two verses sharing three or more rare words in any order; dependence through imagery rather than wording. Found by Strong's roots within a testament and by English stems across the testaments. Within a book, a word set behind three or more chapter pairs is a kin refrain (the regnal frame of Kings) and is set aside |
 | Shared vocabulary | Two chapters of one book drawing on the same uncommon words anywhere in them (words in at most five chapters of the book), the sign of a story told twice or a source with a vocabulary of its own; section 6d |
 | Window | How many words either side count as "near" (5, inside the verse) |
+| Theme | A hand-made set of verses that belong together, with the words that define it and a role for every verse; one file in `themes/` (section 14b) |
+| Core | A verse a theme is about; counted in its strip |
+| Borderline | A verse that matches a theme's words but stands apart from it (ordinary family inheritance beside the covenant land); kept, and counted only in the "with borderline" figures |
+| Excluded | A verse a theme's search found that is not the theme (a false match); kept with its reason, never counted |
+| Lift per chapter | A theme's verses in a chapter against what the chapter's length would give it by chance: (observed + cushion) / (expected + cushion), cushion 2; 1.0 is ordinary |
+| Home range | The part of the Bible a theme's lift is measured against: the whole Bible unless the theme file names a testament, books or a passage |
+| Constellation | A set of two to five roots that occur together in one stretch of text far more often than their separate rates predict, and do not stand inside one formula (section 28e) |
+| Phrase (of a set) | A set whose roots stand inside one formula run in more than half its units; listed apart from the constellations |
+| Places | A set's windows joined where they touch: the separate stretches where it gathers |
+| Frame | A set of three roots or more that come in one same order within twelve content words in most of its units: a formula with gaps |
+| Closed (set) | A set with no larger kept set of the same support; smaller sets of the same support fold under it |
+| Inclusio | A set whose every stretch lies in the first or last 15% of a book, one at each end |
+| Norm | What a set's expected count is measured against: the book itself, or its testament |
+| Rendering | The word a translation uses for a Hebrew or Greek root, found by aligning the translation with the King James and borrowing its Strong's tags (section 28f) |
+| Tagged share | The part of a translation's content words the alignment could give a Strong's number: how far to trust its renderings |
+| Excess (of a verse) | How much further apart than usual the translations stand on a verse: each pair's distance less its mean distance over the Bible, a missing verse counted as sharing nothing; the cruxes are sorted by it |
 | Root | The base form that several spellings are gathered under: a Strong's number (H3068, G3056) where the text is tagged, otherwise an English stem |
 | Keyness | How much more often a word (or formula) occurs here than the rest of its testament or the Bible would predict; log-likelihood, so 10.8 is one chance in a thousand |
 | Normalization | Dividing a raw count by the size of the thing it was counted in, so parts of different sizes can be compared: per 1,000 words (section 1, 4a, 7a, 7b), or as a share of a total (the concentration rule in 4d, the home map's percentages). Keyness takes the idea one step further and asks how surprising the difference from the expected count is |
@@ -5259,6 +5572,80 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.114.** Renderings, step two (section 28f): names set aside from
+the disagreement distance (a names column); a verse held inside its
+neighbour marked merged, not lacking (merged and merged_with columns,
+the merged report); the King James's two-word units aligned whole, so
+Hebrews 9:5 reads mercy seat and Geneva's H3225 right hand; the summary
+counts words as well as spellings (renderings_folded); the JPS and
+Geneva editions recorded in metadata.db and printed; the cruxes report
+with its table by book. Reader 0.3.23 has the strips' help notes. No
+page changes.
+
+**0.10.113.** Renderings (section 28f): `atlas_renderings.py` aligns
+the 32 public domain translations with the King James and counts how
+each renders every root (tagged shares from 41% for Wycliffe to 77% for
+the JPS); the disagreement of the translations, verse by verse, goes into
+`disagreement_verses` and two heat strips of kind translations, written
+by `run_heat.py --all`. The word alignment is shared in `atlas_align.py`.
+`atlas_translations.py` tries a tradition's numbering on the verses it
+renumbers, so a seam late in a book (Job 40 and 41) is caught. No page
+changes.
+
+**0.10.112.** Constellations, step two: a frame needs three roots or
+more (frames over the canon fell from 4,147 to 737 against the book);
+the report names a book the home of a vocabulary when it holds more than
+half of its testament's closed sets of a size; word_sets gains in_order,
+folds and parent for the Reader's new Constellations tab (Reader 0.3.22);
+the pack records its sets and leaves the place for a cap. No page
+changes.
+
+**0.10.111.** Constellations, after the reviewer's reading: a book is
+measured against its testament as well as against itself (a norm
+column); the roots of the stored word lists and the themes' terms are
+admitted whatever their frequency; a third kind, frame; closed sets,
+printed with their smaller sets folded under them; span; and the
+inclusio flag. Set tables written by 0.10.110 are made afresh. No page
+changes.
+
+**0.10.110.** Constellations (section 28e): `atlas_sets.py` finds sets
+of two to five roots that occur together in a ten-verse window far more
+often than chance, over each testament and in each book, marks those
+that are formulas as phrases, and writes them to `results.db` with the
+canon run (`word_sets`, `word_set_members`, `word_set_windows`). No page
+changes.
+
+**0.10.109.** Themes (section 14b). A theme is a hand-made set of
+verses with a role for each (core, borderline, excluded); its file in
+`themes/` is loaded by every build, each reference checked against the
+atlas and any it cannot place reported. The new Theme page draws the
+theme's strip, one cell per chapter coloured by the lift per chapter,
+with tables by book, by section and verse by verse. `atlas_themes.py`
+imports a verse list (also on the Workbench's new Themes menu), and a
+labelled build keeps its themes for Restore rules. The first theme is
+Land and inheritance: 225 verses, 215 core, 5 borderline, 5 excluded,
+after Zechariah 2:16 (the Hebrew numbering) was joined to 2:12. A
+rebuild loads it; no other page changes. The theme tables, with each
+cell's colour and each verse's text stored, go into `results.db` with
+every canon run and into every pack, for the Reader's new Themes tab
+(Reader 0.3.20).
+
+**0.10.108.** The USB window's "Pack a fresh dataset first" packs with
+`atlas_pack.py` itself: the newest run only, with the named passages,
+the King James text and the sources table. Until now it zipped
+`results.db` as it stood (every run, none of those tables) and wrote it
+over the proper pack of the same name, so a drive made with the box
+ticked carried a 250 MB dataset of two runs without passages, text or
+sources. The box is now offered only when `results.db` holds a run the
+dataset lacks, judged by the runs, not by the files' dates. No page
+changes.
+
+**0.10.107.** The USB drive can carry Bible Search Lite with its
+`bibles.db` when its new box is ticked, and the drive's installer offers
+it beside the Reader and Word Atlas, installs it with a starter and a
+menu entry with its icon, and checks its database in the install report
+(section 8a). No page changes.
 
 **0.10.106.** The top bar's buttons are never narrower than their
 labels: the window's style had given every button a fixed least width,
