@@ -1939,12 +1939,14 @@ def test_renderings(only):
              "renderings: Acts 8:37 is among the five cruxes of Acts, lacking in most of eight translations",
              "renderings: Genesis 10:14, a verse of names, is not a crux; its names are counted",
              "renderings: Daniel 4:1 is merged into Daniel 3:30 in the Geneva of 1599, not lacking",
+             "renderings: Daniel 4:1 is lost in import in the JPS (its Daniel 3:31 never came over), not lacking",
+             "renderings: the divine names stay in the distance (lord, god, jehovah are not set aside)",
              "renderings: the four tables are in a results.db with their schema notes")
     if only and not any(only in n for n in names):
         return
     try:
         import atlas_renderings as R
-        corpus = R.Corpus(only={"ASV", "WEB", "YLT", "DBT", "ERV", "BSB", "ACV", "GN2"}, log=lambda *_: None)
+        corpus = R.Corpus(only={"ASV", "WEB", "YLT", "DBT", "ERV", "BSB", "ACV", "GN2", "JPS"}, log=lambda *_: None)
     except BaseException:
         # No atlas_source.db beside the program: the layer cannot be tested
         report(names[0], False, traceback.format_exc().strip().splitlines()[-1])
@@ -2004,18 +2006,225 @@ def test_renderings(only):
         report(name, merged.get("GN2") == "Daniel 3:30", f"merged {merged}")
     name = names[7]
     if not only or only in name:
+        lost = d.rows["Daniel 4:1"][9]
+        report(name, "JPS" in lost and d.missing_share("Daniel 4:1") < 0.2, f"lost in {lost}")
+    name = names[8]
+    if not only or only in name:
+        kept = {"lord", "god", "jehovah"} & (corpus.name_like.get("KJV", set()) | corpus.name_like.get("ASV", set()))
+        report(name, not kept and "jehovah" in corpus.names.get("ASV", set()),
+               "kept in the distance" if not kept else f"set aside: {kept}")
+    name = names[9]
+    if not only or only in name:
         with tempfile.TemporaryDirectory() as tmp:
             db = sqlite3.connect(os.path.join(tmp, "results.db"))
             atlas_report.ensure_results_schema(db)
             tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
             noted = {r[0] for r in db.execute("SELECT DISTINCT table_name FROM schema_notes")}
             columns = {r[1] for r in db.execute("PRAGMA table_info(disagreement_verses)")}
+            columns |= {r[1] for r in db.execute("PRAGMA table_info(lexicon_forms)")}
             columns |= {r[1] for r in db.execute("PRAGMA table_info(renderings_summary)")}
             db.close()
         wanted = {"renderings", "renderings_summary", "renderings_translations", "disagreement_verses"}
-        new = {"names", "merged", "merged_with", "renderings_folded"}
+        new = {"names", "merged", "merged_with", "renderings_folded", "lost", "lost_in", "translit",
+               "translit_text", "attested_share"}
         report(name, wanted <= tables and wanted <= noted and new <= columns,
                ", ".join(sorted((wanted - (tables & noted)) | (new - columns))) or "all four, with the new columns")
+
+
+def test_translit(only):
+    """
+    The original word beside the number (atlas_translit.py, 0.10.115) and
+    the form the text has (0.10.117): the test words of the requests come
+    out by the rules (H922 prints vohu, the form the text has, though its
+    dictionary form is bohu; bayit, berit, kohen, kol and ben keep the
+    dictionary form; Genesis 1:2 reads tohu vavohu from its own pointing);
+    the divine name prints YHWH; a page label carries the word and its
+    transliteration after the number, and none with SHOW_ORIGINAL off; the
+    table keeps both forms and an older table reads as the dictionary form.
+    """
+    import sqlite3
+    import tempfile
+    import atlas_translit as X
+    names = ("translit: the test words come out by the rules",
+             "translit: Genesis 1:2 reads tohu vavohu from TAHOT's own pointing",
+             "translit: a label prints word, number, script, transliteration, and the number alone when off",
+             "translit: H922 prints vohu and H1004 bayit, the dictionary forms kept in the table",
+             "translit: a construct is counted as the dictionary form, so H6440 prints panim, not pene",
+             "translit: the rule on counted forms (a fifth, a tie, a verb, only constructs)",
+             "translit: the table keeps both forms, and an older table reads as the dictionary form",
+             "translit: the letters follow the spelling (בֹהוּ), a verb keeps its dictionary form, H1419 is corrected to gadol")
+    if only and not any(only in n for n in names):
+        return
+    try:
+        rows = {r[0]: r for r in X.build_forms(log=lambda *_: None)}
+    except Exception:
+        report(names[0], False, traceback.format_exc().strip().splitlines()[-1])
+        return
+    # What the rules give from the forms the texts hold, as the pages print them
+    by_rule = dict(X.TEST_WORDS)
+    name = names[0]
+    if not only or only in name:
+        wrong = [f"{n} {rows[n][6] if n in rows else '-'} (wanted {w})" for n, w in by_rule.items()
+                 if n not in rows or rows[n][6] != w]
+        report(name, not wrong, "; ".join(wrong) or f"{len(by_rule)} words")
+    name = names[1]
+    if not only or only in name:
+        text = X.test_report()
+        report(name, "tohu vavohu" in text, text.splitlines()[-1][-60:])
+    name = names[2]
+    if not only or only in name:
+        table = {"H6635": ("צָבָא", "tsava", "tsāvā")}
+        on = X.with_original("H6635", table, show=True)
+        off = X.with_original("H6635", table, show=False)
+        report(name, on == "H6635 צָבָא tsava" and off == "H6635" and X.with_original("lord", table) == "lord",
+               f"{on} / {off}")
+    name = names[3]
+    if not only or only in name:
+        h922, h1004 = rows.get("H922"), rows.get("H1004")
+        ok = bool(h922 and h1004 and h922[6] == "vohu" and h922[2] == "bohu" and h1004[6] == "bayit"
+                  and h1004[2] == "bayit" and h922[7] == 1.0)
+        report(name, ok, f"H922 {h922[2]} -> {h922[6]}, H1004 {h1004[6]}" if h922 and h1004 else "no row")
+    name = names[4]
+    if not only or only in name:
+        words = {n: r[2] for n, r in rows.items() if n[0] == "H" and n not in X.HEBREW_FIXED}
+        scripts = {n: rows[n][1] for n in words}
+        detail = X.attested_forms({"H6440": words["H6440"]}, X.LXX_PATH, scripts).get("H6440")
+        if not detail:
+            report(name, False, "no words counted for H6440")
+        else:
+            rule, other = X.answer(detail, words["H6440"]), X.literal(detail, words["H6440"])
+            report(name, rule[0] == "panim" and other[0] in ("pene", "fene"),
+                   f"the rule {rule[0]}, constructs as forms {other[0]}")
+    name = names[5]
+    if not only or only in name:
+        from collections import Counter as C
+        choose = X.choose_attested
+        checks = {
+            # the dictionary form never occurs: the commonest form (the dagesh dropped)
+            "never": choose("bohu", C({"vohu": 3}), 0) == ("vohu", 1.0),
+            # it occurs and holds a fifth: kept, constructs counted as it
+            "fifth": choose("bayit", C({"bayit": 1, "vayit": 3}), 0)[0] == "bayit",
+            "bound": choose("bayit", C({"bayit": 2, "vayit": 5, "battim": 10}), 40, {"battim"})[0] == "bayit",
+            # it occurs but holds less than a fifth: the commonest candidate
+            "less": choose("betakh", C({"betakh": 1, "vetakh": 9}), 0)[0] == "vetakh",
+            # a tie goes to the dictionary form
+            "tie": choose("bayit", C({"bayit": 5, "vayit": 5}), 0)[0] == "bayit",
+            # only constructs and suffixed stems: the dictionary form
+            "bound only": choose("bayit", C(), 9) == ("bayit", None),
+            # a plural is a form in its own right when the dictionary form never stands
+            "plural": choose("pane", C({"panim": 5}), 20, {"panim"})[0] == "panim",
+            # and the commonest form being another word's vowels keeps the dictionary form
+            "other vowels": choose("bayin", C({"ben": 9}), 0)[0] == "bayin",
+            # a hyphen at the end of a dictionary form stays
+            "hyphen": choose("min-", C({"min": 9}), 0)[0] == "min-",
+            # the floor: two words in forty-nine do not rename the word; fifty-one in two thousand do
+            "floor kept": choose("emer", C({"amarim": 2}), 47, {"amarim"}) == ("emer", 47 / 49),
+            "floor waived": choose("pane", C({"panim": 51}), 2076, {"panim"})[0] == "panim",
+        }
+        failed = [k for k, v in checks.items() if not v]
+        report(name, not failed, ", ".join(failed) or f"{len(checks)} cases")
+    name = names[6]
+    if not only or only in name:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "forms.db")
+            db = sqlite3.connect(path)
+            X.write_forms(db, [("H922", "בֹּהוּ", "bohu", "bōhū", "Hebrew", "TAHOT", "vohu", 1.0, "בֹהוּ"),
+                               ("G26", "ἀγάπη", "agape", "agapē", "Greek", "GNT", "agape", None, "ἀγάπη")])
+            db.close()
+            printed, dictionary = X.read_forms(path), X.read_dictionary(path)
+            # An older table, six columns, reads as the dictionary form
+            old = os.path.join(tmp, "old.db")
+            db = sqlite3.connect(old)
+            db.execute("CREATE TABLE lexicon_forms (strongs TEXT PRIMARY KEY, script TEXT NOT NULL, "
+                       "translit TEXT NOT NULL, translit_long TEXT NOT NULL, language TEXT NOT NULL, source TEXT NOT NULL)")
+            db.execute("INSERT INTO lexicon_forms VALUES ('H922', 'בֹּהוּ', 'bohu', 'bōhū', 'Hebrew', 'TAHOT')")
+            db.commit()
+            db.close()
+            before = X.read_forms(old)
+        ok = (printed.get("H922", ("", "", ""))[:2] == ("בֹהוּ", "vohu") and dictionary == {"H922": ("בֹּהוּ", "bohu")}
+              and before.get("H922", ("", "", ""))[:2] == ("בֹּהוּ", "bohu"))
+        report(name, ok, f"printed {printed.get('H922')}, dictionary {dictionary}, older table {before.get('H922')}")
+    name = names[7]
+    if not only or only in name:
+        import unicodedata
+        nfc = lambda t: unicodedata.normalize("NFC", t)   # the data and a typed literal may order marks differently
+        h922, h3722, h1419, h6440 = (rows.get(n) for n in ("H922", "H3722", "H1419", "H6440"))
+        corrected = X.read_corrections().get("H1419", ("",))[0]
+        ok = bool(h922 and h3722 and h1419 and h6440
+                  and h922[8] == "בֹהוּ" and nfc(h922[1]) == nfc("בֹּהוּ")  # the letters follow the spelling
+                  and h3722[6] == "kipper" and h3722[7] is None               # a verb keeps its dictionary form
+                  and h1419[2] == "gadol" and h1419[5] == "correction" and corrected == X.SEED_CORRECTIONS[0][1]
+                  and h6440[6] == "panim"                                     # the floor is waived at 51 words
+                  and rows["H561"][6] == "emer")                              # and holds at two
+        report(name, ok, f"H922 {h922[8]}, H3722 {h3722[6]}, H1419 {h1419[2]}, H6440 {h6440[6]}, H561 {rows['H561'][6]}"
+               if h922 and h3722 and h1419 and h6440 else "a row is missing")
+
+
+def test_brief(only):
+    """
+    The verse brief (atlas_brief.py, 0.10.116): Genesis 1:2's brief holds
+    H922 spelled vavohu as it stands in the verse, a rendering of it from
+    the Geneva Bible in this verse, and an echo to Jeremiah 4:23; its JSON
+    has the blocks the workbench reads; and a brief made from a results
+    file alone still has its header and words.
+    """
+    import json as _json
+    import atlas_brief as B
+    names = ("brief: Genesis 1:2 holds H922 as vavohu, and the Geneva Bible's rendering of it here",
+             "brief: Genesis 1:2 echoes Jeremiah 4:23, the shared words marked",
+             "brief: the JSON has the blocks of the contract",
+             "brief: from a results file alone, the header and the words still come")
+    if only and not any(only in n for n in names):
+        return
+    try:
+        brief = B.Brief(B.Sources())
+        data = brief.verse("Genesis 1:2")
+    except Exception:
+        report(names[0], False, traceback.format_exc().strip().splitlines()[-1])
+        return
+    name = names[0]
+    if not only or only in name:
+        bohu = next((w for w in data["words"] if w["strongs"] == "H922"), None)
+        geneva = [e for e in (bohu or {}).get("in_verse") or [] if isinstance(e, dict) and e.get("translation") in
+                  ("GEN", "GN2") and e.get("rendering")]
+        report(name, bool(bohu) and bohu["form_translit"] == "vavohu" and bool(geneva),
+               f"{bohu['form_translit'] if bohu else None}; Geneva: "
+               f"{geneva[0]['rendering'] if geneva else '(none: is renderings_cache.db beside the program?)'}")
+    name = names[1]
+    if not only or only in name:
+        jer = next((e for e in data["echoes"] or [] if e["partner"] == "Jeremiah 4:23"), None)
+        report(name, bool(jer) and "«" in jer["there"], jer["phrase"] if jer else "no echo")
+    name = names[2]
+    if not only or only in name:
+        shaped = _json.loads(_json.dumps(data, ensure_ascii=False))
+        keys = {"brief", "version", "read", "missing", "header", "words", "echoes", "quotations", "formulas"}
+        word_keys = {"strongs", "form", "form_translit", "parsing", "in_verse", "across", "septuagint", "senses",
+                     "company", "weight"}
+        content = next(w for w in shaped["words"] if not w["function_word"])
+        report(name, keys <= set(shaped) and word_keys <= set(content),
+               ", ".join(sorted((keys - set(shaped)) | (word_keys - set(content)))) or "all present")
+    name = names[3]
+    if not only or only in name:
+        # A packed results file: the King James text and tags as the pack adds them
+        import sqlite3
+        import tempfile
+        import atlas_pack
+        import atlas_report
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "results.db")
+            db = sqlite3.connect(path)
+            atlas_report.ensure_results_schema(db)
+            atlas_pack.add_reader_tables(db)
+            db.close()
+            alone = B.Brief(B.Sources(atlas=None, lxx=None, results=path, cache=None, map_path=None, readings=None))
+            try:
+                d = alone.verse("Genesis 1:2")
+                ok = bool(d["header"]["kjv"]) and bool(d["words"]) and "atlas.db" in d["missing"]
+                note = f"{len(d['words'])} words from the tags"
+            except Exception as e:
+                ok, note = False, str(e)
+            alone.src.results.close()
+        report(name, ok, note)
 
 
 def test_housekeeping(only):
@@ -2084,6 +2293,8 @@ def main(argv):
               "its testament; Revelation's inclusio; closed sets; the tables written and replaced")
         print("renderings: the ASV tagged; H3068 jehovah; Hebrews 9:5 mercy-seat; dwelt folded into dwell; Acts 8:37 "
               "a crux; Genesis 10:14 not; Daniel 4:1 merged; the four tables noted")
+        print("translit: the test words; Genesis 1:2 tohu vavohu; the label with and without the original")
+        print("brief: Genesis 1:2's H922 vavohu and Geneva; the echo to Jeremiah 4:23; the JSON blocks; results alone")
         print("housekeeping: one version everywhere; no em dash; every module compiles")
         return 0
     started = time.perf_counter()
@@ -2101,6 +2312,8 @@ def main(argv):
     test_themes(atlas, only)
     test_sets(only)
     test_renderings(only)
+    test_translit(only)
+    test_brief(only)
     test_window(only)
     test_smoke(atlas, only)
     test_dossier(atlas, only)

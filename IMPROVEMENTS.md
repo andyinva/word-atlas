@@ -7,7 +7,7 @@ with the version that carried them. Add to it whenever a review or a
 conversation raises something; the manual's version history records
 what shipped, this records what has not.
 
-Last updated 2026-10-26, at version 0.10.114.
+Last updated 2026-10-27, at version 0.10.117.
 
 ## Standing work
 
@@ -2099,6 +2099,174 @@ Weighting a lacking verse more is still the open question (4 of
 0.10.113). (3) The JPS's missing Daniel 3:31-33 is a gap in the
 source; a fresh import of that text would mend it. (4) Isaiah 7:14 and
 Mark 16:9-20 are missed as before (one word; brackets).
+
+**Done (0.10.115, 2026-10-27): four notes from the reviewer's reading.**
+(1) The divine names stay in the disagreement distance:
+DIVINE_EXEMPT keeps LORD, GOD, JEHOVAH and JAH (atlas_text's
+DIVINE_CAPITALS), God, Lord and Saviour, and the other spellings the
+translations print (Yahweh, YHWH, HaShem, G-d, L-rd, Savior) out of the
+name ban for the distance only; the alignment's ban is unchanged, so
+LORD still pairs with Jehovah. The top of the crux list barely moves.
+(2) Lost in import: a verse a translation's numbering tradition has
+(the TVTMS map its book was numbered by names it) and its source
+lacks is marked lost, not lacking (`lost`, `lost_in`; `python3
+atlas_renderings.py lost`, reports/renderings_lost.txt). The check finds
+139 verses, 188 translation-verses: the JPS 105 (Daniel 4:1-3 as the
+reviewer said, and Joel 3, 1 Kings 5:5-18, 1 Chronicles 6:1-15,
+Nehemiah 4:1-6 and the last verse of most psalms with a title),
+Wycliffe 22, the 1599 Geneva 18, the two Catholic texts 16 each,
+Brenton 11. The cause is in the source: atlas_source.db (and Bible
+Search Lite's bibles.db before it) stores verse texts against the King
+James's verse table, so a verse numbered past the King James's count in
+its chapter (the Hebrew's Joel 4, Psalm 12:9) had nowhere to go. They
+can be restored only from the original files. (3) Brenton is described
+in the catalogue (translation_families.note) as a translation of the
+Septuagint, and the reports print "1851, from the Greek" in place of its
+year; the Diaglott is Wilson's interlinear, and the text held is its
+word-for-word English in the Greek's order (John 1:14 "And the Word
+flesh became"), not the running translation, which the catalogue now
+says. (4) Commits stay with Andrew; the next canon run under 0.10.115.
+
+## The original word beside the number (2026-10-27)
+
+**Done (0.10.115 and Reader 0.3.24, 2026-10-27).** `atlas_translit.py`
+builds `lexicon_forms` (metadata.db and results.db; the pack refreshes
+it): 14,285 numbers, the word from TAHOT (8,521), the Greek New
+Testament (5,417), the Septuagint (86) or Strong's dictionary (261),
+with a plain transliteration and a long-marked one, by the SBL general
+purpose rules named in the module (Hebrew 7,637, Aramaic 1,045, Greek
+5,603). The test words come out as asked but for two, both because the
+tagged text's form is preferred: H922 is בֹּהוּ bohu (its dagesh is the
+dictionary form's; Genesis 1:2's own pointing, read word by word, gives
+"tohu vavohu"), and H3725 is TAHOT's plural כִּפֻּרִים kippurim (the
+lexicon's כִּפֻּר would give kippur). Printed beside every number by
+`atlas_pages.Atlas.form` and `number` (the word column of every table,
+the titles, the gloss lines, the lexicon tables with the transliteration
+beside the word, the Theme page's companion terms), the heat reports'
+hammered words and spots, the set reports, and the renderings reports,
+in the order word, number, script, transliteration;
+`atlas_translit.SHOW_ORIGINAL` turns it off. Tables now pad by shown
+width, the points not counted. The Reader: View > Show Hebrew and Greek
+(on by default) shows or hides them in every page cell, title, note and
+footer, the spots, the theme terms and the constellations grid, and puts
+them into an older dataset's pages when the dataset has the table; its
+search and the constellations' word box find a number by its
+transliteration (khesed finds H2617, berit H1285).
+
+**Done (0.10.117 and Reader 0.3.25, 2026-10-27): the form the text has.**
+Beside a number the pages now print the word as the text has it, its
+prefixes removed, when that differs from the dictionary form: H922 is
+בֹהוּ vohu, not בֹּהוּ bohu (its three words, Genesis 1:2, Jeremiah 4:23
+and Isaiah 34:11, all follow a vowel, so the Bible holds no bohu).
+`lexicon_forms` gains `translit_text` and `script_text` (what is printed)
+and `attested_share` (the share of the number's words that form holds)
+and keeps `script` and `translit`, the dictionary form; the pages,
+reports, grids, brief and pack print the first two, the Reader's cell
+tooltip reads "H922 בֹהוּ vohu (dictionary בֹּהוּ bohu)", and its search
+finds the number by either form. The rule is
+`atlas_translit.attested_forms` and `choose_attested`: each Hebrew and
+Aramaic number's words are counted in TAHOT (the root element, so the
+attached prefixes are already off), each transliterated with the dagesh
+the text gives it; the dictionary form is kept when it occurs at least
+once and holds a fifth of the contest, otherwise the commonest form is
+shown, a tie going to the dictionary form. The reviewer's decisions of
+2026-10-27, all built: (1) **Constructs** (bet, pene, bene) and words
+whose suffix the tagging marks count as the dictionary form, so bayit,
+berit, kohen and ben stay and panim (H6440, 2 percent of its 2,127
+words) is what prints, not pene. (2) **A floor:** a form that would hold
+under a tenth of the word's words does not replace the dictionary form
+(amarim and amarot stay emer and imra); twelve numbers are kept so.
+(3) **Nouns, adjectives and names only:** a verb, a particle and a
+pronoun keep the dictionary form (H3722 prints kipper); the verse brief
+prints the verse's own form beside each word. (4) **The script follows
+the spelling:** the Hebrew letters beside vohu are the commonest spelling
+of its words, without the dagesh (the article's leftover dagesh on a
+first letter that is no begadkefat is taken off, so מַיִם and not מַּיִם),
+the dictionary pointing on the hover. (5) **Lemma corrections:** a table
+`lemma_corrections` in the catalogue (metadata.db, kept by hand, in
+metadata_backup.sql), read before the lexicon form is made, with H1419
+gadol as its first row (TAHOT's lemma field reads גַּל on 512 of its 526
+words); ATTRIBUTION.md says the correction is Word Atlas's; more go in
+the same table, and the list can be sent to STEPBible. The candidates
+are the dictionary form, its dagesh variants and, for a noun, its plurals
+and duals, and a number whose commonest form is another shape of vowels
+keeps its dictionary form (H996 bayin). 8,511 numbers counted, 508 print
+a form other than the dictionary's; the first-written rule would have
+changed 1,441 more. The divine name, Adonai, Greek and a number the text
+lacks are unchanged. Found on the way: TAHOT marks a qamets chatuf in its
+dictionary forms but never in its words, so a number whose dictionary
+form carries the mark has its words read with the qatan rule on
+(khokhma, korban); Aramaic morphology opens with A and a capital part of
+speech (AVqp3ms), told from a Hebrew adjective (Aampa), and the language
+column had called 363 Hebrew adjectives and numerals Aramaic since
+0.10.115 (Hebrew now 8,000, Aramaic 682).
+
+**Waiting (0.10.117).** (1) The floor is waived for a form standing in
+twenty words or more (`ATTESTED_FLOOR_WORDS`), because panim holds 2
+percent of H6440 but 51 words and the reviewer's two decisions (panim
+stays; under a tenth keeps the dictionary form) meet there; the reviewer
+to confirm the twenty. (2) More lemma corrections may turn up (any
+number whose dictionary form is not its commonest shape: the report's
+"another shape of vowels" cases are the place to look). (3) The pages
+carry the form only after the next canon run, which also refreshes
+book_ruth.txt and the other saved pages; until then the Reader puts it in
+from lexicon_forms once a pack carries it.
+
+**Waiting.** (1) H922 and H3725: keep the rule (the tagged form), or let
+the lexicon's singular win where TAHOT's lemma is a plural. (H922 is now
+settled: vohu.) (2) A
+two-letter consonant under a dagesh forte is written once (hashamayim,
+not hashshamayim): DOUBLE_DIGRAPHS turns doubling on if wanted. (3) The
+pronunciation guide in the manual, which the reviewer will write.
+(4) The pages carry the originals only after the next canon run; until
+then the Reader puts them in from lexicon_forms once a pack carries it.
+
+## The verse brief (2026-10-27)
+
+**Done (0.10.116, 2026-10-27).** `atlas_brief.py verse REF` and `root
+NUMBER`, as text (`--text`, the default) or one JSON object (`--json`,
+its shape described in schema_notes under "brief", version 1), with
+`--workbench PATH` (the workbench's project.db, read only: the root's
+rank in word_priority, its glossary renderings, the newest draft of each
+verse) and `--results PATH`. Blocks 1 to 9 as asked: the verse and its
+place on the disagreement strip; for each original word its form in the
+verse (from TAHOT or the Greek New Testament, transliterated by
+atlas_translit's rules: וָבֹהוּ vavohu), parsing in plain words, lexicon,
+the King James's word, each translation's rendering here, the spread
+across the Bible, the Septuagint's renderings by the Hebrew to Greek map
+and the Greek word used in this verse (scored both ways, so a common
+word of the verse does not take a rare one's place), the senses (the
+tagged text's glosses folded to senses), the company in the book and the
+Bible and the sets whose places hold the verse, rarity, home and weight;
+then the echoes, the quotation study's verdict and the formulas. A
+function word gets a line, not blocks. A root too rare for the
+renderings table (almah, hilasterion) is counted afresh over its verses.
+The first briefs (Genesis 1:2, Genesis 15:6, Leviticus 16:30, Psalm
+22:16, Isaiah 7:14, Romans 3:25; H3722, H3724, H5117, G2435) are in
+reports/brief_*.txt, each made in about two seconds. Two changes
+beside the module: the renderings cache now keeps each translation's
+numbering tradition per book and the books it holds (written by `align`;
+an older cache gets them once, in about a minute, the first time a brief
+needs them), so one verse is found in every translation without loading
+them all; and the live count of a rare root accepts a word spelled as
+the King James spells the root anywhere (Romans 3:25's mercy-seat under
+G2435, Coverdale's mercyseate, the early voyde as void). From a packed
+results.db alone the brief gives the header, the words from the King
+James's tags and the renderings blocks, and says what it could not read.
+
+**Waiting (for the reviewer).** (1) In this verse, a rare word renders
+only when the alignment paired it or a translation spells it as the King
+James does; elsewhere the brief lists the translation's unpaired words
+(Genesis 1:2's tohu: waste, formless, unformed), which a reader can
+read but a program cannot count. (2) The Greek-confirmed mark on an echo
+is the longest run of shared Greek content words (two or more), simpler
+than section 4e's classification. (3) A verse brief does not show the
+workbench's glossary rendering for each word; the root brief does. (4)
+The request was marked "after the attested-form request"; that request
+has since arrived (0.10.117, above) and concerns the form printed beside
+a number (vohu), which the brief's labels now print. The form of a word
+as it stands in a verse (vavohu) still comes from TAHOT's own pointing
+through atlas_translit.py.
 
 ## The USB drive (0.10.88)
 

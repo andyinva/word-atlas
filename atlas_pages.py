@@ -46,6 +46,8 @@ from atlas_text import (ATLAS_PATH, ECHO_MAX_TOTAL, FOCUS_MIN_OCCURRENCES,
                         Stemmer, has_substance, log_likelihood, relation_in_time, trim_formula, BOOK_DATES,
                         CRITICAL_DATES, DISPUTED_DATES, dating_dispute)
 
+import atlas_translit
+
 # A Strong's number as a root or inside a printed label ("lord H3068")
 STRONGS_IN_TEXT = re.compile(r"(?:^|\s|\()([HG]\d{1,5})(?:$|\s|\))")
 
@@ -55,7 +57,7 @@ def is_strongs(root):
     return bool(root) and root[0] in "HG" and root[1:].isdigit()
 
 
-VERSION = "0.10.114"   # the program version; the window title and every report print it
+VERSION = "0.10.117"   # the program version; the window title and every report print it
 
 TOP_N = 25          # rows per table
 COMPANY_N = 15      # rows per neighbors column
@@ -271,11 +273,15 @@ class Atlas:
         self._capital_counts = cache
         return cache
 
-    def form(self, root):
+    def form(self, root, original=None):
         """
         A root as the pages print it: its commonest spelling, and, when
         the root is a Strong's number, the number after it ("lord H3068",
-        "lord H136") so two roots with one English spelling stay apart.
+        "lord H136") so two roots with one English spelling stay apart,
+        then the Hebrew or Greek word and its transliteration when
+        atlas_translit.SHOW_ORIGINAL is on ("hosts H6635 צָבָא tsava").
+        original=False gives the form without them, for code that takes
+        the spelling back apart.
         """
         # On a book or chapter page the spelling is the scope's own
         # commonest: H1540 is "captive" across the Bible but "uncover"
@@ -297,10 +303,16 @@ class Atlas:
             if companion:
                 joined = JOINED_RENDERINGS.get((spelling, companion))
                 if joined:
-                    return f"{joined} {root}"
-                return f"{spelling} ({companion}) {root}"
-            return f"{spelling} {root}"
+                    return f"{joined} {self.number(root, original)}"
+                return f"{spelling} ({companion}) {self.number(root, original)}"
+            return f"{spelling} {self.number(root, original)}"
         return spelling
+
+    def number(self, root, original=None):
+        """A Strong's number as printed: with its Hebrew or Greek and transliteration when SHOW_ORIGINAL is on."""
+        if original is False:
+            return root
+        return atlas_translit.with_original(root, show=original)
 
     def companions(self):
         """
@@ -375,13 +387,27 @@ class Atlas:
         return self.lexicon.get(root)
 
     def gloss(self, root):
-        """A short line for a Strong's number: 'יְהֹוָה: Jehovah, the Lord'."""
+        """A short line for a Strong's number: 'יהוה YHWH: Jehovah, the Lord'."""
         entry = self.lexicon.get(root)
         if not entry:
             return ""
         word, kjv_def, strongs_def = entry
         text = clean_gloss(kjv_def or strongs_def, 80)
+        word = self.original_word(root, word)
         return f"{word}: {text}" if word else text
+
+    def original_word(self, root, fallback=""):
+        """
+        The Hebrew or Greek word of a number with its transliteration
+        ('צָבָא tsava') from lexicon_forms (the tagged text's form where it
+        has one), or the lexicon's word alone when the table lacks the
+        number or SHOW_ORIGINAL is off.
+        """
+        if atlas_translit.SHOW_ORIGINAL:
+            shown = atlas_translit.original(root)
+            if shown:
+                return shown
+        return fallback or ""
 
     def aramaic_roots(self):
         """
@@ -1360,11 +1386,11 @@ def signature_words_section(atlas, report, title, rows, n_scope, scope_label,
                     # the root's own spelling is printed joined: 'son-in-law'
                     # for H2859 in 1 Samuel 18, where the Bible has father-in-law
                     if kind == "absorbed word":
-                        spelling = atlas.form(root).rsplit(" ", 1)[0].split(" (")[0].split("-")[-1]
+                        spelling = atlas.form(root, original=False).rsplit(" ", 1)[0].split(" (")[0].split("-")[-1]
                         joined = JOINED_RENDERINGS.get((spelling, form))
                         if joined:
                             return (f"'{joined}' for {root} ({n_here} of the Bible's {n_all}; "
-                                    f"{atlas.form(root).rsplit(' ', 1)[0]} elsewhere)")
+                                    f"{atlas.form(root, original=False).rsplit(' ', 1)[0]} elsewhere)")
                     return (f"'{form}' for {atlas.form(root)} ({n_here} of the Bible's {n_all}"
                             + (", absorbed word" if kind == "absorbed word" else "") + ")")
                 sec.footer.append("Local renderings (forms this book owns, over every root): " + "; ".join(
@@ -1965,7 +1991,8 @@ def lexicon_section(atlas, report, title, roots, book=None, chapter=None, scope_
         here = ", ".join(f"{sp} {n}" for sp, n in atlas.spellings(root, limit=5, book=book, chapter=chapter,
                                                                     verse_ids=verse_ids))
         bible = ", ".join(f"{sp} {n}" for sp, n in atlas.spellings(root, limit=5))
-        sec.add([atlas.form(root), word, glosses, here, bible], link={"word": root})
+        sec.add([atlas.form(root, original=False), atlas.original_word(root, word), glosses, here, bible],
+                link={"word": root})
 
 
 def signature_formulas_section(atlas, report, title, verses, book, n_scope):
@@ -4303,7 +4330,8 @@ def word_page(atlas, word, book_name=None, exact=False):
                      "Double-click another to turn to its page.")
             for r, n in behind[:12]:
                 entry = atlas.lexicon_entry(r) or ("", "", "")
-                sec.add([atlas.form(r), n, entry[0], clean_gloss(entry[1] or entry[2])], link={"word": r})
+                sec.add([atlas.form(r, original=False), n, atlas.original_word(r, entry[0]),
+                         clean_gloss(entry[1] or entry[2])], link={"word": r})
 
     sec = report.section(
         f"1. Shadow map '{atlas.form(root)}' [each book]",
@@ -5182,7 +5210,8 @@ def theme_page(atlas, name):
                          note="Words that go with the theme, kept by Strong's number and root.  They are not "
                               "searched yet; see IMPROVEMENTS.md.")
     for t in terms:
-        sec.add([t["strongs"], t["root"], t["note"]], link={"word": t["strongs"] or t["root"]})
+        sec.add([atlas.number(t["strongs"]) if t["strongs"] else "", t["root"], t["note"]],
+                link={"word": t["strongs"] or t["root"]})
     if not terms:
         # Worded without "None", which the tests take as a value left unfilled
         sec.footer.append("No companion terms named yet (\"companion_terms\" in the theme file).")

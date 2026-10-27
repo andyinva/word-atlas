@@ -110,6 +110,8 @@ import time
 from collections import Counter
 from itertools import combinations
 
+import atlas_translit
+
 PROGRAM_DIR = os.path.dirname(os.path.abspath(__file__))
 ATLAS_PATH = os.path.join(PROGRAM_DIR, "atlas.db")
 METADATA_PATH = os.path.join(PROGRAM_DIR, "metadata.db")
@@ -914,7 +916,9 @@ class ScopeResult:
         """The lines of one set in the report."""
         t = self.text
         flag = "  [inclusio]" if w.inclusio else ""
-        out = [f"  {', '.join(f'{t.word(r)} {r}' for r in w.roots)}{flag}",
+        # Each root with its Hebrew or Greek and transliteration when
+        # atlas_translit.SHOW_ORIGINAL is on: rest H4494 מָנוֹחַ manoakh
+        out = [f"  {', '.join(f'{t.word(r)} {atlas_translit.with_original(r)}' for r in w.roots)}{flag}",
                f"      support {w.support} units in {w.places} places, expected {w.expected:.1f}, lift {w.lift:.1f}, "
                f"G2 {w.keyness:.1f}, span {w.span} chapters; inside a formula in {w.phrase_units} units"
                + (f", in order in {w.frame_units}" if w.kind != "phrase" else ""),

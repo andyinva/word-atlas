@@ -416,7 +416,7 @@ def remap_rows(rows, book, mapping):
     return [(key, book, out[key]) for key in order]
 
 
-def align_texts(texts, translations, norm, base_tid, maps, log=None):
+def align_texts(texts, translations, norm, base_tid, maps, log=None, chosen=None):
     """
     For every translation but the base, book by book, try the text as
     it stands and under each tradition's map, and keep whichever
@@ -426,6 +426,8 @@ def align_texts(texts, translations, norm, base_tid, maps, log=None):
     Catholic Public Domain follow the Vulgate's numbering, Brenton the
     Septuagint's, the JPS the Hebrew's); a seam elsewhere (Joel 3,
     Malachi 4, the chapter breaks of Genesis 32) is caught the same way.
+    When chosen is a dict it receives {(abbreviation, book): tradition}
+    for every book a tradition renumbered ("Hebrew", "Latin", "Greek").
     """
     if not maps:
         return texts
@@ -440,7 +442,7 @@ def align_texts(texts, translations, norm, base_tid, maps, log=None):
         for row in texts[tid]:
             by_book.setdefault(row[1], []).append(row)
         new_rows = []
-        chosen = []
+        picked = []
         for book, rows in by_book.items():
             base_book = base_rows.get(book)
 
@@ -473,10 +475,12 @@ def align_texts(texts, translations, norm, base_tid, maps, log=None):
                     best_rows = remap_rows(rows, book, mapping) if mapping else rows
             new_rows.extend(best_rows)
             if best_name != "as is":
-                chosen.append(f"{book} by the {best_name}")
+                picked.append(f"{book} by the {best_name}")
+                if chosen is not None:
+                    chosen[(abbr, book)] = best_name
         out[tid] = new_rows
-        if chosen and log:
-            log(f"  {abbr}: renumbered {', '.join(chosen)}")
+        if picked and log:
+            log(f"  {abbr}: renumbered {', '.join(picked)}")
     return out
 
 

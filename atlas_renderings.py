@@ -38,6 +38,7 @@ words with their counts, distances and verse references.
     python3 atlas_renderings.py cruxes --top 50    the verses of greatest disagreement
     python3 atlas_renderings.py book Isaiah        a book's disagreement spots with the words behind them
     python3 atlas_renderings.py merged             verses a translation holds inside a neighbour (verse division)
+    python3 atlas_renderings.py lost               the import check: verses a translation's source lost
     python3 atlas_renderings.py editions           record the editions in doubt (JPS, the Genevas) in metadata.db
 
 The tables go into reports/results.db (renderings, renderings_summary,
@@ -92,6 +93,18 @@ TRUST_VERSES = 2
 NAME_SHARE = 0.5
 NAME_MIN_USES = 2
 
+# The divine names are not set aside from the disagreement distance,
+# though capitalised: a translator's choice between LORD, Jehovah, Yahweh
+# and HaShem is a translation decision the strip should see.  The part of
+# it that is uniform across a translation is cancelled by the excess
+# measure; only a verse where a translator leaves his own habit moves.
+# The short list the text normalization keeps as names in their own
+# right (atlas_text.DIVINE_CAPITALS: LORD, GOD, JEHOVAH, JAH), with God,
+# Lord and Saviour, and the other spellings of the name the translations
+# print (atlas_translations.DIVINE_NAMES: Yahweh, YHWH, HaShem; the
+# JPS's G-d and L-rd; the American Savior)
+DIVINE_EXEMPT = {"lord", "god", "jehovah", "jah", "saviour", "savior", "yahweh", "yhwh", "hashem", "g-d", "l-rd"}
+
 # The renderings table keeps a translation's renderings of a root only
 # when the root has at least MIN_ROOT_TAGGED tagged occurrences in it, and
 # then only renderings used at least MIN_RENDERING_COUNT times; the rest
@@ -125,6 +138,22 @@ EDITIONS = {
     "GEN": (1587, "edition unverified",
             "Described as Geneva Bible (1587) in atlas_source.db. Its New Testament is the Tomson revision, so it "
             "is not the 1560 text; whether 1587 or 1599 the database cannot say: edition unverified."),
+}
+
+# What two translations are, recorded in metadata.db's catalogue
+# (translation_families.note, by python3 atlas_renderings.py editions) and
+# printed in place of the year the same way, so that Brenton's "virgin" at
+# Isaiah 7:14 is not read as a rendering of the Hebrew
+CATALOGUE_NOTES = {
+    "BST": (1851, "1851, from the Greek",
+            "A translation of the Septuagint, not of the Hebrew: Brenton's English of the Greek Old Testament "
+            "(1851), so its renderings and its numbering follow the Greek (its 'virgin' at Isaiah 7:14 renders "
+            "parthenos, not almah)."),
+    "EDG": (1864, "1864, interlinear",
+            "Benjamin Wilson's Emphatic Diaglott (1864): the Greek New Testament with a word-for-word English "
+            "under each Greek word and a running translation of Wilson's own beside it.  The text held here is "
+            "the word-for-word English, in the Greek's order (John 1:14 'And the Word flesh became'), not the "
+            "running translation."),
 }
 
 # The summary's renderings_folded counts words, not endings: each rendering
@@ -265,7 +294,15 @@ class Corpus:
                 vocabulary.update(T.words_of(text))
         norm = T.Normaliser(vocabulary, T.spellings_from(metadata_path))
         base_tid = next(tid for tid, a, _n in translations if a == BASE)
-        aligned = T.align_texts(raw, translations, norm, base_tid, T.load_tradition_maps(metadata_path), log)
+        # The tradition each book of each translation was numbered by, and
+        # the verses each translation's own source holds, for the import
+        # check (a verse its tradition has that the source lacks)
+        self.maps = T.load_tradition_maps(metadata_path) or {}
+        chosen = {}
+        aligned = T.align_texts(raw, translations, norm, base_tid, self.maps, log, chosen)
+        self.tradition = chosen                          # (abbreviation, book) -> "Hebrew", "Latin" or "Greek"
+        abbr_of = {tid: a for tid, a, _n in translations}
+        self.raw_refs = {abbr_of[tid]: {r for r, _b, _t in rows_} for tid, rows_ in raw.items()}
         src.close()
         self.texts, self.names, self.year, self.title = {}, {}, {}, {}
         self.name_like = {}                 # names, and words used once and capitalised (for the distance)
@@ -292,7 +329,8 @@ class Corpus:
             # once capitalised, is a name as well (the Kadmonites of
             # Genesis 15:19): the alignment needs two uses to judge a
             # pairing, the distance only needs to know what to set aside
-            self.name_like[abbr] = self.names[abbr] | {w for w, n in uses.items() if n == 1 and caps[w] == 1}
+            self.name_like[abbr] = (self.names[abbr] | {w for w, n in uses.items() if n == 1 and caps[w] == 1}) \
+                - DIVINE_EXEMPT
         self.order = sorted(self.texts, key=lambda a: (self.year.get(a) or 9999, a))
         self.base = BASE
 
@@ -554,6 +592,41 @@ def word_forms(atlas_path=ATLAS_PATH):
         at.close()
 
 
+def write_traditions(corpus, cache):
+    """
+    Keep in the cache what a later reader of one verse needs to find it
+    in each translation without loading them all (atlas_brief.py): the
+    numbering tradition each book of each translation follows, and the
+    books each translation holds.
+    """
+    cache.executescript("DROP TABLE IF EXISTS traditions; "
+                        "CREATE TABLE traditions (translation TEXT, book TEXT, tradition TEXT); "
+                        "DROP TABLE IF EXISTS translation_books; "
+                        "CREATE TABLE translation_books (translation TEXT, book TEXT, verses INTEGER);")
+    cache.executemany("INSERT INTO traditions VALUES (?, ?, ?)",
+                      [(a, b, t) for (a, b), t in sorted(corpus.tradition.items())])
+    rows = []
+    for a, verses in corpus.texts.items():
+        for book, n in Counter(corpus.book_of.get(r) for r in verses).items():
+            if book:
+                rows.append((a, book, n))
+    cache.executemany("INSERT INTO translation_books VALUES (?, ?, ?)", rows)
+    cache.commit()
+
+
+def content_words(text, pattern=None, apostrophes=None, stop=None):
+    """A translation's verse as the alignment reads it: its words lowered, apostrophes straightened, stop words out."""
+    if pattern is None:
+        pattern, apostrophes = tokenizer()
+    stop = stoplist() if stop is None else stop
+    out = []
+    for w in pattern.findall(text.translate(apostrophes)):
+        lw = w.lower().replace("’", "'")
+        if lw not in stop:
+            out.append(lw)
+    return out
+
+
 def align_all(corpus, results_path=None, cache_path=None, log=print):
     """Learn every translation's map, tag it, and write the renderings tables and the cache."""
     # The paths read when called, so a caller may point them elsewhere
@@ -566,6 +639,7 @@ def align_all(corpus, results_path=None, cache_path=None, log=print):
     cache = sqlite3.connect(cache_path)
     cache.executescript("CREATE TABLE IF NOT EXISTS pairs (translation TEXT, kjv TEXT, word TEXT, score REAL); "
                         "CREATE INDEX IF NOT EXISTS idx_pairs ON pairs (translation, kjv);")
+    write_traditions(corpus, cache)
     folder = None
     for abbr in corpus.order:
         started = time.time()
@@ -684,6 +758,17 @@ class Disagreement:
         # A merged verse is neither present nor lacking: it leaves the
         # distance alone and the missing count alone.
         self.merged = {}                   # ref -> [(translation, the neighbour that holds it)]
+        # Lost in import: a verse the translation's own numbering
+        # tradition has, that its source in atlas_source.db does not (the
+        # JPS's Daniel 3:31-33, the King James's 4:1-3): not an omission
+        # of the edition, so neither lacking nor merged
+        self.lost = {}                     # ref -> [translations]
+        self._inverse = {}                 # tradition -> {(book, chapter, verse) King James: [(chapter, verse) theirs]}
+        for name, mapping in corpus.maps.items():
+            inv = defaultdict(list)
+            for (b, c, v), (kc, kv) in mapping.items():
+                inv[(b, kc, kv)].append((c, v))
+            self._inverse[name] = inv
         before, after = {}, {}
         for i, ref in enumerate(corpus.refs):
             if i and corpus.book_of[corpus.refs[i - 1]] == corpus.book_of[ref]:
@@ -715,6 +800,9 @@ class Disagreement:
             if not want:
                 continue
             for a in lacking:
+                if self._lost(a, ref):
+                    self.lost.setdefault(ref, []).append(a)
+                    continue
                 best_n, best_hit = None, 0
                 for nref in (before.get(ref), after.get(ref)):
                     if nref is None or corpus.texts[a].get(nref) is None:
@@ -766,7 +854,7 @@ class Disagreement:
                 # 8:37) is a crux by the same measure as a verse rendered
                 # every which way, and the translations lacking it, or the
                 # few keeping it, are its outliers.
-                merged_here = {a for a, _n in self.merged.get(ref, ())}
+                merged_here = {a for a, _n in self.merged.get(ref, ())} | set(self.lost.get(ref, ()))
                 lacking = [a for a in expected if a not in names and a not in merged_here]
                 one = [(tuple(sorted((a, b), key=rank.get)), 1.0) for a in names for b in lacking]
                 for (a, b), d in both + one:
@@ -798,28 +886,47 @@ class Disagreement:
             else:
                 mean, excess, outlier, far, unique = None, None, "", (None, None, None), []
             self.rows[ref] = (mean, present, n_expected, far, unique, excess, outlier, len(self.names_in[ref]),
-                              self.merged.get(ref, []))
+                              self.merged.get(ref, []), self.lost.get(ref, []))
+
+    def _lost(self, abbr, ref):
+        """
+        True when the verse is lost in import for this translation: the
+        tradition its book was numbered by has the verse (under its own
+        number), and the translation's source lacks that number.
+        """
+        book = self.corpus.book_of[ref]
+        tradition = self.corpus.tradition.get((abbr, book))
+        if not tradition or tradition not in self._inverse:
+            return False
+        chv = ref.rsplit(" ", 1)[1]
+        kc, kv = (int(x) for x in chv.split(":"))
+        theirs = self._inverse[tradition].get((book, kc, kv))
+        if not theirs:
+            return False
+        held = self.corpus.raw_refs.get(abbr, set())
+        return all(f"{book} {c}:{v}" not in held for c, v in theirs)
 
     def missing_share(self, ref):
-        present, expected, merged = self.rows[ref][1], self.rows[ref][2], len(self.rows[ref][8])
-        # The share lacking, merged verses not counted as lacking
-        return (expected - present - merged) / expected if expected else 0.0
+        present, expected = self.rows[ref][1], self.rows[ref][2]
+        merged, lost = len(self.rows[ref][8]), len(self.rows[ref][9])
+        # The share lacking: merged verses and verses lost in import are not lacking
+        return (expected - present - merged - lost) / expected if expected else 0.0
 
     def write(self, db):
         """The disagreement_verses table."""
         db.execute("DELETE FROM disagreement_verses")
         rows = []
         for ref in self.corpus.refs:
-            mean, present, expected, (a, b, d), unique, excess, outlier, names, merged = self.rows[ref]
+            mean, present, expected, (a, b, d), unique, excess, outlier, names, merged, lost = self.rows[ref]
             book, chv = ref.rsplit(" ", 1)
             ch, v = chv.split(":")
             # Each merged translation with the neighbour holding the verse: "JPS>Daniel 3:33"
             merged_with = " ".join(f"{t}>{n.rsplit(' ', 1)[1]}" for t, n in merged)
             rows.append((ref, book, int(ch), int(v), None if mean is None else round(mean, 4),
                          None if excess is None else round(excess, 4), present, expected,
-                         round(self.missing_share(ref), 4), len(merged), merged_with, names,
+                         round(self.missing_share(ref), 4), len(merged), merged_with, len(lost), " ".join(lost), names,
                          a or "", b or "", None if d is None else round(d, 4), outlier, " ".join(unique[:40])))
-        db.executemany("INSERT INTO disagreement_verses VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        db.executemany("INSERT INTO disagreement_verses VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                        rows)
         db.commit()
         return len(rows)
@@ -864,14 +971,15 @@ class Disagreement:
             "disagreement": "How far the English translations stand apart in the window.  For each verse, the "
                             "distance of two translations is the share of their content words they do not share "
                             "(words compared through the alignment with the King James; proper names set aside, "
-                            "so a list of names is not a crux), less that pair's usual distance; a translation "
+                            "so a list of names is not a crux, but not the divine names: LORD, Jehovah, Yahweh "
+                            "and HaShem are a translator's choice), less that pair's usual distance; a translation "
                             "lacking the verse counts as sharing nothing with one that has it.  Averaged over the "
                             "window, as z against the testament (atlas_renderings.py).",
             "missing": "The share of the translations having the book that lack the verse, averaged over the "
                        "window: the verses the Revised Version left out, the verses some keep from the "
                        "Septuagint.  A verse a translation holds inside the verse before or after it (a "
-                       "difference of verse division) is merged, not lacking, and is not counted "
-                       "(atlas_renderings.py).",
+                       "difference of verse division) is merged, not lacking, and a verse its source lost "
+                       "in import is not counted either (atlas_renderings.py).",
         }
         key_rest = ("z", "bible", STRIP_WINDOW)
         total_spots = 0
@@ -938,15 +1046,22 @@ def open_results(path=None):
     return db
 
 
+def label(root):
+    """A Strong's number with its Hebrew or Greek and transliteration when atlas_translit.SHOW_ORIGINAL is on."""
+    import atlas_translit
+    return atlas_translit.with_original(root)
+
+
 def date_label(abbr, year):
     """A translation's year for a report line, or its edition label where the edition is in doubt (19 wide)."""
-    label = EDITIONS[abbr][1] if abbr in EDITIONS else (year or "?")
+    label = (EDITIONS.get(abbr) or CATALOGUE_NOTES.get(abbr) or (None, year or "?"))[1]
     return f"{label:>19}"
 
 
 def record_editions(metadata_path=None, log=print):
     """
-    Write EDITIONS into metadata.db: translation_families gains an
+    Write EDITIONS and CATALOGUE_NOTES into metadata.db (the notes in
+    translation_families.note).  translation_families gains an
     edition column (added when missing), and the three rows take their
     edition and the year the date order uses (GN2 1599 and GEN 1587, as
     the database's own records name them; the 1560 that GN2 carried is
@@ -963,6 +1078,10 @@ def record_editions(metadata_path=None, log=print):
     for abbr, (year, _label, text) in EDITIONS.items():
         db.execute("UPDATE translation_families SET edition = ?, year = ? WHERE abbreviation = ?", (text, year, abbr))
         log(f"  {abbr}: {year}; {text}")
+    # What a translation is, in the catalogue's note column
+    for abbr, (_year, _label, text) in CATALOGUE_NOTES.items():
+        db.execute("UPDATE translation_families SET note = ? WHERE abbreviation = ?", (text, abbr))
+        log(f"  {abbr}: {text}")
     db.commit()
     db.close()
     log(f"editions written to {path} (translation_families.edition); python3 atlas_backup.py backup keeps them "
@@ -976,6 +1095,7 @@ def translations_line(db):
         return "No translation aligned yet: python3 atlas_renderings.py align."
     here = {a for a, _y, _s in rows}
     notes = [f"{a}: {EDITIONS[a][2]}" for a in EDITIONS if a in here]
+    notes += [f"{a}: {CATALOGUE_NOTES[a][2]}" for a in CATALOGUE_NOTES if a in here]
     return ("Tagged share (how far to trust the layer): " + ", ".join(f"{a} {s:.0%}" for a, _y, s in rows)
             + ("\nEditions: " + "\n          ".join(notes) if notes else ""))
 
@@ -995,7 +1115,7 @@ def report_root(db, root=None, word=None):
                               (r, word)).fetchall()
             form = db.execute("SELECT word FROM renderings WHERE root = ? LIMIT 1", (r,)).fetchone()[0]
             rows.sort(key=lambda x: (years.get(x[0]) or 9999, x[0]))
-            out.append(f"  {r} '{form}': " + ", ".join(f"{a} {n} ({s:.0%})" for a, n, s in rows))
+            out.append(f"  '{form}' {label(r)}: " + ", ".join(f"{a} {n} ({s:.0%})" for a, n, s in rows))
         return "\n".join(out)
     rows = db.execute("SELECT translation, rendering, count, share, word FROM renderings WHERE root = ?",
                       (root,)).fetchall()
@@ -1005,7 +1125,7 @@ def report_root(db, root=None, word=None):
     by_t = defaultdict(list)
     for a, w, n, s, _f in rows:
         by_t[a].append((w, n, s))
-    out.append(f"{root} '{form}' across the translations, in date order (renderings used {MIN_RENDERING_COUNT} times "
+    out.append(f"'{form}' {label(root)} across the translations, in date order (renderings used {MIN_RENDERING_COUNT} times "
                f"or more; tagged share of the translation in brackets)")
     for a in sorted(by_t, key=lambda x: (years.get(x) or 9999, x)):
         ws = sorted(by_t[a], key=lambda x: (x[0] == OTHER, -x[1]))
@@ -1026,6 +1146,8 @@ def report_translation(db, name, top=25):
     out = [f"{title} ({abbr}, {date_label(abbr, year).strip()}): {share:.0%} of its content words tagged"]
     if abbr in EDITIONS:
         out.append(f"Edition: {EDITIONS[abbr][2]}")
+    if abbr in CATALOGUE_NOTES:
+        out.append(f"What it is: {CATALOGUE_NOTES[abbr][2]}")
     out.append("")
     # Variety by word, not by ending: the folded count leads (dwelt,
     # dwell and dwelleth are one word), the printed count beside it
@@ -1038,10 +1160,10 @@ def report_translation(db, name, top=25):
     forms = dict(db.execute("SELECT root, word FROM renderings WHERE translation = ? GROUP BY root", (abbr,)))
     out.append("Rendered by the most different words (roots with 30 tagged occurrences or more; words counted with "
                "endings and spellings folded, renderings as printed in brackets; the leading rendering's share):")
-    out += [f"  {r} '{forms.get(r, r)}': {f} words ({d} as printed), leading '{lead}' {s:.0%} of {n}"
+    out += [f"  '{forms.get(r, r)}' {label(r)}: {f} words ({d} as printed), leading '{lead}' {s:.0%} of {n}"
             for r, lead, s, f, d, n in various]
     out += ["", "Rendered by one word:"]
-    out += [f"  {r} '{forms.get(r, r)}': '{lead}' {s:.0%} of {n} ({f} word, {d} as printed)"
+    out += [f"  '{forms.get(r, r)}' {label(r)}: '{lead}' {s:.0%} of {n} ({f} word, {d} as printed)"
             for r, lead, s, f, d, n in uniform]
     return "\n".join(out)
 
@@ -1117,13 +1239,35 @@ def report_crux_density(db, top=CRUX_DENSITY_TOP):
 
 def report_missing(db, top=40):
     """The verses most translations lack (of those that have the book), merged verses not counted as lacking."""
-    rows = db.execute("SELECT reference, present, expected, missing, merged FROM disagreement_verses "
+    rows = db.execute("SELECT reference, present, expected, missing, merged, lost_in FROM disagreement_verses "
                       "WHERE missing > 0 ORDER BY missing DESC, reference LIMIT ?", (top,)).fetchall()
     out = ["Verses lacking in translations that have the book (share lacking; a verse a translation holds "
-           "inside its neighbour is merged, not lacking, and is listed by python3 atlas_renderings.py merged):"]
-    for r, p, e, m, g in rows:
+           "inside its neighbour is merged, not lacking (python3 atlas_renderings.py merged), and a verse its "
+           "source lost in import is not lacking either (python3 atlas_renderings.py lost)):"]
+    for r, p, e, m, g, lost in rows:
         lacking = round(m * e)
-        out.append(f"  {r:24} {p}/{e} present, {lacking} lacking ({m:.0%})" + (f", {g} merged" if g else ""))
+        out.append(f"  {r:24} {p}/{e} present, {lacking} lacking ({m:.0%})" + (f", {g} merged" if g else "")
+                   + (f", lost in import in {lost}" if lost else ""))
+    return "\n".join(out)
+
+
+def report_lost(db):
+    """
+    The import check: verses a translation's own numbering tradition has
+    and its source in atlas_source.db lacks, marked lost in import, not
+    lacking, until they can be restored from a source.
+    """
+    rows = db.execute("SELECT reference, lost_in FROM disagreement_verses WHERE lost > 0 ORDER BY rowid").fetchall()
+    by_t = defaultdict(list)
+    for ref, lost in rows:
+        for t in lost.split():
+            by_t[t].append(ref)
+    out = [f"Verses lost in import: {len(rows)} verses. Each is a verse the translation's numbering tradition has "
+           "(the TVTMS map its book was numbered by names it) and its source in atlas_source.db does not; it "
+           "is marked lost in import, not lacking, in the missing strip and the lacking report until it can "
+           "be restored from a source.", ""]
+    for t in sorted(by_t):
+        out.append(f"  {t} ({len(by_t[t])}): {', '.join(by_t[t])}")
     return "\n".join(out)
 
 
@@ -1180,7 +1324,7 @@ def report_verse(corpus, live, ref, root):
         return f"No verse {ref}."
     keys = set(corpus.kjv_words(ref))
     behind = [w for w, t, _m in kjv if t == root]
-    out = [f"{ref}: {root} is '{', '.join(behind) or '(not in this verse)'}' in the King James"]
+    out = [f"{ref}: {label(root)} is '{', '.join(behind) or '(not in this verse)'}' in the King James"]
     for a in corpus.order:
         if a == BASE:
             continue
@@ -1213,12 +1357,14 @@ class LivePairs:
         if not os.path.exists(cache_path):
             raise SystemExit("No learned pairings yet: python3 atlas_renderings.py align.")
         self.by = defaultdict(lambda: defaultdict(list))    # translation -> word -> [(kjv key, score)]
+        import atlas_translations
+        self.spellings = atlas_translations.spellings_from(METADATA_PATH)   # early spellings to the King James's
         cache = sqlite3.connect(cache_path)
         for a, k, w, sc in cache.execute("SELECT translation, kjv, word, score FROM pairs"):
             self.by[a][w].append((k, sc))
         cache.close()
 
-    def rendering(self, abbr, words, keys, root):
+    def rendering(self, abbr, words, keys, root, also=()):
         """
         The words of one translation's verse whose best King James word in
         the verse carries the root.  A word with no pairing to any King
@@ -1226,7 +1372,10 @@ class LivePairs:
         alone, whatever root it carries elsewhere: a rare root's own key
         ("propitiation|G2435", "mercyseat|G2435") seldom meets the
         two-verse rule, though the word is paired a hundred times under
-        another root (the mercy seat of Exodus, H3727).
+        another root (the mercy seat of Exodus, H3727).  also: the King
+        James's other spellings of the root elsewhere ("mercyseat" for
+        G2435 at Romans 3:25, where the King James says "propitiation"),
+        accepted the same way.
         """
         def flat(word):
             # A King James word or unit with its spaces and hyphens taken
@@ -1235,8 +1384,8 @@ class LivePairs:
             return word.replace(" ", "").replace("-", "")
 
         hits = []                                        # [(position, word)]
-        verse_words = {flat(source_parts(k)[0]) for k in keys}
-        rooted = {flat(source_parts(k)[0]) for k in keys if source_parts(k)[1] == root}
+        verse_words = {flat(source_parts(k)[0]) for k in keys} | {flat(a) for a in also}
+        rooted = {flat(source_parts(k)[0]) for k in keys if source_parts(k)[1] == root} | {flat(a) for a in also}
         for i, w in enumerate(words):
             pairs = self.by[abbr].get(w, [])
             here = [(k, sc) for k, sc in pairs if k in keys]
@@ -1254,14 +1403,19 @@ class LivePairs:
         # and ie read as the King James spells them
 
         def spelled(word):
-            w = flat(word)
+            # The early printers' spellings read the King James's way: the
+            # atlas's spelling table first (voyde, void), then the final e
+            # and ie
+            w = flat(getattr(self, "spellings", {}).get(word, word))
+            w = re.sub(r"^v(?=[^aeiouy])", "u", w)              # vpon, vnto: upon, unto
+            w = re.sub(r"(?<=.)y(?=[^aeiouy]|e$)", "i", w)        # voyde: voide
             if w.endswith("ie"):
                 return w[:-2] + "y"
             if w.endswith("e") and len(w) > 3:
                 return w[:-1]
             return w
 
-        targets = {spelled(r) for r in rooted if len(r) >= 5}
+        targets = {spelled(r) for r in rooted if len(r) >= 4}
         have = {i for i, _w in hits}
         for i, w in enumerate(words):
             if i not in have and spelled(w) in targets:
@@ -1300,7 +1454,7 @@ def report_root_live(corpus, live, root):
     if not refs:
         return f"{root} is in no verse of the King James's tags."
     form = Counter(w for r in refs for w, t, _m in corpus.kjv[r] if t == root).most_common(1)[0][0]
-    out = [f"{root} '{form}' in {len(refs)} verse{'s' if len(refs) != 1 else ''} ({', '.join(refs[:8])}"
+    out = [f"'{form}' {label(root)} in {len(refs)} verse{'s' if len(refs) != 1 else ''} ({', '.join(refs[:8])}"
            + (" ..." if len(refs) > 8 else "") + "), counted afresh from the learned pairings (below the table's "
            f"floor of {MIN_ROOT_TAGGED} occurrences):"]
     for a in corpus.order:
@@ -1347,6 +1501,7 @@ def main(argv=None):
     p.add_argument("--top", type=int, default=50)
     p.add_argument("--missing", action="store_true", help="the verses most translations lack instead")
     sub.add_parser("merged", help="the verses some translation holds inside a neighbouring verse, by book")
+    sub.add_parser("lost", help="the import check: verses a translation's source lost in import")
     sub.add_parser("editions", help="write the editions in doubt (JPS, the two Genevas) into metadata.db")
     p = sub.add_parser("book", help="a book's disagreement spots and verses")
     p.add_argument("book", nargs="+")
@@ -1407,6 +1562,10 @@ def main(argv=None):
         text = report_missing(db, args.top) if args.missing else report_cruxes(db, args.top, by_book=True)
         print(text)
         print(f"(saved to {save(text, 'renderings_missing.txt' if args.missing else 'renderings_cruxes.txt')})")
+    elif args.command == "lost":
+        text = report_lost(db)
+        print(text)
+        print(f"(saved to {save(text, 'renderings_lost.txt')})")
     elif args.command == "merged":
         text = report_merged(db)
         print(text)

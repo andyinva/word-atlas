@@ -1,6 +1,6 @@
 # Word Atlas: The Manual
 
-For version 0.10.114. Andrew Hopkins, with Claude.
+For version 0.10.117. Andrew Hopkins, with Claude.
 
 This is the one document for Word Atlas. It replaces the cheat sheet,
 the long README and the paper called "Tuning the Rules", and it gathers
@@ -658,6 +658,8 @@ English ones.
 | `atlas_sets.py` | Constellations (section 28e): sets of two to five roots that travel together, by the frequent itemset search; `--all` writes every scope into `results.db` |
 | `atlas_renderings.py` | Renderings (section 28f): each public domain translation aligned with the King James, its renderings of every root counted, and the disagreement of the translations measured verse by verse into two heat strips |
 | `atlas_align.py` | The word alignment shared by `atlas_renderings.py` and `Eval_data/hebrew_greek_map.py`: IBM Model 1 read both ways, the two-verse rule and the proper-name ban |
+| `atlas_translit.py` | The Hebrew or Greek word and its transliteration beside every Strong's number (section 28g): builds `lexicon_forms` in metadata.db and results.db; `SHOW_ORIGINAL` turns the display on and off |
+| `atlas_brief.py` | The verse brief and the root brief (section 28h): what the atlas can tell a translator about one verse or one root, as text or as JSON for the translation workbench |
 | `atlas_themes.py` | Themes (section 14b): `import` turns a verse list into a theme file, `load` loads every file of `themes/` into `atlas.db` with the reference check and the strip, `list` shows them; every build calls it |
 | `themes/` | The theme files, one JSON file a theme (`land_inheritance.json`); kept in git, and copied beside a labelled build |
 | `atlas_listed.py` | The cross references (OpenBible.info on the Treasury of Scripture Knowledge, from bibles.db) behind the `listed` column and footers of sections 4, 4e and 6 |
@@ -3159,6 +3161,133 @@ almah) is counted afresh from the cache over its few verses. Nothing in
 the tables is text: roots, single words with their counts, distances
 and references.
 
+**Since 0.10.115.** The divine names stay in the distance though
+capitalised (LORD, GOD, JEHOVAH, JAH, God, Lord, Saviour, and the
+translations' Yahweh, HaShem, G-d and L-rd): the choice between them is
+a translator's decision, and the part of it that is uniform across a
+translation the excess already cancels. A verse a translation's own
+numbering tradition has, but its source in atlas_source.db lacks, is
+**lost in import**, not lacking (`lost`, `lost_in`; `python atlas_renderings.py
+lost`): the JPS's Daniel 3:31-33 and Joel 4, and the last verse of most
+psalms with a title, never came over, because the source's verse table
+holds only the King James's numbers. Brenton is marked a translation
+of the Septuagint and the Diaglott Wilson's word-for-word English, in
+the catalogue and in place of their years in the reports.
+
+## 28g. The original word beside the number
+
+Wherever a page, a report or a note prints a Strong's number, the
+Hebrew or Greek word follows it, and a transliteration that says how it
+sounds: hosts H6635 צָבָא tsava, grace G5485 χάρις charis. The order
+is always word, number, script, transliteration, so a search by number
+still finds the number. `SHOW_ORIGINAL` in `atlas_translit.py` turns
+it off for narrow tables.
+
+The words are the tagged texts' dictionary forms where the number
+occurs in them (TAHOT for the Hebrew, the Greek New Testament or the
+Septuagint for the Greek), Strong's dictionary's otherwise. The
+transliteration is made by rule from the pointed word, never taken from
+Strong's own (tohuw, bohuw): the SBL general purpose scheme with modern
+pronunciation (kh for chet and soft kaf, ts for tsade, v for soft bet
+and for vav, f for soft pe, alef and ayin silent with an apostrophe
+only between two vowels, a vocal sheva e, a dagesh forte doubled); the
+divine name prints YHWH, H136 Adonai. The table `lexicon_forms`
+(metadata.db, results.db, and the pack) also keeps a form with the long
+vowels marked.
+
+```
+python atlas_translit.py
+python atlas_translit.py test
+python atlas_translit.py H2617 G26
+```
+
+The first builds the table (run it again only when the lexicon or the
+tagged texts change); the second prints the test words and Genesis 1:2
+(tohu vavohu). The Reader shows or hides the words with View > Show
+Hebrew and Greek, and its search finds a number by its transliteration
+(khesed finds H2617).
+
+**The form the text has.** A dictionary gives bohu for H922, but the
+word never stands alone in the text: its three words (Genesis 1:2 and
+Jeremiah 4:23, tohu vavohu, and Isaiah 34:11, avne vohu) all follow a
+vowel, the dagesh drops, and the Bible holds no bohu. So beside a number
+the pages print the word as the text has it, its prefixes removed, when
+that differs from the dictionary form: בֹהוּ vohu, the letters following
+the spelling. The word as it stands in the text: a word that always
+follows a vowel may begin with v, kh or f where a dictionary gives b, k
+or p. The dictionary form stays in the table (`script` and `translit`)
+and shows on hover in the Reader ("H922 בֹהוּ vohu (dictionary בֹּהוּ
+bohu)"); `translit_text` and `script_text` are what is printed, and
+`attested_share` is the share of the number's words that form holds, so
+a reader can see how settled it is.
+
+The rule counts every word of the number in TAHOT (the attached prefixes
+are already taken off by the tagging), each transliterated with the
+dagesh the text gives it. The dictionary form is kept when it occurs at
+least once and holds a fifth of the contest; where it never occurs, or
+holds less, the commonest form is shown, a tie going to the dictionary
+form. It is for nouns, adjectives and names; a verb keeps its dictionary
+form (kipper), which is already a conjugated form. Constructs (bet,
+pene, bene) and words whose suffix the tagging marks count as the
+dictionary form, so bayit, berit, kohen and ben stay and the only
+differences are the dagesh and the plural (kippurim stays, the only form
+the text has; panim is what H6440 prints, though the construct pene is
+commoner). A form that would hold under a tenth of the word's words does
+not replace the dictionary form unless it stands in twenty words or
+more. The divine name, Adonai and Greek are unchanged. `python
+atlas_translit.py test` prints the test words before and after, what the
+floor and the nouns-only rule kept, and the twenty largest changes.
+
+**Lemma corrections.** TAHOT's lemma field is sometimes wrong (H1419,
+the commonest adjective in the Bible, carries the lemma of gal, a heap,
+on 512 of its 526 words). A table `lemma_corrections` in the catalogue
+(metadata.db, in metadata_backup.sql), kept by hand, names the lemma a
+number should have; it is read before the lexicon form is made, and
+H1419 gadol is its first row. The correction is Word Atlas's (see
+ATTRIBUTION.md), and the list can be sent to STEPBible.
+
+## 28h. The verse brief
+
+`atlas_brief.py` answers two questions from the tables the atlas
+already holds: tell me about this verse, and tell me about this root.
+The first reader is the translation workbench, which shows the brief
+beside its editing pane and keeps its own decisions; the atlas informs,
+the workbench decides, and nothing here writes to the workbench.
+
+The **verse brief** opens with the verse: the King James, the Hebrew or
+Greek, and its place on the disagreement strip (excess, rank, the two
+translations furthest apart, the words in one translation only). Then
+one block per original word, in text order, its prefixes and suffixes
+in its form: the number, the word as it stands in the verse and spelled
+by the transliteration rules (vavohu, not bohu), its parsing in plain
+words, the lexicon, the King James's word; how each public domain
+translation rendered it in this verse (from the saved pairings); its
+renderings across the Bible (counted afresh over its verses when it is
+too rare for the table); the Septuagint's Greek for it, and the word the
+Septuagint uses here; the tagged text's senses; its company in the book
+and the Bible and the sets that hold it here; its rarity, home and
+weight. A function word gets one line. The verse closes with its
+echoes (the shared words marked in both verses, Greek-confirmed or by
+English only), the quotation study's verdict where it is quoted, and
+the formulas it holds that recur elsewhere. The **root brief** gives
+the same blocks for a root, then every verse it occurs in with the King
+James's word there.
+
+```
+python atlas_brief.py verse "Genesis 1:2"
+python atlas_brief.py root H3722
+python atlas_brief.py verse "Isaiah 7:14" --json
+python atlas_brief.py root H3722 --workbench ~/projects/translation_workbench/projects/english_literal/project.db
+```
+
+`--json` writes one object whose shape schema_notes describes under
+"brief"; `--workbench` reads the workbench's project.db (never writes
+it) for a root's rank on its priority list, its glossary rendering and
+its newest drafts; `--results` points at another results file or a
+packed dataset's, and `--results-only` reads that file alone, as the
+Reader will. Each brief's head says which sources it read and which
+were missing.
+
 ## 29. What the atlas cannot see
 
 A manual should say where its instrument stops. The atlas counts
@@ -5572,6 +5701,31 @@ fall when no partner changes side.
 
 **0.10.14.** Inference and share absorption within the verse's own
 language, so no Hebrew word takes an Aramaic number (a rebuild).
+
+**0.10.117.** The form the text has (section 28g): `lexicon_forms` gains
+`translit_text`, `script_text` and `attested_share`; beside a number the
+pages print the word as it stands in the text (בֹהוּ vohu for H922), for
+nouns, adjectives and names, the dictionary form kept in `script` and
+`translit` and shown on hover in the Reader; constructs count as the
+dictionary form, and a form under a tenth of the word's words does not
+replace it. A table of lemma corrections (H1419 gadol) is read before
+the forms are made. Reader 0.3.25: the hover, and search by either form.
+Pages change: the word beside 508 Hebrew and Aramaic numbers.
+
+**0.10.116.** The verse brief (section 28h): `atlas_brief.py verse`
+and `root`, as text or JSON; the renderings cache keeps each
+translation's numbering, so a single verse is found without loading
+every translation; a word spelled as the King James spells it (voyde,
+void) counts as its rendering. No page changes.
+
+**0.10.115.** The original word beside the number (section 28g):
+`atlas_translit.py` and `lexicon_forms`, every number on the pages and
+in the heat, set and renderings reports followed by its Hebrew or Greek
+and a transliteration. Renderings: the divine names kept in the
+distance; verses lost in import told apart from lacking; Brenton and the
+Diaglott described. Reader 0.3.24: View > Show Hebrew and Greek, and
+search by transliteration. Pages change: the word column carries the
+original word.
 
 **0.10.114.** Renderings, step two (section 28f): names set aside from
 the disagreement distance (a names column); a verse held inside its

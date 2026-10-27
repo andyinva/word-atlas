@@ -573,6 +573,12 @@ class Scorer:
         return statistics.fmean(ratios)
 
 
+
+def atlas_translit_label(root):
+    """A number with its Hebrew or Greek and transliteration when atlas_translit.SHOW_ORIGINAL is on."""
+    import atlas_translit
+    return atlas_translit.with_original(root)
+
 def windows_of(verses: list, size: int, step: int, hammer_span: int = 0) -> list[Window]:
     """
     Windows of `size` verses, moving `step` verses at a time, within one
@@ -1081,7 +1087,10 @@ class HeatReport:
         return ", ".join(f"'{word}' {n}" if n > 1 else f"'{word}'" for word, n in words.most_common(4))
 
     def gloss(self, root: str) -> str:
-        return f"'{self.loader.glosses.get(root, root)}' {root}" if root else ""
+        # The number with its Hebrew or Greek and transliteration when
+        # atlas_translit.SHOW_ORIGINAL is on: 'hosts' H6635 צָבָא tsava
+        import atlas_translit
+        return f"'{self.loader.glosses.get(root, root)}' {atlas_translit.with_original(root)}" if root else ""
 
     def spot_words(self, s: "Spot", m: str) -> str:
         """
@@ -1095,7 +1104,8 @@ class HeatReport:
         # Only a hot spot has a hammered word; on a cool spot the top
         # word is weak by definition, so it is not named.
         if m == "hammer" and s.hot and s.peak.hammer_word:
-            extra = f"hammered: '{s.peak.hammer_english}' {s.peak.hammer_word}"
+            import atlas_translit
+            extra = f"hammered: '{s.peak.hammer_english}' {atlas_translit.with_original(s.peak.hammer_word)}"
         if s.hot and (m == "feeling" or m in FAMILY_NAMES):
             extra = self.feeling_detail(s, m)
         if s.hot and m in NAME_MEASURES:
@@ -1204,7 +1214,8 @@ class HeatReport:
             top = ""
             if words:
                 root, english = words.most_common(1)[0][0]
-                top = f"'{english}' {root}"
+                import atlas_translit
+                top = f"'{english}' {atlas_translit.with_original(root)}"
             out.append(f"  {ch:>3}{cells}   {top}")
         out.append("")
         return out
@@ -1302,7 +1313,7 @@ class StripChart:
                 if m in CONTEXT_MEASURES:
                     tip += f"  share {100 * w.scores[m]:.0f}%"
                 if m == "hammer":
-                    tip += (f"  word {w.hammer_word} '{w.hammer_english}'" if w.hammer_word
+                    tip += (f"  word {atlas_translit_label(w.hammer_word)} '{w.hammer_english}'" if w.hammer_word
                             else "  no repeated word")
                 parts.append(f'<rect x="{left + i * cell:.2f}" y="{y}" width="{cell + 0.05:.2f}" '
                              f'height="{strip_h}" fill="{self.color(w.z[m])}">'
